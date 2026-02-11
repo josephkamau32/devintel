@@ -3,7 +3,7 @@
 from functools import lru_cache
 from typing import List
 
-from pydantic import Field, PostgresDsn, RedisDsn, validator
+from pydantic import ConfigDict, Field, field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -57,16 +57,9 @@ class Settings(BaseSettings):
 
     # CORS
     cors_origins: str = Field(
-        default="http://localhost:3000,http://localhost:5173", alias="CORS_ORIGINS"
+        default="http://localhost:3000,http://localhost:5173,http://localhost:8080", alias="CORS_ORIGINS"
     )
     cors_allow_credentials: bool = Field(default=True, alias="CORS_ALLOW_CREDENTIALS")
-
-    @validator("cors_origins", pre=True)
-    def assemble_cors_origins(cls, v: str) -> List[str]:
-        """Parse CORS origins from comma-separated string."""
-        if isinstance(v, str):
-            return [origin.strip() for origin in v.split(",")]
-        return v
 
     # Rate Limiting
     rate_limit_per_minute: int = Field(default=100, alias="RATE_LIMIT_PER_MINUTE")
@@ -88,29 +81,14 @@ class Settings(BaseSettings):
     )
     max_file_size_mb: int = Field(default=10, alias="MAX_FILE_SIZE_MB")
 
-    @validator("supported_file_extensions", pre=True)
-    def assemble_file_extensions(cls, v: str) -> List[str]:
-        """Parse file extensions from comma-separated string."""
-        if isinstance(v, str):
-            return [ext.strip() for ext in v.split(",")]
-        return v
-
-    @validator("ignored_directories", pre=True)
-    def assemble_ignored_dirs(cls, v: str) -> List[str]:
-        """Parse ignored directories from comma-separated string."""
-        if isinstance(v, str):
-            return [dir.strip() for dir in v.split(",")]
-        return v
-
     # Logging
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
     log_format: str = Field(default="json", alias="LOG_FORMAT")
 
-    class Config:
-        """Pydantic config."""
-
-        env_file = ".env"
-        case_sensitive = False
+    model_config = ConfigDict(
+        env_file=".env",
+        case_sensitive=False,
+    )
 
 
 @lru_cache()
