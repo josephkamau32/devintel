@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # DevIntel Monorepo - Git Ignore File
 
 # ==========================================
@@ -110,16 +111,36 @@ devintel-frontend/.cache/
 ehthumbs.db
 Thumbs.db
 desktop.ini
+=======
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+>>>>>>> ee57ab5a70e4fc407529ea7d0556d636e5206b94
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
 .idea
+<<<<<<< HEAD
+=======
+.DS_Store
+>>>>>>> ee57ab5a70e4fc407529ea7d0556d636e5206b94
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+<<<<<<< HEAD
 
 # Docker
 docker-compose.override.yml
@@ -132,3 +153,5 @@ docker-compose.override.yml
 *.bak
 *.backup
 *~
+=======
+>>>>>>> ee57ab5a70e4fc407529ea7d0556d636e5206b94
