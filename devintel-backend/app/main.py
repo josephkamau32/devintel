@@ -1,0 +1,100 @@
+"""Main FastAPI application."""
+
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI, Request, status
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
+
+from app.api.v1 import auth, chat, pr_review, repositories
+from app.core.config import settings
+from app.core.exceptions import DevIntelException
+from app.core.logging import get_logger, setup_logging
+
+# Setup logging
+setup_logging()
+logger = get_logger(__name__)
+
+# Rate limiter
+limiter = Limiter(key_func=get_remote_address)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan manager."""
+    logger.info("Starting DevIntel AI backend")
+    yield
+    logger.info("Shutting down DevIntel AI backend")
+
+
+# Create FastAPI app
+app = FastAPI(
+    title=settings.app_name,
+    description="AI-powered developer productivity platform with RAG",
+    version="0.1.0",
+    lifespan=lifespan,
+)
+
+# Add rate limiting
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins,
+    allow_credentials=settings.cors_allow_credentials,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# Exception handlers
+@app.exception_handler(DevIntelException)
+async def devintel_exception_handler(request: Request, exc: DevIntelException):
+    """Handle custom DevIntel exceptions."""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "message": exc.message,
+            "details": exc.details,
+        },
+    )
+
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    """Handle general exceptions."""
+    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"message": "Internal server error"},
+    )
+
+
+# Health check
+@app.get("/health")
+async def health_check():
+    """Health check endpoint."""
+    return {"status": "healthy", "service": "devintel-ai"}
+
+
+# Include routers
+app.include_router(auth.router, prefix=settings.api_v1_prefix)
+app.include_router(repositories.router, prefix=settings.api_v1_prefix)
+app.include_router(chat.router, prefix=settings.api_v1_prefix)
+app.include_router(pr_review.router, prefix=settings.api_v1_prefix)
+
+
+# Root endpoint
+@app.get("/")
+async def root():
+    """Root endpoint."""
+    return {
+        "message": "Welcome to DevIntel AI",
+        "docs": "/docs",
+        "health": "/health",
+    }

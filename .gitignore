@@ -1,0 +1,134 @@
+# DevIntel Monorepo - Git Ignore File
+
+# ==========================================
+# BACKEND (Python/FastAPI)
+# ==========================================
+
+# Python
+devintel-backend/__pycache__/
+devintel-backend/*.py[cod]
+devintel-backend/*$py.class
+devintel-backend/*.so
+devintel-backend/.Python
+
+# Virtual Environments
+devintel-backend/venv/
+devintel-backend/env/
+devintel-backend/ENV/
+devintel-backend/.venv/
+
+# Poetry
+devintel-backend/poetry.lock
+devintel-backend/.poetry/
+
+# Database
+devintel-backend/*.db
+devintel-backend/*.sqlite3
+devintel-backend/postgres_data/
+
+# Environment Variables
+devintel-backend/.env
+devintel-backend/.env.local
+devintel-backend/.env.*.local
+
+# Testing
+devintel-backend/.pytest_cache/
+devintel-backend/.coverage
+devintel-backend/htmlcov/
+devintel-backend/.tox/
+
+# IDEs
+devintel-backend/.idea/
+devintel-backend/.vscode/
+devintel-backend/*.swp
+devintel-backend/*.swo
+
+# Logs
+devintel-backend/*.log
+devintel-backend/logs/
+
+# Celery
+devintel-backend/celerybeat-schedule
+devintel-backend/celerybeat.pid
+
+# Temporary files
+devintel-backend/tmp/
+devintel-backend/temp/
+
+# ==========================================
+# FRONTEND (React/Vite)
+# ==========================================
+
+# Dependencies
+devintel-frontend/node_modules/
+devintel-frontend/.pnp
+devintel-frontend/.pnp.js
+
+# Testing
+devintel-frontend/coverage/
+
+# Production Build
+devintel-frontend/dist/
+devintel-frontend/build/
+
+# Environment Variables
+devintel-frontend/.env
+devintel-frontend/.env.local
+devintel-frontend/.env.development.local
+devintel-frontend/.env.test.local
+devintel-frontend/.env.production.local
+
+# Logs
+devintel-frontend/npm-debug.log*
+devintel-frontend/yarn-debug.log*
+devintel-frontend/yarn-error.log*
+devintel-frontend/pnpm-debug.log*
+devintel-frontend/lerna-debug.log*
+
+# IDEs
+devintel-frontend/.vscode/
+devintel-frontend/.idea/
+
+# OS
+devintel-frontend/.DS_Store
+devintel-frontend/Thumbs.db
+
+# Temporary files
+devintel-frontend/*.local
+devintel-frontend/.cache/
+
+# ==========================================
+# GLOBAL
+# ==========================================
+
+# OS Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Docker
+docker-compose.override.yml
+.dockerignore
+
+# Logs
+*.log
+
+# Backup files
+*.bak
+*.backup
+*~

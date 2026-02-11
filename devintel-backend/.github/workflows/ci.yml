@@ -1,0 +1,104 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install ruff black mypy
+      
+      - name: Run ruff
+        run: ruff check app/
+      
+      - name: Run black
+        run: black --check app/
+      
+      - name: Run mypy
+        run: mypy app/ || true
+
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: devintel
+          POSTGRES_PASSWORD: devintel
+          POSTGRES_DB: devintel_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      
+      - name: Install dependencies
+        run: poetry install
+      
+      - name: Run tests
+        env:
+          DATABASE_URL: postgresql+asyncpg://devintel:devintel@localhost:5432/devintel_test
+          REDIS_URL: redis://localhost:6379/0
+        run: |
+          poetry run pytest tests/ -v --cov=app --cov-report=xml
+      
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: false
+
+  build:
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Build Docker images
+        run: |
+          docker build -f docker/Dockerfile.api -t devintel-api:latest .
+          docker build -f docker/Dockerfile.worker -t devintel-worker:latest .
+      
+      - name: Test Docker Compose
+        run: |
+          docker-compose -f docker-compose.yml config

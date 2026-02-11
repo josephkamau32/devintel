@@ -1,0 +1,45 @@
+"""User model."""
+
+from typing import List, Optional
+
+from sqlalchemy import String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.db.base import Base, TimestampMixin, UUIDMixin
+
+
+class User(Base, UUIDMixin, TimestampMixin):
+    """User model for authentication via GitHub OAuth."""
+
+    __tablename__ = "users"
+
+    # GitHub OAuth fields
+    github_id: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    avatar_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+
+    # Relationships
+    repositories: Mapped[List["Repository"]] = relationship(
+        "Repository",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    chats: Mapped[List["Chat"]] = relationship(
+        "Chat",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    analytics: Mapped[Optional["Analytics"]] = relationship(
+        "Analytics",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
+    def __repr__(self) -> str:
+        """String representation."""
+        return f"<User(id={self.id}, github_id={self.github_id}, email={self.email})>"
