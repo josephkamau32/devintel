@@ -29,6 +29,11 @@ jobs:
         working-directory: ./devintel-frontend
         run: npm ci
       
+      - name: Setup environment variables
+        working-directory: ./devintel-frontend
+        run: |
+          echo "VITE_API_URL=http://localhost:8000" > .env
+      
       - name: Build
         working-directory: ./devintel-frontend
         run: npm run build
