@@ -1,0 +1,303 @@
+name: DevIntel CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '18'
+
+jobs:
+  # ==========================================
+  # BACKEND JOBS
+  # ==========================================
+  
+  backend-lint:
+    name: Backend Linting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      
+      - name: Install dependencies
+        working-directory: ./devintel-backend
+        run: poetry install
+      
+      - name: Run Ruff
+        working-directory: ./devintel-backend
+        run: poetry run ruff check .
+      
+      - name: Run Black
+        working-directory: ./devintel-backend
+        run: poetry run black --check .
+      
+      - name: Run MyPy
+        working-directory: ./devintel-backend
+        run: poetry run mypy app/
+
+  backend-test:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_pass
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      
+      - name: Install dependencies
+        working-directory: ./devintel-backend
+        run: poetry install
+      
+      - name: Run tests with coverage
+        working-directory: ./devintel-backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://test_user:test_pass@localhost:5432/test_db
+          REDIS_URL: redis://localhost:6379/0
+          SECRET_KEY: test-secret-key
+          JWT_SECRET_KEY: test-jwt-secret
+        run: |
+          poetry run pytest --cov=app --cov-report=xml --cov-report=html -v
+      
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./devintel-backend/coverage.xml
+          flags: backend
+          name: backend-coverage
+      
+      - name: Archive coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage-report
+          path: devintel-backend/htmlcov/
+
+  backend-security:
+    name: Backend Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run Bandit Security Scanner
+        uses: PyCQA/bandit-action@v1
+        with:
+          path: devintel-backend/app
+      
+      - name: Run Safety Check
+        working-directory: ./devintel-backend
+        run: |
+          pip install safety
+          poetry export -f requirements.txt | safety check --stdin
+
+  # ==========================================
+  # FRONTEND JOBS
+  # ==========================================
+  
+  frontend-lint:
+    name: Frontend Linting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: devintel-frontend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./devintel-frontend
+        run: npm ci
+      
+      - name: Run ESLint
+        working-directory: ./devintel-frontend
+        run: npm run lint
+      
+      - name: Run TypeScript Check
+        working-directory: ./devintel-frontend
+        run: npm run type-check
+
+  frontend-test:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: devintel-frontend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./devintel-frontend
+        run: npm ci
+      
+      - name: Run tests with coverage
+        working-directory: ./devintel-frontend
+        run: npm run test:coverage
+      
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./devintel-frontend/coverage/coverage-final.json
+          flags: frontend
+          name: frontend-coverage
+
+  frontend-build:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: devintel-frontend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./devintel-frontend
+        run: npm ci
+      
+      - name: Build production
+        working-directory: ./devintel-frontend
+        run: npm run build
+      
+      - name: Archive build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: devintel-frontend/dist/
+
+  # ==========================================
+  # DOCKER BUILD
+  # ==========================================
+  
+  docker-build:
+    name: Docker Build & Push
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [backend-test, frontend-test]
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      
+      - name: Build and push API
+        uses: docker/build-push-action@v5
+        with:
+          context: ./devintel-backend
+          file: ./devintel-backend/docker/Dockerfile.api
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/devintel-api:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      
+      - name: Build and push Worker
+        uses: docker/build-push-action@v5
+        with:
+          context: ./devintel-backend
+          file: ./devintel-backend/docker/Dockerfile.worker
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/devintel-worker:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ==========================================
+  # DEPENDENCY SECURITY
+  # ==========================================
+  
+  dependency-check:
+    name: Dependency Security Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run Snyk Security Scan
+        uses: snyk/actions/python@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --file=devintel-backend/pyproject.toml
+      
+      - name: Run npm audit
+        working-directory: ./devintel-frontend
+        run: npm audit --audit-level=moderate
+
+  # ==========================================
+  # DEPLOYMENT (Production)
+  # ==========================================
+  
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [docker-build]
+    environment:
+      name: production
+      url: https://devintel.ai
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Deploy to production
+        run: |
+          echo "Add your deployment script here"
+          # Example: Deploy to Railway, Render, etc.
+          # curl -X POST ${{ secrets.DEPLOY_WEBHOOK_URL }}
