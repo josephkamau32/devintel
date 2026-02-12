@@ -1,8 +1,25 @@
 # DevIntel AI - Full-Stack Developer Productivity Platform
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.109+-green.svg)](https://fastapi.tiangolo.com/)
+[![React](https://img.shields.io/badge/React-18.3+-blue.svg)](https://reactjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8+-blue.svg)](https://www.typescriptlang.org/)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Security: OWASP](https://img.shields.io/badge/security-OWASP-brightgreen.svg)](./devintel-backend/docs/SECURITY.md)
 
-**DevIntel AI** is an AI-powered developer productivity platform that enables developers to connect GitHub repositories, index codebases, and chat with an AI assistant using Retrieval Augmented Generation (RAG). Get instant code insights, refactoring suggestions, and intelligent explanations.
+**DevIntel AI** is an AI-powered developer productivity platform that enables developers to connect GitHub repositories, index code bases, and chat with an AI assistant using Retrieval Augmented Generation (RAG). Get instant code insights, refactoring suggestions, and intelligent explanations.
+
+## ✨ Key Features
+
+- 🔐 **Secure Authentication** - GitHub OAuth with JWT tokens
+- 📂 **Smart Repository Indexing** - Automatic code parsing with vector embeddings
+- 💬 **AI Chat Interface** - RAG-powered conversations about your code
+- 🔍 **Semantic Code Search** - Find code by meaning, not just keywords
+- 📊 **Analytics Dashboard** - Track usage and AI interactions
+- 🤖 **AI-Powered PR Review** - Automated code review suggestions
+- 🔒 **Production-Ready Security** - OWASP best practices, input validation, security headers
+- ✅ **Comprehensive Tests** - 80%+ test coverage with pytest and Vitest
 
 ## 🏗️ Project Structure
 
@@ -12,17 +29,30 @@ This is a monorepo containing both the backend and frontend applications:
 devintel/
 ├── devintel-backend/     # FastAPI backend with RAG pipeline
 │   ├── app/              # Application code
+│   │   ├── api/          # API endpoints (REST)
+│   │   ├── core/         # Configuration & security
+│   │   ├── models/       # Database models
+│   │   ├── services/     # Business logic
+│   │   ├── middleware/   # Security middleware
+│   │   └── tasks/        # Celery background tasks
+│   ├── tests/            # Comprehensive test suite
 │   ├── alembic/          # Database migrations
 │   ├── docker/           # Docker configuration
-│   └── README.md         # Backend documentation
+│   └── docs/             # Technical documentation
 │
 ├── devintel-frontend/    # React frontend with Vite
 │   ├── src/              # React components
+│   │   ├── components/   # Reusable UI components
+│   │   ├── pages/        # Page components
+│   │   ├── hooks/        # Custom React hooks
+│   │   └── lib/          # Utilities
 │   ├── public/           # Static assets
-│   └── README.md         # Frontend documentation
+│   └── tests/            # Component tests
 │
 ├── scripts/              # Setup and automation scripts
-├── .gitignore           # Git ignore rules
+├── docs/                 # Project documentation
+├── CONTRIBUTING.md       # Contribution guidelines
+├── LICENSE              # MIT License
 └── README.md            # This file
 ```
 
@@ -63,12 +93,12 @@ cd devintel-backend
 
 # Copy and configure environment
 cp .env.example .env
-# Edit .env with your API keys
+# Edit .env with your API keys (see detailed instructions in file)
 
-# Start services
+# Start services (PostgreSQL, Redis, API, Worker, Flower)
 docker-compose up --build
 
-# Run migrations
+# Run migrations (in another terminal)
 make migrate
 ```
 
@@ -85,26 +115,56 @@ npm run dev
 
 ## 📚 Architecture Overview
 
-### Backend (FastAPI)
+```mermaid
+graph TB
+    subgraph "Frontend"
+        UI[React + TypeScript]
+        UI --> API_CLIENT[API Client]
+    end
+    
+    subgraph "Backend Services"
+        API[FastAPI API]
+        WORKER[Celery Workers]
+        API --> REDIS[Redis Cache/Queue]
+        WORKER --> REDIS
+    end
+    
+    subgraph "Data Layer"
+        PG[(PostgreSQL + pgvector)]
+        EMBEDDINGS[Vector Embeddings]
+        PG --> EMBEDDINGS
+    end
+    
+    subgraph "External APIs"
+        GITHUB[GitHub API]
+        OPENAI[OpenAI API]
+    end
+    
+    API_CLIENT --> API
+    API --> PG
+    API --> GITHUB
+    API --> OPENAI
+    WORKER --> PG
+    WORKER --> OPENAI
+    WORKER --> GITHUB
+```
+
+### Tech Stack
+
+**Backend:**
 - **Framework**: FastAPI with async support
 - **Database**: PostgreSQL 16 + pgvector for embeddings
-- **Cache/Queue**: Redis + Celery
+- **Cache/Queue**: Redis 7 + Celery
 - **AI**: OpenAI GPT-4 + text-embedding-3-small
 - **Auth**: GitHub OAuth + JWT
+- **Security**: OWASP compliance, input validation, security headers
 
-### Frontend (React)
+**Frontend:**
 - **Build Tool**: Vite
 - **Framework**: React with TypeScript
 - **UI**: shadcn-ui + Tailwind CSS
 - **State**: TanStack Query
-
-### Key Features
-- 🔐 **GitHub OAuth Authentication**
-- 📂 **Repository Indexing** with vector embeddings
-- 💬 **AI Chat Interface** with RAG
-- 🔍 **Semantic Code Search**
-- 📊 **Analytics Dashboard**
-- 🤖 **AI-Powered PR Review**
+- **Testing**: Vitest + React Testing Library
 
 ## 🔧 Development
 

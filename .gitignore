@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # DevIntel Monorepo - Git Ignore File
 
 # ==========================================
@@ -37,6 +36,16 @@ devintel-backend/.pytest_cache/
 devintel-backend/.coverage
 devintel-backend/htmlcov/
 devintel-backend/.tox/
+devintel-backend/coverage.xml
+devintel-backend/.coverage.*
+
+# Type Checking
+devintel-backend/.mypy_cache/
+devintel-backend/.dmypy.json
+devintel-backend/dmypy.json
+
+# Linting
+devintel-backend/.ruff_cache/
 
 # IDEs
 devintel-backend/.idea/
@@ -55,6 +64,7 @@ devintel-backend/celerybeat.pid
 # Temporary files
 devintel-backend/tmp/
 devintel-backend/temp/
+devintel-backend/devintel_*/
 
 # ==========================================
 # FRONTEND (React/Vite)
@@ -64,13 +74,20 @@ devintel-backend/temp/
 devintel-frontend/node_modules/
 devintel-frontend/.pnp
 devintel-frontend/.pnp.js
+node_modules/
+.pnp
+.pnp.js
 
 # Testing
 devintel-frontend/coverage/
+coverage/
 
 # Production Build
 devintel-frontend/dist/
 devintel-frontend/build/
+dist/
+dist-ssr/
+build/
 
 # Environment Variables
 devintel-frontend/.env
@@ -78,6 +95,8 @@ devintel-frontend/.env.local
 devintel-frontend/.env.development.local
 devintel-frontend/.env.test.local
 devintel-frontend/.env.production.local
+.env.local
+.env.*.local
 
 # Logs
 devintel-frontend/npm-debug.log*
@@ -85,24 +104,22 @@ devintel-frontend/yarn-debug.log*
 devintel-frontend/yarn-error.log*
 devintel-frontend/pnpm-debug.log*
 devintel-frontend/lerna-debug.log*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
 # IDEs
 devintel-frontend/.vscode/
 devintel-frontend/.idea/
+.vscode/*
+!.vscode/extensions.json
+.idea
 
 # OS
 devintel-frontend/.DS_Store
 devintel-frontend/Thumbs.db
-
-# Temporary files
-devintel-frontend/*.local
-devintel-frontend/.cache/
-
-# ==========================================
-# GLOBAL
-# ==========================================
-
-# OS Files
 .DS_Store
 .DS_Store?
 ._*
@@ -111,47 +128,46 @@ devintel-frontend/.cache/
 ehthumbs.db
 Thumbs.db
 desktop.ini
-=======
+
+# Temporary files
+devintel-frontend/*.local
+devintel-frontend/.cache/
+*.local
+.cache/
+
+# ==========================================
+# ROOT LEVEL
+# ==========================================
+
 # Logs
 logs
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
->>>>>>> ee57ab5a70e4fc407529ea7d0556d636e5206b94
+# Backend temporary
+src/test/
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-<<<<<<< HEAD
-=======
-.DS_Store
->>>>>>> ee57ab5a70e4fc407529ea7d0556d636e5206b94
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-<<<<<<< HEAD
+# ==========================================
+# GLOBAL
+# ==========================================
 
 # Docker
 docker-compose.override.yml
-.dockerignore
-
-# Logs
-*.log
 
 # Backup files
 *.bak
 *.backup
 *~
-=======
->>>>>>> ee57ab5a70e4fc407529ea7d0556d636e5206b94
+
+# Editor
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Agent/AI artifacts (if using AI tools)
+.agent/
+brain/
+
+# Gemini artifacts
+.gemini/

@@ -1,0 +1,208 @@
+"""Security middleware for the application."""
+
+import time
+from typing import Callable
+from uuid import uuid4
+
+from fastapi import Request, Response, status
+from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.types import ASGIApp
+
+from app.core.logging import get_logger
+
+logger = get_logger(__name__)
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """
+    Add security headers to all responses.
+    
+    Implements OWASP security best practices for HTTP headers.
+    """
+
+    def __init__(self, app: ASGIApp):
+        super().__init__(app)
+        self.security_headers = {
+            # Prevent MIME type sniffing
+            "X-Content-Type-Options": "nosniff",
+            # Prevent clickjacking
+            "X-Frame-Options": "DENY",
+            # Enable XSS protection (legacy, but doesn't hurt)
+            "X-XSS-Protection": "1; mode=block",
+            # Force HTTPS (only in production)
+            "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+            # Content Security Policy (restrictive default)
+            "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self'; frame-ancestors 'none';",
+            # Referrer policy
+            "Referrer-Policy": "strict-origin-when-cross-origin",
+            # Permissions policy
+            "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
+        }
+
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        """Add security headers to response."""
+        response = await call_next(request)
+        
+        # Add all security headers
+        for header, value in self.security_headers.items():
+            response.headers[header] = value
+        
+        return response
+
+
+class RequestIDMiddleware(BaseHTTPMiddleware):
+    """
+    Add unique request ID to each request for tracing.
+    
+    The request ID is:
+    - Added to response headers
+    - Added to log context
+    - Used for distributed tracing
+    """
+
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        """Add request ID to request and response."""
+        # Generate or extract request ID
+        request_id = request.headers.get("X-Request-ID", str(uuid4()))
+        
+        # Add to request state for access in routes
+        request.state.request_id = request_id
+        
+        # Process request
+        response = await call_next(request)
+        
+        # Add request ID to response headers
+        response.headers["X-Request-ID"] = request_id
+        
+        return response
+
+
+class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
+    """
+    Limit request body size to prevent DoS attacks.
+    
+    Default limit: 10MB
+    """
+
+    def __init__(self, app: ASGIApp, max_size: int = 10 * 1024 * 1024):
+        super().__init__(app)
+        self.max_size = max_size
+
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        """Check request size and reject if too large."""
+        content_length = request.headers.get("content-length")
+        
+        if content_length and int(content_length) > self.max_size:
+            logger.warning(
+                f"Request size too large: {content_length} bytes",
+                extra={"path": request.url.path},
+            )
+            return JSONResponse(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                content={
+                    "message": "Request body too large",
+                    "max_size": self.max_size,
+                },
+            )
+        
+        return await call_next(request)
+
+
+class AuditLoggingMiddleware(BaseHTTPMiddleware):
+    """
+    Log sensitive operations for security auditing.
+    
+    Logs:
+    - All authentication attempts
+    - Repository modifications
+    - User data access
+    """
+
+    SENSITIVE_PATHS = [
+        "/api/v1/auth",
+        "/api/v1/repos",
+        "/api/v1/admin",
+    ]
+
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        """Log sensitive operations."""
+        start_time = time.time()
+        
+        # Check if this is a sensitive path
+        is_sensitive = any(
+            request.url.path.startswith(path) for path in self.SENSITIVE_PATHS
+        )
+        
+        if is_sensitive:
+            # Log request
+            logger.info(
+                "Sensitive operation started",
+                extra={
+                    "method": request.method,
+                    "path": request.url.path,
+                    "client_ip": request.client.host if request.client else "unknown",
+                    "user_agent": request.headers.get("user-agent", "unknown"),
+                    "request_id": getattr(request.state, "request_id", "unknown"),
+                },
+            )
+        
+        # Process request
+        response = await call_next(request)
+        
+        if is_sensitive:
+            # Log response
+            duration = time.time() - start_time
+            logger.info(
+                "Sensitive operation completed",
+                extra={
+                    "method": request.method,
+                    "path": request.url.path,
+                    "status_code": response.status_code,
+                    "duration_ms": round(duration * 1000, 2),
+                    "request_id": getattr(request.state, "request_id", "unknown"),
+                },
+            )
+        
+        return response
+
+
+class SQLInjectionDetectionMiddleware(BaseHTTPMiddleware):
+    """
+    Detect potential SQL injection attempts and log them.
+    
+    Note: This is a defense-in-depth measure. Primary protection
+    should be parameterized queries (which we use with SQLAlchemy).
+    """
+
+    SQL_PATTERNS = [
+        "' OR '1'='1",
+        "' OR 1=1",
+        "'; DROP TABLE",
+        "'; DELETE FROM",
+        "UNION SELECT",
+        "'; EXEC",
+        "'; EXECUTE",
+    ]
+
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        """Detect SQL injection patterns."""
+        # Check query parameters
+        query_string = str(request.url.query).upper()
+        
+        for pattern in self.SQL_PATTERNS:
+            if pattern in query_string:
+                logger.warning(
+                    f"Potential SQL injection attempt detected",
+                    extra={
+                        "pattern": pattern,
+                        "query": request.url.query,
+                        "path": request.url.path,
+                        "client_ip": request.client.host if request.client else "unknown",
+                        "request_id": getattr(request.state, "request_id", "unknown"),
+                    },
+                )
+                # Don't block the request, just log it
+                # Actual SQL injection should be prevented by SQLAlchemy
+        
+        return await call_next(request)

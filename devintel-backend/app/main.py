@@ -13,6 +13,13 @@ from app.api.v1 import auth, chat, pr_review, repositories
 from app.core.config import settings
 from app.core.exceptions import DevIntelException
 from app.core.logging import get_logger, setup_logging
+from app.middleware.security import (
+    AuditLoggingMiddleware,
+    RequestIDMiddleware,
+    RequestSizeLimitMiddleware,
+    SecurityHeadersMiddleware,
+    SQLInjectionDetectionMiddleware,
+)
 
 # Setup logging
 setup_logging()
@@ -42,7 +49,7 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# CORS middleware
+# CORS middleware (must be first)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
@@ -50,6 +57,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Security middleware (in order of execution)
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(RequestIDMiddleware)
+app.add_middleware(RequestSizeLimitMiddleware, max_size=10 * 1024 * 1024)
+app.add_middleware(AuditLoggingMiddleware)
+app.add_middleware(SQLInjectionDetectionMiddleware)
 
 
 # Exception handlers
