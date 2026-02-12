@@ -117,25 +117,25 @@ npm run dev
 
 ```mermaid
 graph TB
-    subgraph "Frontend"
+    subgraph Frontend
         UI[React + TypeScript]
         UI --> API_CLIENT[API Client]
     end
     
-    subgraph "Backend Services"
+    subgraph Backend_Services[Backend Services]
         API[FastAPI API]
         WORKER[Celery Workers]
         API --> REDIS[Redis Cache/Queue]
         WORKER --> REDIS
     end
     
-    subgraph "Data Layer"
+    subgraph Data_Layer[Data Layer]
         PG[(PostgreSQL + pgvector)]
         EMBEDDINGS[Vector Embeddings]
         PG --> EMBEDDINGS
     end
     
-    subgraph "External APIs"
+    subgraph External_APIs[External APIs]
         GITHUB[GitHub API]
         OPENAI[OpenAI API]
     end
