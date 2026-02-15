@@ -1,375 +1,192 @@
-# Contributing to DevIntel AI
+# Contributing to DevIntel
 
-First off, thank you for considering contributing to DevIntel AI! It's people like you that make DevIntel such a great tool for developers worldwide.
-
-## Table of Contents
-
-- [Code of Conduct](#code-of-conduct)
-- [How Can I Contribute?](#how-can-i-contribute)
-- [Development Setup](#development-setup)
-- [Development Workflow](#development-workflow)
-- [Code Style Guidelines](#code-style-guidelines)
-- [Testing Requirements](#testing-requirements)
-- [Pull Request Process](#pull-request-process)
-- [Community](#community)
+Thank you for your interest in contributing to DevIntel! This document provides guidelines for contributing to the project.
 
 ## Code of Conduct
 
-This project and everyone participating in it is governed by our Code of Conduct. By participating, you are expected to uphold this code. Please report unacceptable behavior to conduct@devintel.ai.
+Be respectful, inclusive, and professional in all interactions.
 
-**TL;DR**: Be kind, respectful, and professional.
+## Getting Started
 
-## How Can I Contribute?
-
-### Reporting Bugs
-
-Before creating bug reports, please check the existing issues to avoid duplicates. When you create a bug report, include as many details as possible:
-
-- **Use a clear and descriptive title**
-- **Describe the exact steps to reproduce the problem**
-- **Provide specific examples** (code snippets, screenshots)
-- **Describe the observed behavior** and what you expected
-- **Include your environment** (OS, Python version, Node version)  
-
-### Suggesting Enhancements
-
-Enhancement suggestions are welcome! Please:
-
-- **Use a clear and descriptive title**
-- **Provide a detailed description of the proposed enhancement**
-- **Explain why this enhancement would be useful**
-- **Include mockups or examples if applicable**
-
-### Your First Code Contribution
-
-Unsure where to begin? Look for issues labeled:
-
-- `good first issue` - Simple issues perfect for beginners
-- `help wanted` - Issues where we need community help
-- `documentation` - Documentation improvements
+1. **Fork the repository**
+2. **Clone your fork**:
+   ```bash
+   git clone https://github.com/YOUR_USERNAME/devintel.git
+   cd devintel
+   ```
+3. **Create a branch**:
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
 
 ## Development Setup
 
-### Prerequisites
-
-- **Docker & Docker Compose** (required)
-- **Python 3.11+** (for local development)
-- **Node.js 18+** (for frontend)
-- **Git**
-
-### Setup Steps
-
-1. **Fork the repository**
-
-   Click the "Fork" button on GitHub
-
-2. **Clone your fork**
-
-   ```bash
-   git clone https://github.com/YOUR-USERNAME/devintel.git
-   cd devintel
-   ```
-
-3. **Add upstream remote**
-
-   ```bash
-   git remote add upstream https://github.com/josephkamau32/devintel.git
-   ```
-
-4. **Set up environment** files
-
-   ```bash
-   # Backend
-   cd devintel-backend
-   cp .env.example .env
-   # Edit .env with your API keys
-
-   # Frontend
-   cd ../devintel-frontend
-   cp .env.example .env
-   ```
-
-5. **Start development environment**
-
-   ```bash
-   # From project root
-   ./scripts/start.ps1  # Windows
-   # OR
-   ./scripts/start.sh  # Linux/Mac
-   ```
-
-6. **Verify setup**
-
-   - Backend API: http://localhost:8000/docs
-   - Frontend: http://localhost:8080  
-   - Database is running in Docker
-
-## Development Workflow
-
-### Creating a Branch
-
+### Backend
 ```bash
-# Update your main branch
-git checkout main
-git pull upstream main
-
-# Create a feature branch
-git checkout -b feature/your-feature-name
-# OR
-git checkout -b fix/bug-description
+cd devintel-backend
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env  # Configure your environment
+alembic upgrade head
+uvicorn app.main:app --reload
 ```
 
-Branch naming conventions:
-- `feature/` - New features
-- `fix/` - Bug fixes
-- `docs/` - Documentation changes
-- `refactor/` - Code refactoring
-- `test/` - Adding or updating tests
-
-### Making Changes
-
-1. **Write code** following our style guidelines
-2. **Add tests** for new functionality
-3. **Update documentation** if needed
-4. **Run tests locally** to ensure everything works
-5. **Commit your changes** with clear messages
-
-### Committing
-
-We follow [Conventional Commits](https://www.conventionalcommits.org/):
-
+### Frontend
 ```bash
-git commit -m "feat: add user preferences endpoint"
-git commit -m "fix: resolve chat streaming issue"
-git commit -m "docs: update API documentation"
-git commit -m "test: add tests for authentication"
+cd devintel-frontend
+npm install
+npm run dev
 ```
 
-Commit types:
-- `feat` - New feature
-- `fix` - Bug fix
-- `docs` - Documentation only
-- `style` - Code style changes (formatting)
-- `refactor` - Code refactoring
-- `test` - Adding or updating tests
-- `chore` - Maintenance tasks
-
-## Code Style Guidelines
-
-### Backend (Python)
-
-We use:
-- **Black** for code formatting
-- **Ruff** for linting
-- **MyPy** for type checking
-
+### Docker (Recommended)
 ```bash
-# Auto-format code
-make format
-
-# Run linter
-make lint
-
-# Type check
-make typecheck
+docker-compose up
 ```
 
-**Code standards:**
+## Making Changes
+
+### Code Style
+
+**Backend (Python)**:
 - Follow PEP 8
-- Use type hints for all functions
-- Write Google-style docstrings
+- Use type hints
 - Maximum line length: 100 characters
-- Use async/await for I/O operations
+- Run `black` for formatting
+- Run `ruff` for linting
 
-**Example:**
-
-```python
-async def get_user_by_id(user_id: UUID) -> Optional[User]:
-    """
-    Retrieve a user by their ID.
-    
-    Args:
-        user_id: The unique identifier of the user
-    
-    Returns:
-        User object if found, None otherwise
-    
-    Raises:
-        DatabaseError: If database query fails
-    """
-    ...
-```
-
-### Frontend (TypeScript/React)
-
-We use:
-- **ESLint** for linting
-- **Prettier** for formatting
-
-```bash
-# Run linter
-npm run lint
-
-# Auto-fix issues
-npm run lint:fix
-```
-
-**Code standards:**
+**Frontend (TypeScript)**:
+- Follow ESLint configuration
 - Use TypeScript strict mode
-- Prefer functional components
-- Use React hooks properly
-- Export named components
-- Write JSDoc for complex functions
+- Functional components with hooks
+- Run `npm run lint`
 
-**Example:**
+### Testing
 
-```typescript
-interface UserProfileProps {
-  userId: string;
-  onUpdate?: (user: User) => void;
-}
-
-export const UserProfile: React.FC<UserProfileProps> = ({ userId, onUpdate }) => {
-  // Component implementation
-};
-```
-
-## Testing Requirements
-
-### All contributions must include tests!
-
-#### Backend Tests
-
-- **Unit tests** for new functions/classes
-- **Integration tests** for API endpoints
-- **Maintain >80% coverage**
-
+**Backend**:
 ```bash
-# Run all tests
-make test
-
-# Run with coverage
-make test-cov
-
-# Run specific test file
-pytest tests/test_api/test_auth.py -v
+pytest tests/ -v --cov=app --cov-report=html
 ```
 
-#### Frontend Tests
-
-- **Component tests** for new UI components
-- **Hook tests** for custom hooks
-- **Integration tests** for critical flows
-
+**Frontend**:
 ```bash
-# Run all tests
-npm test
-
-# Watch mode
-npm run test:watch
+npm run test
+npm run test:coverage
 ```
 
-### Test Guidelines
+### Commit Messages
 
-- **Write descriptive test names**
-- **Test edge cases and error conditions**
-- **Use fixtures and mocks appropriately**
-- **Keep tests fast and isolated**
-- **One assertion per test (when possible)**
+Follow [Conventional Commits](https://www.conventionalcommits.org/):
+
+```
+feat: add user profile endpoint
+fix: resolve CORS issue in production
+docs: update API documentation
+test: add tests for chat service
+refactor: extract constants from config
+```
 
 ## Pull Request Process
 
-### Before Submitting
-
-- [ ] Code follows style guidelines
-- [ ] All tests pass locally
-- [ ] New tests added for new functionality
-- [ ] Documentation updated
-- [ ] No merge conflict with main branch
-- [ ] Commit messages follow conventions
-
-### Submitting a PR
-
-1. **Push your branch**
-
-   ```bash
-   git push origin feature/your-feature-name
-   ```
-
-2. **Create Pull Request** on GitHub
-
-3. **Fill out the PR template** completely
-
-4. **Link related issues** using keywords:
-   - `Fixes #123`
-   - `Closes #456`
-   - `Relates to #789`
+1. **Update documentation** if needed
+2. **Add tests** for new features
+3. **Ensure all tests pass**
+4. **Update CHANGELOG.md**
+5. **Create pull request** with description
 
 ### PR Title Format
-
 ```
-type(scope): brief description
-
-Example:
-feat(auth): add OAuth2 token refresh
-fix(chat): resolve streaming response issue
-docs(readme): add installation instructions
+[Type] Brief description
 ```
+Examples:
+- `[Feature] Add GitHub token refresh`
+- `[Fix] Resolve memory leak in worker`
+- `[Docs] Add deployment guide`
 
-### PR Description Should Include
+### PR Description Template
+```markdown
+## Description
+Brief description of changes
 
-- **What**: What does this PR do?
-- **Why**: Why is this change needed?
-- **How**: How does it work?
-- **Testing**: How was it tested?
-- **Screenshots**: If UI changes
+## Type of Change
+- [] Bug fix
+- [] New feature
+- [] Breaking change
+- [ ] Documentation update
 
-### Review Process
+## Testing
+How was this tested?
 
-- At least one maintainer will review your PR
-- Address review comments promptly
-- Update your PR based on feedback
-- Once approved, a maintainer will merge
-
-### After Merge
-
-```bash
-# Update your local main
-git checkout main
-git pull upstream main
-
-# Delete your feature branch
-git branch -d feature/your-feature-name
-git push origin --delete feature/your-feature-name
+## Checklist
+- [ ] Tests pass locally
+- [ ] Code follows style guidelines
+- [ ] Documentation updated
+- [ ] No new warnings
 ```
 
-## Community
+## Project Structure
 
-### Getting Help
+```
+devintel/
+├── devintel-backend/     # FastAPI backend
+│   ├── app/
+│   │   ├── api/          # API endpoints
+│   │   ├── core/         # Core utilities
+│   │   ├── models/       # Database models
+│   │   ├── services/     # Business logic
+│   │   └── middleware/   # Middleware
+│   ├── tests/            # Test suite
+│   └── alembic/          # Database migrations
+│
+├── devintel-frontend/    # React frontend
+│   ├── src/
+│   │   ├── components/   # React components
+│   │   ├── pages/        # Page components
+│   │   ├── lib/          # Utilities
+│   │   └── hooks/        # Custom hooks
+│   └── tests/            # Test suite
+│
+└── docs/                 # Documentation
+```
 
-- **GitHub Discussions** - Ask questions, share ideas
-- **Issue Tracker** -Report bugs
-- **Email** - support@devintel.ai
+## Areas for Contribution
 
-### Stay Updated
+### High Priority
+- [ ] Increase test coverage (target: 80%+)
+- [ ] Performance optimizations
+- [ ] Security improvements
+- [ ] Documentation improvements
 
-- Watch the repository for updates
-- Read the changelog for new releases
-- Follow us on social media (coming soon)
+### Good First Issues
+- [ ] Add new file type support for indexing
+- [ ] Improve error messages
+- [ ] Add loading states
+- [ ] Write integration tests
+
+### Advanced Features
+- [ ] Multi-language support
+- [ ] Advanced analytics
+- [ ] Real-time collaboration
+- [ ] Plugin system
+
+## Review Process
+
+1. Maintainer reviews PR
+2. Request changes if needed
+3. Approval after changes addressed
+4. Merge to `main`
 
 ## Recognition
 
-Contributors will be recognized in:
+Contributors will be added to:
 - README.md contributors section
-- Release notes
-- Project website (coming soon)
+- GitHub contributors page
+- Release notes (for significant contributions)
 
-## License
+## Questions?
 
-By contributing, you agree that your contributions will be licensed under the MIT License.
+- **Issues**: GitHub Issues
+- **Discussions**: GitHub Discussions
+- **Email**: contribute@devintel.ai
 
----
-
-**Thank you for contributing to DevIntel AI!** 🚀
-
-Your efforts help make developer productivity tools better for everyone.
+Thank you for contributing! 🚀

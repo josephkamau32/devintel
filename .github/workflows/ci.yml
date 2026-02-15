@@ -32,10 +32,9 @@ jobs:
         run: |
           echo "VITE_API_URL=http://localhost:8000" > .env
       
-      - name: Build
+      - name: Build Frontend
         working-directory: ./devintel-frontend
         run: npm run build
-        continue-on-error: true
       
       - name: Run tests (if any)
         working-directory: ./devintel-frontend
