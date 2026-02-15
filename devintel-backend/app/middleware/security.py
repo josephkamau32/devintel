@@ -168,41 +168,48 @@ class AuditLoggingMiddleware(BaseHTTPMiddleware):
 
 
 class SQLInjectionDetectionMiddleware(BaseHTTPMiddleware):
-    """
-    Detect potential SQL injection attempts and log them.
-    
-    Note: This is a defense-in-depth measure. Primary protection
-    should be parameterized queries (which we use with SQLAlchemy).
-    """
+    """Middleware to detect and block potential SQL injection attempts."""
 
-    SQL_PATTERNS = [
-        "' OR '1'='1",
-        "' OR 1=1",
-        "'; DROP TABLE",
-        "'; DELETE FROM",
-        "UNION SELECT",
-        "'; EXEC",
-        "'; EXECUTE",
-    ]
+    def __init__(self, app, block_on_detection: bool = True):
+        """Initialize SQL injection detection middleware.
+        
+        Args:
+            app: FastAPI application
+            block_on_detection: If True, block requests with SQL injection patterns
+        """
+        super().__init__(app)
+        self.block_on_detection = block_on_detection
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        """Detect SQL injection patterns."""
-        # Check query parameters
-        query_string = str(request.url.query).upper()
+        """Check request for SQL injection patterns and block if detected."""
+        from app.core.validators import detect_sql_injection
         
-        for pattern in self.SQL_PATTERNS:
-            if pattern in query_string:
+        # Check query parameters
+        for key, value in request.query_params.items():
+            try:
+                detect_sql_injection(value, block=self.block_on_detection)
+            except HTTPException as e:
                 logger.warning(
-                    f"Potential SQL injection attempt detected",
+                    f"Blocked SQL injection in query param: {key}",
                     extra={
-                        "pattern": pattern,
-                        "query": request.url.query,
                         "path": request.url.path,
-                        "client_ip": request.client.host if request.client else "unknown",
-                        "request_id": getattr(request.state, "request_id", "unknown"),
+                        "param": key,
+                        "ip": request.client.host if request.client else "unknown",
                     },
                 )
-                # Don't block the request, just log it
-                # Actual SQL injection should be prevented by SQLAlchemy
-        
+                raise
+
+        # Check path parameters (from URL)
+        try:
+            detect_sql_injection(str(request.url.path), block=self.block_on_detection)
+        except HTTPException as e:
+            logger.warning(
+                f"Blocked SQL injection in path",
+                extra={
+                    "path": request.url.path,
+                    "ip": request.client.host if request.client else "unknown",
+                },
+            )
+            raise
+
         return await call_next(request)

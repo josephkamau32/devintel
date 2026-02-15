@@ -9,10 +9,11 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
-from app.api.v1 import auth, chat, pr_review, repositories
+from app.api.v1 import auth, repositories, chat, analytics
 from app.core.config import settings
 from app.core.exceptions import DevIntelException
 from app.core.logging import get_logger, setup_logging
+from app.db.session import init_db
 from app.middleware.security import (
     AuditLoggingMiddleware,
     RequestIDMiddleware,
@@ -20,6 +21,7 @@ from app.middleware.security import (
     SecurityHeadersMiddleware,
     SQLInjectionDetectionMiddleware,
 )
+from app.middleware.csrf import CSRFMiddleware
 
 # Setup logging
 setup_logging()
@@ -60,10 +62,11 @@ app.add_middleware(
 
 # Security middleware (in order of execution)
 app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(CSRFMiddleware, secret_key=settings.secret_key)
 app.add_middleware(RequestIDMiddleware)
 app.add_middleware(RequestSizeLimitMiddleware, max_size=10 * 1024 * 1024)
 app.add_middleware(AuditLoggingMiddleware)
-app.add_middleware(SQLInjectionDetectionMiddleware)
+app.add_middleware(SQLInjectionDetectionMiddleware, block_on_detection=True)
 
 
 # Exception handlers

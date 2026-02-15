@@ -1,9 +1,9 @@
-"""Cache service using Redis."""
+"""Caching utilities using Redis with connection pooling."""
 
 import json
 from typing import Any, Optional
 
-import redis.asyncio as redis
+import redis.asyncio as aioredis
 
 from app.core.config import settings
 from app.core.logging import get_logger
@@ -11,12 +11,18 @@ from app.core.logging import get_logger
 logger = get_logger(__name__)
 
 
-class CacheService:
-    """Redis cache service."""
+class Cache:
+    """Async Redis cache with connection pooling."""
 
     def __init__(self):
-        """Initialize cache service."""
-        self.redis = redis.from_url(
+        """Initialize cache."""
+        self.redis: Optional[aioredis.Redis] = None
+        # The instruction snippet provided a malformed line: `self._use_pool = Truem_url(...)`
+        # Assuming the intent was to initialize self.redis using aioredis.from_url,
+        # which inherently uses connection pooling, and to add a flag `_use_pool`.
+        # The `aioredis.from_url` method already returns a Redis client that manages a connection pool.
+        self._use_pool = True # This flag was explicitly added in the instruction snippet
+        self.redis = aioredis.from_url(
             settings.redis_url,
             encoding="utf-8",
             decode_responses=True,
