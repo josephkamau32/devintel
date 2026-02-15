@@ -1,31 +1,37 @@
-name: DevIntel CI/CD
+name: CI/CD Pipeline  
 
 on:
   push:
-    branches: [main, develop]
+    branches: [ main ]
   pull_request:
-    branches: [main, develop]
+    branches: [ main ]
 
 jobs:
   # ==========================================
-  # FRONTEND BUILD & TEST
+  # Frontend Build and Test
   # ==========================================
-  
   frontend:
-    name: Frontend Build & Test
+    name: Frontend CI
     runs-on: ubuntu-latest
     
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
       
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v3
         with:
           node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: ./devintel-frontend/package-lock.json
       
       - name: Install dependencies
         working-directory: ./devintel-frontend
         run: npm ci
+      
+      - name: Lint code
+        working-directory: ./devintel-frontend
+        run: npm run lint || echo "Linting issues found"
       
       - name: Setup environment variables
         working-directory: ./devintel-frontend
@@ -39,47 +45,62 @@ jobs:
       - name: Run tests (if any)
         working-directory: ./devintel-frontend
         run: npm run test || echo "No tests configured yet"
-        continue-on-error: true
 
   # ==========================================
-  # BACKEND VALIDATION
+  # Backend Validation
   # ==========================================
-  
   backend:
     name: Backend Validation
     runs-on: ubuntu-latest
     
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
       
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
           python-version: '3.11'
       
-      - name: Check Python files exist
-        working-directory: ./devintel-backend
+      - name: Check backend directory exists
         run: |
-          echo "✅ Backend directory structure verified"
-          ls -la app/ || echo "App directory not found"
-          ls -la tests/ || echo "Tests directory not found"
+          if [ ! -d "devintel-backend" ]; then
+            echo "❌ Backend directory not found"
+            exit 1
+          fi
+          echo "✅ Backend directory exists"
       
-      - name: Install dependencies (via pip fallback)
+      - name: Check requirements.txt
         working-directory: ./devintel-backend
         run: |
-          pip install -r requirements.txt || echo "Requirements install skipped"
-        continue-on-error: true
+          if [ ! -f "requirements.txt" ]; then
+            echo "❌ requirements.txt not found"
+            exit 1
+          fi
+          echo "✅ requirements.txt exists"
+      
+      - name: Install dependencies
+        working-directory: ./devintel-backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Run tests
+        working-directory: ./devintel-backend
+        run: |
+          pip install pytest pytest-asyncio pytest-cov
+          pytest tests/ --cov=app --cov-report=term || echo "Some tests may require full environment"
 
   # ==========================================
-  # PROJECT HEALTH CHECK
+  # Project Health Check
   # ==========================================
-  
   health-check:
-    name: Project Health Check
+    name: Project Health
     runs-on: ubuntu-latest
     
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
       
       - name: Verify project structure
         run: |
@@ -89,10 +110,60 @@ jobs:
           test -f README.md && echo "✅ README exists" || echo "❌ README missing"
           test -f LICENSE && echo "✅ LICENSE exists" || echo "❌ LICENSE missing"
           test -f CONTRIBUTING.md && echo "✅ CONTRIBUTING.md exists" || echo "❌ CONTRIBUTING.md missing"
+
+  # ==========================================
+  # Security Scanning
+  # ==========================================
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
       
-      - name: Security check
+      - name: Run Trivy vulnerability scanner (Filesystem)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+      
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+      
+      - name: Run Trivy on Backend Docker Config
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'config'
+          scan-ref: './devintel-backend'
+          format: 'table'
+          exit-code: '0'
+          severity: 'CRITICAL,HIGH'
+      
+      - name: Setup Python for Security Check
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Python Dependency Security Check
+        working-directory: ./devintel-backend
         run: |
-          echo "✅ Running basic security checks..."
-          grep -r "SECRET_KEY.*=" devintel-backend/ || echo "✅ No hardcoded secrets found"
-          grep -r "API_KEY.*=" devintel-backend/ || echo "✅ No hardcoded API keys found"
-        continue-on-error: true
+          pip install safety
+          safety check --file requirements.txt || true
+      
+      - name: Setup Node for NPM Audit
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: NPM Security Audit
+        working-directory: ./devintel-frontend
+        run: |
+          npm install
+          npm audit --audit-level=moderate || true
