@@ -60,8 +60,20 @@ Rules:
         
         if cached_result:
             logger.info("Retrieved chunks from cache")
-            # Note: This is simplified - in production, reconstruct Embedding objects
-            return []
+            # Deserialize cached results
+            import json
+            try:
+                cached_data = json.loads(cached_result)
+                # Reconstruct results from cached data
+                results = []
+                for item in cached_data:
+                    # Re-fetch embedding objects from database
+                    embedding = await embedding_repo.get_by_id(UUID(item["embedding_id"]))
+                    if embedding:
+                        results.append((embedding, item["similarity"]))
+                return results
+            except Exception as e:
+                logger.warning(f"Cache deserialization failed: {e}, fetching from DB")
         
         # Generate question embedding
         question_embedding = await self.embedding_service.generate_embedding(question)
@@ -73,8 +85,13 @@ Rules:
             top_k=top_k,
         )
         
-        # Cache results
-        await cache.set(cache_key, results, ttl=3600)
+        # Cache results (serialize to JSON)
+        import json
+        cache_data = [
+            {"embedding_id": str(emb.id), "similarity": sim}
+            for emb, sim in results
+        ]
+        await cache.set(cache_key, json.dumps(cache_data), ttl=3600)
         
         return results
 

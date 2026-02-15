@@ -15,9 +15,13 @@ class User(Base, UUIDMixin, TimestampMixin):
 
     # GitHub OAuth fields
     github_id: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    github_access_token_encrypted: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)
     email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     avatar_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    
+    # JWT Refresh Token
+    refresh_token: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
 
     # Relationships
     repositories: Mapped[List["Repository"]] = relationship(

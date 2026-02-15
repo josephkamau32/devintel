@@ -32,5 +32,12 @@ class TokenResponse(BaseModel):
     """Token response schema."""
 
     access_token: str
+    refresh_token: Optional[str] = None
     token_type: str = "bearer"
     user: UserResponse
+
+
+class RefreshTokenRequest(BaseModel):
+    """Request schema for token refresh."""
+    
+    refresh_token: str = Field(..., description="Refresh token to exchange for new access token")

@@ -27,6 +27,13 @@ class EmbeddingRepository(BaseRepository[Embedding]):
             await self.db.refresh(instance)
         return instances
 
+    async def get_by_id(self, embedding_id: UUID) -> Embedding | None:
+        """Get embedding by ID."""
+        result = await self.db.execute(
+            select(Embedding).where(Embedding.id == embedding_id)
+        )
+        return result.scalars().first()
+
     async def vector_search(
         self,
         repo_id: UUID,

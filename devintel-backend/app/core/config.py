@@ -1,7 +1,7 @@
 """Application configuration using Pydantic Settings."""
 
 from functools import lru_cache
-from typing import List
+from typing import List, Optional
 
 from pydantic import ConfigDict, Field, field_validator
 from pydantic_settings import BaseSettings
@@ -52,14 +52,29 @@ class Settings(BaseSettings):
     jwt_secret_key: str = Field(..., alias="JWT_SECRET_KEY")
     jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
     jwt_access_token_expire_minutes: int = Field(
-        default=1440, alias="JWT_ACCESS_TOKEN_EXPIRE_MINUTES"
+        default=15, alias="JWT_ACCESS_TOKEN_EXPIRE_MINUTES"  # Reduced from 1440 to 15 minutes
+    )
+    jwt_refresh_token_expire_days: int = Field(
+        default=7, alias="JWT_REFRESH_TOKEN_EXPIRE_DAYS"
     )
 
+    # Token Encryption (for storing GitHub tokens)
+    token_encryption_key: Optional[str] = Field(default=None, alias="TOKEN_ENCRYPTION_KEY")
+
     # CORS
-    cors_origins: str = Field(
-        default="http://localhost:3000,http://localhost:5173,http://localhost:8080", alias="CORS_ORIGINS"
+    cors_origins: List[str] = Field(
+        default=["http://localhost:3000", "http://localhost:5173", "http://localhost:8080"],
+        alias="CORS_ORIGINS"
     )
     cors_allow_credentials: bool = Field(default=True, alias="CORS_ALLOW_CREDENTIALS")
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, v):
+        """Parse CORS origins from string or list."""
+        if isinstance(v, str):
+            return [origin.strip() for origin in v.split(",")]
+        return v
 
     # Rate Limiting
     rate_limit_per_minute: int = Field(default=100, alias="RATE_LIMIT_PER_MINUTE")
@@ -84,6 +99,15 @@ class Settings(BaseSettings):
     # Logging
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
     log_format: str = Field(default="json", alias="LOG_FORMAT")
+
+    # Monitoring & Observability
+    sentry_dsn: Optional[str] = Field(default=None, alias="SENTRY_DSN")
+    enable_metrics: bool = Field(default=True, alias="ENABLE_METRICS")
+    metrics_port: int = Field(default=9090, alias="METRICS_PORT")
+
+    # Redis Connection Pool
+    redis_pool_min_size: int = Field(default=10, alias="REDIS_POOL_MIN_SIZE")
+    redis_pool_max_size: int = Field(default=50, alias="REDIS_POOL_MAX_SIZE")
 
     model_config = ConfigDict(
         env_file=".env",
