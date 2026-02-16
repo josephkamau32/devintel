@@ -62,6 +62,7 @@ async def github_callback(
             github_id=user_info["github_id"],
             email=user_info.get("email"),
             name=user_info.get("name"),
+            username=user_info.get("login"),
             avatar_url=user_info.get("avatar_url"),
             github_token_encrypted=encrypted_token,
         )

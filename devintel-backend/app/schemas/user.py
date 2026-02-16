@@ -11,6 +11,7 @@ class UserBase(BaseModel):
     """Base user schema."""
 
     email: Optional[EmailStr] = None
+    email: Optional[EmailStr] = None
     name: Optional[str] = None
     avatar_url: Optional[str] = None
 

@@ -31,6 +31,7 @@ class UserRepository:
         github_id: str,
         email: Optional[str] = None,
         name: Optional[str] = None,
+        username: Optional[str] = None,
         avatar_url: Optional[str] = None,
         github_token_encrypted: Optional[str] = None,
     ) -> User:
@@ -39,9 +40,19 @@ class UserRepository:
 
         if user:
             # Update existing user
-            user.email = email
-            user.name = name
-            user.avatar_url = avatar_url
+            # Only update fields if they are provided
+            if email:
+                user.email = email
+            
+            # For name, we only update if it's currently empty, OR if we want to sync from GitHub
+            # Priority: Existing Name > GitHub Name > GitHub Username > GitHub ID
+            if not user.name:
+                user.name = name or username or github_id
+            
+            # Note: We don't store username separately in this version to avoid DB migration issues
+            
+            if avatar_url:
+                user.avatar_url = avatar_url
             if github_token_encrypted:
                 user.github_access_token_encrypted = github_token_encrypted
         else:
@@ -49,7 +60,7 @@ class UserRepository:
             user = User(
                 github_id=github_id,
                 email=email,
-                name=name,
+                name=name or username or github_id,
                 avatar_url=avatar_url,
                 github_access_token_encrypted=github_token_encrypted,
             )
