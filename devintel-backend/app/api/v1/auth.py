@@ -11,7 +11,7 @@ from app.core.constants import AUTH_RATE_LIMIT
 from app.db.session import get_db
 from app.integrations.github_client import GitHubClient, exchange_code_for_token
 from app.repositories.user import UserRepository
-from app.schemas.user import TokenResponse, UserResponse, RefreshTokenRequest
+from app.schemas.user import TokenResponse, UserResponse, RefreshTokenRequest, UserUpdate
 from app.api.deps import get_current_user
 from app.models.user import User
 from app.services.encryption import encryption_service
@@ -152,3 +152,22 @@ async def get_current_user_info(
 ):
     """Get current user information."""
     return UserResponse.model_validate(current_user)
+
+
+@router.put("/me", response_model=UserResponse)
+async def update_current_user_profile(
+    user_update: UserUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update current user profile."""
+    user_repo = UserRepository(db)
+    
+    # Filter out None values
+    update_data = {k: v for k, v in user_update.model_dump().items() if v is not None}
+    
+    if not update_data:
+        return UserResponse.model_validate(current_user)
+        
+    updated_user = await user_repo.update(current_user.id, **update_data)
+    return UserResponse.model_validate(updated_user)

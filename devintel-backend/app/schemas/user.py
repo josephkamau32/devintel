@@ -15,6 +15,13 @@ class UserBase(BaseModel):
     avatar_url: Optional[str] = None
 
 
+class UserUpdate(BaseModel):
+    """User update schema."""
+
+    email: Optional[EmailStr] = None
+    name: Optional[str] = None
+
+
 class UserResponse(UserBase):
     """User response schema."""
 

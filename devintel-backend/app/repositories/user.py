@@ -58,3 +58,14 @@ class UserRepository:
         await self.db.commit()
         await self.db.refresh(user)
         return user
+
+    async def update(self, user_id: UUID, **kwargs) -> Optional[User]:
+        """Update user fields."""
+        user = await self.get_by_id(user_id)
+        if user:
+            for key, value in kwargs.items():
+                if hasattr(user, key):
+                    setattr(user, key, value)
+            await self.db.commit()
+            await self.db.refresh(user)
+        return user
