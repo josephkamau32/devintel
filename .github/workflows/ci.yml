@@ -16,14 +16,14 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '18'
           cache: 'npm'
-          cache-dependency-path: ./devintel-frontend/package-lock.json
+          cache-dependency-path: devintel-frontend/package-lock.json # Removed ./ prefix just in case
       
       - name: Install dependencies
         working-directory: ./devintel-frontend
@@ -55,10 +55,10 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
       
@@ -163,13 +163,20 @@ jobs:
   # ==========================================
   # Security Scanning
   # ==========================================
+  # ==========================================
+  # Security Scanning
+  # ==========================================
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       
       - name: Run Trivy vulnerability scanner (Filesystem)
         uses: aquasecurity/trivy-action@master
@@ -181,7 +188,7 @@ jobs:
           severity: 'CRITICAL,HIGH'
       
       - name: Upload Trivy results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: 'trivy-results.sarif'
@@ -196,7 +203,7 @@ jobs:
           severity: 'CRITICAL,HIGH'
       
       - name: Setup Python for Security Check
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
       
@@ -207,7 +214,7 @@ jobs:
           safety check --file requirements.txt || true
       
       - name: Setup Node for NPM Audit
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '18'
       
