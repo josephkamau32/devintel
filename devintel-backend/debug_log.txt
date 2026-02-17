@@ -1,0 +1,49 @@
+DATABASE_URL in env: sqlite+aiosqlite:///:memory:
+Current working directory: C:\Users\HP\Documents\Projects\devintel\devintel-backend
+Error loading settings:
+Traceback (most recent call last):
+  File "C:\Users\HP\AppData\Roaming\Python\Python313\site-packages\pydantic_settings\sources\base.py", line 510, in __call__
+    field_value = self.prepare_field_value(field_name, field, field_value, value_is_complex)
+  File "C:\Users\HP\AppData\Roaming\Python\Python313\site-packages\pydantic_settings\sources\providers\env.py", line 123, in prepare_field_value
+    raise e
+  File "C:\Users\HP\AppData\Roaming\Python\Python313\site-packages\pydantic_settings\sources\providers\env.py", line 120, in prepare_field_value
+    value = self.decode_complex_value(field_name, field, value)
+  File "C:\Users\HP\AppData\Roaming\Python\Python313\site-packages\pydantic_settings\sources\base.py", line 187, in decode_complex_value
+    return json.loads(value)
+           ~~~~~~~~~~^^^^^^^
+  File "C:\Program Files\Python313\Lib\json\__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "C:\Program Files\Python313\Lib\json\decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Python313\Lib\json\decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\HP\Documents\Projects\devintel\devintel-backend\debug_settings.py", line 17, in <module>
+    from app.core.config import settings
+  File "C:\Users\HP\Documents\Projects\devintel\devintel-backend\app\core\config.py", line 125, in <module>
+    settings = get_settings()
+  File "C:\Users\HP\Documents\Projects\devintel\devintel-backend\app\core\config.py", line 122, in get_settings
+    return Settings()
+  File "C:\Users\HP\AppData\Roaming\Python\Python313\site-packages\pydantic_settings\main.py", line 195, in __init__
+    **__pydantic_self__._settings_build_values(
+      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        values,
+        ^^^^^^^
+    ...<25 lines>...
+        _secrets_dir=_secrets_dir,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\HP\AppData\Roaming\Python\Python313\site-packages\pydantic_settings\main.py", line 438, in _settings_build_values
+    source_state = source()
+  File "C:\Users\HP\AppData\Roaming\Python\Python313\site-packages\pydantic_settings\sources\base.py", line 512, in __call__
+    raise SettingsError(
+        f'error parsing value for field "{field_name}" from source "{self.__class__.__name__}"'
+    ) from e
+pydantic_settings.exceptions.SettingsError: error parsing value for field "cors_origins" from source "EnvSettingsSource"

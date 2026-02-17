@@ -1,0 +1,16 @@
+ImportError while loading conftest 'C:\Users\HP\Documents\Projects\devintel\devintel-backend\tests\conftest.py'.
+tests\conftest.py:23: in <module>
+    from app.db.base import Base
+app\db\__init__.py:4: in <module>
+    from app.db.session import AsyncSessionLocal, engine, get_db
+app\db\session.py:11: in <module>
+    engine = create_async_engine(
+C:\Users\HP\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\ext\asyncio\engine.py:120: in create_async_engine
+    sync_engine = _create_engine(url, **kw)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\HP\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\util\deprecations.py:281: in warned
+    return fn(*args, **kwargs)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^
+C:\Users\HP\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\create.py:697: in create_engine
+    raise TypeError(
+E   TypeError: Invalid argument(s) 'pool_size','max_overflow' sent to create_engine(), using configuration SQLiteDialect_aiosqlite/StaticPool/Engine.  Please check that the keyword arguments are appropriate for this combination of components.

@@ -79,6 +79,55 @@ jobs:
           fi
           echo "✅ requirements.txt exists"
       
+      - name: Create .env file
+        working-directory: ./devintel-backend
+        run: |
+          echo "APP_NAME=DevIntel AI" > .env
+          echo "ENVIRONMENT=testing" >> .env
+          echo "DEBUG=True" >> .env
+          echo "SECRET_KEY=test_secret_key_for_development_only" >> .env
+          echo "API_V1_PREFIX=/api/v1" >> .env
+          echo "HOST=0.0.0.0" >> .env
+          echo "PORT=8000" >> .env
+          echo "WORKERS=4" >> .env
+          echo "DATABASE_URL=sqlite+aiosqlite:///:memory:" >> .env
+          echo "PAT=dummy_pat" >> .env
+          echo "DATABASE_POOL_SIZE=20" >> .env
+          echo "DATABASE_MAX_OVERFLOW=0" >> .env
+          echo "REDIS_URL=redis://localhost:6379/0" >> .env
+          echo "REDIS_CACHE_TTL=3600" >> .env
+          echo "REDIS_POOL_SIZE=10" >> .env
+          echo "CELERY_BROKER_URL=redis://localhost:6379/1" >> .env
+          echo "CELERY_RESULT_BACKEND=redis://localhost:6379/1" >> .env
+          echo "GITHUB_CLIENT_ID=test_client_id" >> .env
+          echo "GITHUB_CLIENT_SECRET=test_client_secret" >> .env
+          echo "GITHUB_REDIRECT_URI=http://localhost:8000/api/v1/auth/github/callback" >> .env
+          echo "OPENAI_API_KEY=test_openai_key" >> .env
+          echo "OPENAI_EMBEDDING_MODEL=text-embedding-3-small" >> .env
+          echo "OPENAI_CHAT_MODEL=gpt-4-turbo-preview" >> .env
+          echo "OPENAI_MAX_TOKENS=4096" >> .env
+          echo "JWT_SECRET_KEY=test_jwt_secret_key" >> .env
+          echo "JWT_ALGORITHM=HS256" >> .env
+          echo "JWT_ACCESS_TOKEN_EXPIRE_MINUTES=15" >> .env
+          echo "JWT_REFRESH_TOKEN_EXPIRE_DAYS=7" >> .env
+          echo "TOKEN_ENCRYPTION_KEY=test_token_encryption_key_must_be_32_bytes_len" >> .env
+          echo "CORS_ORIGINS=[\"http://localhost:3000\",\"http://localhost:5173\"]" >> .env
+          echo "CORS_ALLOW_CREDENTIALS=True" >> .env
+          echo "RATE_LIMIT_PER_MINUTE=100" >> .env
+          echo "CHUNK_SIZE=700" >> .env
+          echo "CHUNK_OVERLAP=120" >> .env
+          echo "TOP_K_CHUNKS=6" >> .env
+          echo "EMBEDDING_DIMENSIONS=1536" >> .env
+          echo "SUPPORTED_FILE_EXTENSIONS=.py,.js,.ts,.tsx,.jsx,.java,.go,.rs,.rb,.md,.json,.yaml,.yml" >> .env
+          echo "IGNORED_DIRECTORIES=node_modules,.git,dist,build,venv,.venv,__pycache__,.pytest_cache" >> .env
+          echo "MAX_FILE_SIZE_MB=10" >> .env
+          echo "LOG_LEVEL=INFO" >> .env
+          echo "LOG_FORMAT=json" >> .env
+          echo "ENABLE_METRICS=True" >> .env
+          echo "METRICS_PORT=9090" >> .env
+          echo "REDIS_POOL_MIN_SIZE=10" >> .env
+          echo "REDIS_POOL_MAX_SIZE=50" >> .env
+
       - name: Install dependencies
         working-directory: ./devintel-backend
         run: |
