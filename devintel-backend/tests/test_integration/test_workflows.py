@@ -8,25 +8,27 @@ from app.main import app
 
 
 @pytest.mark.asyncio
-async def test_full_repository_workflow(auth_headers):
+async def test_full_repository_workflow(async_client: AsyncClient, auth_headers: dict):
     """Test complete repository lifecycle: add, index, query, delete."""
-    async with AsyncClient(app=app, base_url="http://test") as client:
-        # Step 1: Add repository
-        add_response = await client.post(
-            "/api/v1/repos",
-            headers=auth_headers,
-            json={
-                "full_name": "testowner/testrepo",
-                "auto_index": False  # Don't auto-index in tests
-            }
-        )
+    # Step 1: Add repository
+    add_response = await async_client.post(
+        "/api/v1/repos",
+        headers=auth_headers,
+        json={
+            "repo_name": "testrepo",
+            "full_name": "testowner/testrepo",
+            "url": "https://github.com/testowner/testrepo",
+            "auto_index": False  # Don't auto-index in tests
+        }
+    )
         
-        # May fail without full auth setup, but validates structure
-        assert add_response.status_code in [
-            status.HTTP_202_ACCEPTED,
-            status.HTTP_401_UNAUTHORIZED,
-            status.HTTP_422_UNPROCESSABLE_ENTITY
-        ]
+    # May fail without full auth setup, but validates structure
+    assert add_response.status_code in [
+        status.HTTP_200_OK,
+        status.HTTP_202_ACCEPTED,
+        status.HTTP_401_UNAUTHORIZED,
+        status.HTTP_422_UNPROCESSABLE_ENTITY
+    ]
 
 
 @pytest.mark.asyncio

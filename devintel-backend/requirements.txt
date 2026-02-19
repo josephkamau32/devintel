@@ -12,7 +12,7 @@ sqlalchemy==2.0.27
 asyncpg>=0.29.0
 alembic==1.13.1
 pgvector>=0.2.5
-psycopg2-binary==2.9.9
+# psycopg2-binary==2.9.9
 
 # ===========================================
 # CACHE & QUEUE

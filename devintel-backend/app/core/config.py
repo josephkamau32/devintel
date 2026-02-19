@@ -63,7 +63,7 @@ class Settings(BaseSettings):
     token_encryption_key: Optional[str] = Field(default=None, alias="TOKEN_ENCRYPTION_KEY")
 
     # CORS
-    cors_origins: List[str] = Field(
+    cors_origins: List[str] | str = Field(
         default=["http://localhost:3000", "http://localhost:5173", "http://localhost:8080"],
         alias="CORS_ORIGINS"
     )
@@ -74,6 +74,12 @@ class Settings(BaseSettings):
     def parse_cors_origins(cls, v):
         """Parse CORS origins from string or list."""
         if isinstance(v, str):
+            if v.startswith("["):
+                import json
+                try:
+                    return json.loads(v)
+                except json.JSONDecodeError:
+                    pass
             return [origin.strip() for origin in v.split(",")]
         return v
 

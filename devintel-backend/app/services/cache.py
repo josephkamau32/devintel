@@ -11,7 +11,7 @@ from app.core.logging import get_logger
 logger = get_logger(__name__)
 
 
-class Cache:
+class CacheService:
     """Async Redis cache with connection pooling."""
 
     def __init__(self):

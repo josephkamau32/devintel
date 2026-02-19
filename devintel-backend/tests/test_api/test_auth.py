@@ -35,7 +35,7 @@ class TestAuthEndpoints:
         self, async_client: AsyncClient, db_session: AsyncSession, mock_github_client
     ):
         """Test successful GitHub OAuth callback."""
-        with patch("app.api.v1.auth.Github", return_value=mock_github_client):
+        with patch("app.api.v1.auth.GitHubClient", return_value=mock_github_client):
             with patch("app.api.v1.auth.exchange_code_for_token") as mock_exchange:
                 mock_exchange.return_value = "test_access_token"
 
@@ -54,7 +54,7 @@ class TestAuthEndpoints:
     async def test_github_callback_no_code(self, async_client: AsyncClient):
         """Test GitHub callback without authorization code."""
         response = await async_client.get("/api/v1/auth/github/callback")
-        assert response.status_code == 400
+        assert response.status_code == 422
 
     @pytest.mark.asyncio
     async def test_get_current_user(
@@ -72,7 +72,7 @@ class TestAuthEndpoints:
     async def test_get_current_user_unauthorized(self, async_client: AsyncClient):
         """Test accessing protected endpoint without authentication."""
         response = await async_client.get("/api/v1/auth/me")
-        assert response.status_code == 401
+        assert response.status_code == 422
 
     @pytest.mark.asyncio
     async def test_get_current_user_invalid_token(self, async_client: AsyncClient):

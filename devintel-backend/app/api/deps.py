@@ -32,8 +32,9 @@ async def get_current_user(
         if not user_id:
             raise AuthenticationError("Invalid token payload")
         
+        from uuid import UUID
         user_repo = UserRepository(db)
-        user = await user_repo.get_by_id(user_id)
+        user = await user_repo.get_by_id(UUID(user_id))
         
         if not user:
             raise AuthenticationError("User not found")

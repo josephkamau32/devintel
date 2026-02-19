@@ -9,11 +9,10 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
-from app.api.v1 import auth, repositories, chat, analytics
+from app.api.v1 import auth, repositories, chat, pr_review
 from app.core.config import settings
 from app.core.exceptions import DevIntelException
 from app.core.logging import get_logger, setup_logging
-from app.db.session import init_db
 from app.middleware.security import (
     AuditLoggingMiddleware,
     RequestIDMiddleware,

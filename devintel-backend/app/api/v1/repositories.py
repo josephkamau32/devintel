@@ -14,6 +14,7 @@ from app.models.user import User
 from app.repositories.repository import RepositoryRepository
 from app.schemas.repository import (
     RepositoryCreate,
+    RepositoryIndexRequest,
     RepositoryIndexResponse,
     RepositoryListResponse,
     RepositoryResponse,
@@ -94,7 +95,7 @@ async def create_repository(
 
 @router.post("/index", response_model=RepositoryIndexResponse)
 async def index_repository(
-    repository_id: UUID,
+    request: RepositoryIndexRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -102,7 +103,7 @@ async def index_repository(
     repo_repo = RepositoryRepository(db)
     
     # Get repository
-    repository = await repo_repo.get_by_id(repository_id)
+    repository = await repo_repo.get_by_id(request.repository_id)
     
     if not repository:
         raise HTTPException(
@@ -118,16 +119,42 @@ async def index_repository(
     
     # Trigger background task
     task = index_repository_task.delay(
-        repo_id=str(repository_id),
-        clone_url=repository.url,  # Assuming url contains clone URL
+        repo_id=str(request.repository_id),
+        clone_url=repository.url,
         access_token="",  # Implement token storage
     )
     
     return RepositoryIndexResponse(
         task_id=task.id,
         message="Indexing started",
-        repository_id=repository_id,
+        repository_id=request.repository_id,
     )
+
+
+@router.get("/{repository_id}", response_model=RepositoryResponse)
+async def get_repository(
+    repository_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get a repository by ID."""
+    repo_repo = RepositoryRepository(db)
+    
+    repository = await repo_repo.get_by_id(repository_id)
+    
+    if not repository:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Repository not found",
+        )
+        
+    if repository.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access this repository",
+        )
+        
+    return RepositoryResponse.model_validate(repository)
 
 
 @router.delete("/{repository_id}")

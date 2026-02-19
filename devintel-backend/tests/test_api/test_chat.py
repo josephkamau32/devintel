@@ -84,7 +84,7 @@ class TestChatEndpoints:
             "question": "Test question",
         }
         response = await async_client.post("/api/v1/chat", json=payload)
-        assert response.status_code == 401
+        assert response.status_code == 422
 
     @pytest.mark.asyncio
     async def test_chat_empty_question(

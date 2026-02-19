@@ -72,6 +72,7 @@ export default function AIChatPage() {
           <button
             onClick={handleSend}
             disabled={!input.trim() || loading}
+            aria-label="Send message"
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground disabled:opacity-50 transition-opacity hover:opacity-90"
           >
             <Send className="h-4 w-4" />

@@ -2,7 +2,7 @@
 
 import asyncio
 from typing import AsyncGenerator, Generator
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
@@ -105,7 +105,7 @@ async def test_user(db_session: AsyncSession) -> User:
         email="test@example.com",
         name="Test User",
         avatar_url="https://avatars.githubusercontent.com/u/123",
-        github_token="test_token_abc123",
+        github_access_token_encrypted="test_token_abc123",
     )
     db_session.add(user)
     await db_session.commit()
@@ -131,12 +131,19 @@ async def authenticated_client(
 
 
 @pytest_asyncio.fixture
+async def auth_headers(test_user_token: str) -> dict:
+    """Create authentication headers for the test user."""
+    return {"Authorization": f"Bearer {test_user_token}"}
+
+
+@pytest_asyncio.fixture
 async def test_repository(db_session: AsyncSession, test_user: User) -> Repository:
     """Create a test repository in the database."""
     repository = Repository(
         user_id=test_user.id,
         full_name="test-user/test-repo",
-        clone_url="https://github.com/test-user/test-repo.git",
+        repo_name="test-repo",
+        url="https://github.com/test-user/test-repo.git",
         indexed_status=False,
         indexing_progress=0,
     )
@@ -191,33 +198,72 @@ def mock_openai_client():
 def mock_github_client():
     """Mock GitHub API client for testing."""
     mock = MagicMock()
+    
+    # Mock user data - get_user is synchronous in PyGithub, but our wrapper might be async?
+    # Wait, the code uses `await github_client.get_user_info()`. 
+    # Our GitHubClient WRAPPER has async methods. 
+    # The test patches "app.api.v1.auth.GitHubClient". 
+    # The return_value of that patch is this mock. 
+    # So this mock represents the GitHubClient INSTANCE.
+    # Its methods (get_user_info) should be async.
+    
+    mock.get_user_info = AsyncMock(return_value={
+        "github_id": "123",
+        "login": "testuser",
+        "name": "Test User",
+        "email": "test@example.com",
+        "avatar_url": "https://avatars.githubusercontent.com/u/123",
+    })
 
-    # Mock user data
-    mock.get_user.return_value = MagicMock(
-        id=123,
-        login="testuser",
-        name="Test User",
-        email="test@example.com",
-        avatar_url="https://avatars.githubusercontent.com/u/123",
-    )
-
-    # Mock repositories
-    mock.get_user().get_repos.return_value = [
-        MagicMock(
-            id=1,
-            full_name="testuser/repo1",
-            clone_url="https://github.com/testuser/repo1.git",
-            private=False,
-        ),
-        MagicMock(
-            id=2,
-            full_name="testuser/repo2",
-            clone_url="https://github.com/testuser/repo2.git",
-            private=True,
-        ),
-    ]
-
+    mock.get_user_repositories = AsyncMock(return_value=[
+        {
+            "repo_name": "repo1",
+            "full_name": "testuser/repo1",
+            "url": "https://github.com/testuser/repo1",
+            "clone_url": "https://github.com/testuser/repo1.git",
+            "stars": 10,
+            "language": "Python",
+            "private": False,
+            "description": "Test Repo 1"
+        },
+        {
+            "repo_name": "repo2",
+            "full_name": "testuser/repo2",
+            "url": "https://github.com/testuser/repo2",
+            "clone_url": "https://github.com/testuser/repo2.git",
+            "stars": 5,
+            "language": "JavaScript",
+            "private": True,
+            "description": "Test Repo 2"
+        },
+    ])
+    
     return mock
+
+
+@pytest.fixture(autouse=True)
+async def disable_csrf():
+    """Disable CSRF protection for tests."""
+    async def bypass_csrf(request, call_next):
+        return await call_next(request)
+        
+    with patch("app.middleware.csrf.CSRFMiddleware.dispatch", side_effect=bypass_csrf):
+        yield
+
+
+@pytest.fixture(autouse=True)
+async def mock_redis():
+    """Mock Redis connection."""
+    mock_redis_client = AsyncMock()
+    mock_redis_client.get.return_value = None
+    mock_redis_client.set.return_value = True
+    mock_redis_client.setex.return_value = True
+    mock_redis_client.delete.return_value = True
+    mock_redis_client.close.return_value = None
+    
+    with patch("app.services.cache.cache.redis", mock_redis_client):
+        with patch("redis.asyncio.from_url", return_value=mock_redis_client):
+            yield mock_redis_client
 
 
 @pytest.fixture
