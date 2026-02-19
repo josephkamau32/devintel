@@ -43,24 +43,23 @@ async def test_authentication_flow():
 
 
 @pytest.mark.asyncio
-async def test_chat_without_repository(auth_headers):
+async def test_chat_without_repository(async_client: AsyncClient, auth_headers: dict):
     """Test chat endpoint validation."""
-    async with AsyncClient(app=app, base_url="http://test") as client:
-        response = await client.post(
-            "/api/v1/chat",
-            headers=auth_headers,
-            json={
-                "question": "How does this work?",
-                "repo_id": "00000000-0000-0000-0000-000000000000"  # Non-existent
-            }
-        )
-        
-        # Should fail validation or return error
-        assert response.status_code in [
-            status.HTTP_404_NOT_FOUND,
-            status.HTTP_401_UNAUTHORIZED,
-            status.HTTP_422_UNPROCESSABLE_ENTITY
-        ]
+    response = await async_client.post(
+        "/api/v1/chat",
+        headers=auth_headers,
+        json={
+            "question": "How does this work?",
+            "repo_id": "00000000-0000-0000-0000-000000000000"  # Non-existent
+        }
+    )
+    
+    # Should fail validation or return error
+    assert response.status_code in [
+        status.HTTP_404_NOT_FOUND,
+        status.HTTP_401_UNAUTHORIZED,
+        status.HTTP_422_UNPROCESSABLE_ENTITY
+    ]
 
 
 @pytest.mark.asyncio

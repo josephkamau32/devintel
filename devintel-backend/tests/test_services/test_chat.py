@@ -15,10 +15,11 @@ async def test_chat_service_retrieve_chunks():
     # Mock repository
     repo = Repository(
         id=uuid4(),
-        owner="test",
-        name="repo",
+        repo_name="repo",
         full_name="test/repo",
-        is_indexed=True,
+        user_id=uuid4(), # required field
+        url="https://github.com/test/repo", # required field
+        indexed_status=True,
     )
     
     # Mock embeddings
@@ -36,7 +37,10 @@ async def test_chat_service_retrieve_chunks():
     mock_embedding_service.generate_embedding = AsyncMock(return_value=[0.1] * 1536)
     
     # Create chat service
-    chat_service = ChatService(embedding_service=mock_embedding_service)
+    with patch("app.services.chat.EmbeddingService", return_value=mock_embedding_service):
+        chat_service = ChatService()
+        # Inject mock if needed or rely on patched class
+        chat_service.embedding_service = mock_embedding_service
     
     # Test retrieve
     results = await chat_service.retrieve_relevant_chunks(
@@ -54,17 +58,28 @@ async def test_chat_service_retrieve_chunks():
 @pytest.mark.asyncio
 async def test_chat_service_builds_prompt():
     """Test system prompt building."""
-    mock_embedding_service = Mock()
-    chat_service = ChatService(embedding_service=mock_embedding_service)
+    chat_service = ChatService()
     
-    code_chunks = [
-        ("# Code chunk 1", "file1.py"),
-        ("# Code chunk 2", "file2.py"),
+    # Create mock embeddings
+    emb1 = Mock(spec=Embedding)
+    emb1.chunk_text = "Code chunk 1"
+    emb1.file_path = "file1.py"
+    emb1.chunk_index = 0
+    
+    emb2 = Mock(spec=Embedding)
+    emb2.chunk_text = "Code chunk 2"
+    emb2.file_path = "file2.py"
+    emb2.chunk_index = 1
+    
+    context_chunks = [
+        (emb1, 0.9),
+        (emb2, 0.8),
     ]
     
-    prompt = chat_service._build_system_prompt(code_chunks)
+    prompt = chat_service.build_system_prompt("test-repo", context_chunks)
     
     assert "file1.py" in prompt
     assert "file2.py" in prompt
     assert "Code chunk 1" in prompt
     assert "Code chunk 2" in prompt
+    assert "test-repo" in prompt

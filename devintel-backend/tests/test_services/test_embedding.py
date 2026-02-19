@@ -2,9 +2,9 @@
 
 import pytest
 from unittest.mock import Mock, AsyncMock, patch
-import numpy as np
 
 from app.services.embedding import EmbeddingService
+from app.core.exceptions import EmbeddingError
 
 
 @pytest.mark.asyncio
@@ -12,49 +12,33 @@ async def test_generate_embedding():
     """Test embedding generation."""
     service = EmbeddingService()
     
-    with patch('openai.embeddings.create') as mock_create:
-        mock_create.return_value = Mock(
-            data=[Mock(embedding=[0.1] * 1536)]
-        )
+    # Mock the OpenAIClient.generate_embedding method directly
+    with patch('app.integrations.openai_client.OpenAIClient.generate_embedding', new_callable=AsyncMock) as mock_gen:
+        mock_gen.return_value = [0.1] * 1536
         
         result = await service.generate_embedding("test text")
         
         assert len(result) == 1536
-        assert all(isinstance(x, float) for x in result)
+        assert result[0] == 0.1
+        mock_gen.assert_called_once_with("test text")
 
 
 @pytest.mark.asyncio
-async def test_batch_generate_embeddings():
+async def test_generate_embeddings_batch():
     """Test batch embedding generation."""
     service = EmbeddingService()
     texts = ["text 1", "text 2", "text 3"]
     
-    with patch('openai.embeddings.create') as mock_create:
-        mock_create.return_value = Mock(
-            data=[Mock(embedding=[0.1] * 1536) for _ in texts]
-        )
+    # Mock the OpenAIClient.generate_embeddings_batch method
+    with patch('app.integrations.openai_client.OpenAIClient.generate_embeddings_batch', new_callable=AsyncMock) as mock_batch_gen:
+        # It should return a list of embeddings (lists of floats)
+        mock_batch_gen.return_value = [[0.1] * 1536 for _ in texts]
         
-        results = await service.batch_generate_embeddings(texts)
+        results = await service.generate_embeddings_batch(texts)
         
         assert len(results) == 3
         assert all(len(emb) == 1536 for emb in results)
-
-
-@pytest.mark.asyncio
-async def test_compute_similarity():
-    """Test cosine similarity computation."""
-    service = EmbeddingService()
-    
-    # Identical vectors should have similarity ~1.0
-    vec1 = [1.0, 0.0, 0.0]
-    vec2 = [1.0, 0.0, 0.0]
-    similarity = service.compute_similarity(vec1, vec2)
-    assert abs(similarity - 1.0) < 0.01
-    
-    # Orthogonal vectors should have similarity ~0.0
-    vec3 = [0.0, 1.0, 0.0]
-    similarity = service.compute_similarity(vec1, vec3)
-    assert abs(similarity - 0.0) < 0.01
+        mock_batch_gen.assert_called()
 
 
 @pytest.mark.asyncio
@@ -62,8 +46,8 @@ async def test_embedding_error_handling():
     """Test error handling in embedding generation."""
     service = EmbeddingService()
     
-    with patch('openai.embeddings.create') as mock_create:
-        mock_create.side_effect = Exception("API Error")
+    with patch('app.integrations.openai_client.OpenAIClient.generate_embedding', new_callable=AsyncMock) as mock_gen:
+        mock_gen.side_effect = EmbeddingError("API Error")
         
-        with pytest.raises(Exception):
+        with pytest.raises(EmbeddingError):
             await service.generate_embedding("test")

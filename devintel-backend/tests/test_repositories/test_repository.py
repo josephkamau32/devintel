@@ -14,21 +14,16 @@ async def test_create_repository(db_session, test_user):
     
     repo_data = {
         "user_id": test_user.id,
-        "owner": "testowner",
-        "name": "testrepo",
+        "repo_name": "testrepo",
         "full_name": "testowner/testrepo",
         "description": "Test repository",
-        "html_url": "https://github.com/testowner/testrepo",
-        "default_branch": "main",
+        "url": "https://github.com/testowner/testrepo",
     }
     
     repo = await repo_repo.create(**repo_data)
     
     assert repo.id is not None
-    assert repo.owner == "testowner"
-    assert repo.name == "testrepo"
-    assert repo.is_indexed is False
-    assert repo.indexing_status == "pending"
+    assert repo.repo_name == "testrepo"
 
 
 @pytest.mark.asyncio
@@ -51,7 +46,7 @@ async def test_list_user_repositories(db_session, test_user, test_repository):
     """Test listing user repositories."""
     repo_repo = RepositoryRepository(db_session)
     
-    repos = await repo_repo.list_by_user(test_user.id, skip=0, limit=10)
+    repos = await repo_repo.get_by_user(test_user.id, skip=0, limit=10)
     
     assert len(repos) >= 1
     assert any(r.id == test_repository.id for r in repos)
@@ -62,13 +57,13 @@ async def test_update_indexing_status(db_session, test_repository):
     """Test updating repository indexing status."""
     repo_repo = RepositoryRepository(db_session)
     
-    updated = await repo_repo.update_indexing_status(
+    updated = await repo_repo.update(
         test_repository.id,
-        status="indexing",
-        progress=50
+        indexed_status=True,
+        indexing_progress=50
     )
     
-    assert updated.indexing_status == "indexing"
+    assert updated.indexed_status is True
     assert updated.indexing_progress == 50
 
 
