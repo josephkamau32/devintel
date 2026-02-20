@@ -1,15 +1,6 @@
 // Mock data for the DevIntel AI platform
-
-export interface Repository {
-  id: string;
-  name: string;
-  fullName: string;
-  status: 'indexed' | 'not_indexed' | 'indexing';
-  lastUpdated: string;
-  language: string;
-  stars: number;
-  files: number;
-}
+// NOTE: Repository-related mock data has been removed — the Repositories page
+// now uses real backend API calls via useRepositories hook.
 
 export interface ChatMessageData {
   id: string;
@@ -38,14 +29,6 @@ export interface ActivityItem {
   message: string;
   timestamp: string;
 }
-
-export const mockRepositories: Repository[] = [
-  { id: '1', name: 'frontend-app', fullName: 'acme/frontend-app', status: 'indexed', lastUpdated: '2 hours ago', language: 'TypeScript', stars: 142, files: 328 },
-  { id: '2', name: 'api-gateway', fullName: 'acme/api-gateway', status: 'indexed', lastUpdated: '5 hours ago', language: 'Go', stars: 89, files: 156 },
-  { id: '3', name: 'ml-pipeline', fullName: 'acme/ml-pipeline', status: 'indexing', lastUpdated: '1 day ago', language: 'Python', stars: 67, files: 245 },
-  { id: '4', name: 'mobile-sdk', fullName: 'acme/mobile-sdk', status: 'not_indexed', lastUpdated: '3 days ago', language: 'Kotlin', stars: 34, files: 112 },
-  { id: '5', name: 'infra-config', fullName: 'acme/infra-config', status: 'indexed', lastUpdated: '1 hour ago', language: 'HCL', stars: 12, files: 48 },
-];
 
 export const mockChatMessages: ChatMessageData[] = [
   { id: '1', role: 'user', content: 'How does the authentication middleware work in the api-gateway?', timestamp: '10:32 AM' },
@@ -96,7 +79,6 @@ export const mockAnalyticsData = {
 
 // Mock API service functions
 export const api = {
-  getRepositories: () => Promise.resolve(mockRepositories),
   getChatMessages: () => Promise.resolve(mockChatMessages),
   getPullRequests: () => Promise.resolve(mockPullRequests),
   getActivities: () => Promise.resolve(mockActivities),

@@ -61,3 +61,12 @@ class RepositoryIndexResponse(BaseModel):
     task_id: str = Field(..., description="Celery task ID")
     message: str
     repository_id: UUID
+
+
+class RepositoryStatusResponse(BaseModel):
+    """Lightweight repository status for polling."""
+
+    id: UUID
+    indexed_status: bool
+    indexing_progress: int = Field(default=0, ge=0, le=100)
+    indexing_error: Optional[str] = None
