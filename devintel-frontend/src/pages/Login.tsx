@@ -36,10 +36,17 @@ export default function LoginPage() {
     }
   };
 
-  const handleGitHubLogin = () => {
-    // Redirect to backend GitHub OAuth endpoint
-    const backendUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
-    window.location.href = `${backendUrl}/api/v1/auth/github/login`;
+  const handleGitHubLogin = async () => {
+    setIsLoading(true);
+    try {
+      const response = await apiClient.get<{ url: string }>("/api/v1/auth/github");
+      window.location.href = response.url;
+    } catch (error) {
+      toast.error("Failed to connect to GitHub. Please try again.");
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

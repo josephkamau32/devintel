@@ -51,12 +51,14 @@ class CSRFMiddleware(BaseHTTPMiddleware):
             # Add CSRF token to response for client
             if not hasattr(request.state, "csrf_token"):
                 csrf_token = self._generate_csrf_token()
+                from app.core.config import settings
+                is_production = settings.environment == "production"
                 response.set_cookie(
                     key="csrf_token",
                     value=csrf_token,
                     httponly=False,  # Needs to be accessible by JavaScript
-                    secure=True,  # HTTPS only in production
-                    samesite="strict",
+                    secure=is_production,  # HTTPS only in production
+                    samesite="lax",
                 )
             return response
         
