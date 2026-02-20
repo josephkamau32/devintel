@@ -87,7 +87,7 @@ async def exchange_code_for_token(code: str) -> str:
     """Exchange OAuth code for access token."""
     async with httpx.AsyncClient() as client:
         response = await client.post(
-            "https://github.com/oauth/access_token",
+            "https://github.com/login/oauth/access_token",
             headers={"Accept": "application/json"},
             data={
                 "client_id": settings.github_client_id,
