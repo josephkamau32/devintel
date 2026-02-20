@@ -23,13 +23,20 @@ class CSRFMiddleware(BaseHTTPMiddleware):
     PROTECTED_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
     
     # Paths exempt from CSRF protection
+    # JWT Bearer token auth is inherently CSRF-safe (attacker can't forge the
+    # Authorization header cross-origin), so all /api/v1/* routes are exempt.
     EXEMPT_PATHS = {
         "/docs",
         "/redoc",
         "/openapi.json",
         "/api/v1/auth/github",
-        "/api/v1/auth/github/callback",  # OAuth callbacks need to be exempt
+        "/api/v1/auth/github/callback",
     }
+
+    # Path prefixes exempt from CSRF protection
+    EXEMPT_PREFIXES = (
+        "/api/v1/",
+    )
     
     def __init__(self, app, secret_key: str):
         """
@@ -62,8 +69,10 @@ class CSRFMiddleware(BaseHTTPMiddleware):
                 )
             return response
         
-        # Skip CSRF for exempt paths
+        # Skip CSRF for exempt paths (exact match or prefix match)
         if request.url.path in self.EXEMPT_PATHS:
+            return await call_next(request)
+        if any(request.url.path.startswith(p) for p in self.EXEMPT_PREFIXES):
             return await call_next(request)
         
         # Validate CSRF token for protected methods
