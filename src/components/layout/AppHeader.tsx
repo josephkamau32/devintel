@@ -1,5 +1,7 @@
-import { Search, Bell, ChevronDown, User, Menu } from "lucide-react";
-import { useState } from "react";
+import { Search, Bell, ChevronDown, User, Menu, LogOut } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { getCurrentUser, getDisplayName, logout, type AuthUser } from "@/lib/auth";
 
 interface AppHeaderProps {
   onMenuClick: () => void;
@@ -7,6 +9,31 @@ interface AppHeaderProps {
 
 export function AppHeader({ onMenuClick }: AppHeaderProps) {
   const [searchFocused, setSearchFocused] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [user, setUser] = useState<AuthUser | null>(getCurrentUser());
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+
+  // Listen for auth state changes
+  useEffect(() => {
+    const handleUserUpdate = () => setUser(getCurrentUser());
+    window.addEventListener('user-updated', handleUserUpdate);
+    return () => window.removeEventListener('user-updated', handleUserUpdate);
+  }, []);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const displayName = getDisplayName();
+  const initials = displayName.slice(0, 2).toUpperCase();
 
   return (
     <header className="flex h-14 items-center justify-between border-b border-border bg-background px-4 sm:px-6">
@@ -24,9 +51,8 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
           <input
             type="text"
             placeholder="Search repositories, files, or ask AI..."
-            className={`h-9 w-full rounded-md border bg-accent pl-9 pr-4 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-colors ${
-              searchFocused ? "border-primary" : "border-border"
-            }`}
+            className={`h-9 w-full rounded-md border bg-accent pl-9 pr-4 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-colors ${searchFocused ? "border-primary" : "border-border"
+              }`}
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setSearchFocused(false)}
           />
@@ -40,18 +66,56 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
       <div className="flex items-center gap-3 ml-3">
         <button className="relative flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
           <Bell className="h-4 w-4" />
-          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary" />
         </button>
 
         <div className="h-6 w-px bg-border hidden sm:block" />
 
-        <button className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <User className="h-4 w-4" />
-          </div>
-          <span className="hidden sm:inline">John Doe</span>
-          <ChevronDown className="h-3 w-3 hidden sm:block" />
-        </button>
+        {/* User dropdown */}
+        <div className="relative" ref={dropdownRef}>
+          <button
+            onClick={() => setDropdownOpen(!dropdownOpen)}
+            className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+          >
+            {user?.avatar_url ? (
+              <img
+                src={user.avatar_url}
+                alt={displayName}
+                className="h-7 w-7 rounded-full object-cover"
+              />
+            ) : (
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-semibold">
+                {initials}
+              </div>
+            )}
+            <span className="hidden sm:inline">{displayName}</span>
+            <ChevronDown className={`h-3 w-3 hidden sm:block transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {dropdownOpen && (
+            <div className="absolute right-0 top-full mt-1 w-48 rounded-lg border border-border bg-card p-1 shadow-lg z-50 animate-slide-up">
+              <div className="px-3 py-2 border-b border-border">
+                <p className="text-sm font-medium text-foreground truncate">{displayName}</p>
+                {user?.email && (
+                  <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                )}
+              </div>
+              <button
+                onClick={() => { setDropdownOpen(false); navigate('/settings'); }}
+                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors mt-1"
+              >
+                <User className="h-4 w-4" />
+                Settings
+              </button>
+              <button
+                onClick={logout}
+                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
+              >
+                <LogOut className="h-4 w-4" />
+                Sign Out
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

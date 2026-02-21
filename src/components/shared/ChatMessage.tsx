@@ -1,6 +1,6 @@
 import { Bot, User } from "lucide-react";
 import { CodeBlock } from "./CodeBlock";
-import type { ChatMessageData } from "@/lib/mock-data";
+import type { ChatMessageData } from "@/lib/types";
 
 interface ChatMessageProps {
   message: ChatMessageData;
@@ -34,21 +34,19 @@ export function ChatMessage({ message }: ChatMessageProps) {
   return (
     <div className={`flex gap-3 animate-slide-up ${isUser ? "flex-row-reverse" : ""}`}>
       <div
-        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-          isUser
+        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${isUser
             ? "bg-primary/10 text-primary"
             : "bg-accent text-foreground"
-        }`}
+          }`}
       >
         {isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
       </div>
 
       <div
-        className={`max-w-[80%] rounded-xl px-4 py-3 text-sm leading-relaxed ${
-          isUser
+        className={`max-w-[80%] rounded-xl px-4 py-3 text-sm leading-relaxed ${isUser
             ? "bg-primary text-primary-foreground"
             : "bg-card border border-border text-card-foreground"
-        }`}
+          }`}
       >
         {parts.map((part, i) =>
           part.type === "code" ? (

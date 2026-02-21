@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -12,6 +12,7 @@ import {
   Zap,
   X,
 } from "lucide-react";
+import { getCurrentUser, type AuthUser } from "@/lib/auth";
 
 const navItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
@@ -29,7 +30,14 @@ interface AppSidebarProps {
 
 export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const [user, setUser] = useState<AuthUser | null>(getCurrentUser());
   const location = useLocation();
+
+  useEffect(() => {
+    const handleUserUpdate = () => setUser(getCurrentUser());
+    window.addEventListener('user-updated', handleUserUpdate);
+    return () => window.removeEventListener('user-updated', handleUserUpdate);
+  }, []);
 
   const sidebarContent = (
     <>
@@ -76,15 +84,14 @@ export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
         ))}
       </nav>
 
-      {/* Bottom */}
+      {/* Bottom — User info */}
       {(!collapsed || mobileOpen) && (
         <div className="border-t border-border p-4">
           <div className="rounded-lg bg-accent p-3">
             <p className="text-xs font-medium text-foreground">Free Plan</p>
-            <p className="mt-1 text-xs text-muted-foreground">48/50 AI queries used</p>
-            <div className="mt-2 h-1.5 w-full rounded-full bg-muted">
-              <div className="h-1.5 rounded-full bg-primary" style={{ width: "96%" }} />
-            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {user?.name ? `Signed in as ${user.name}` : 'Welcome to DevIntel AI'}
+            </p>
             <button className="mt-2 text-xs font-medium text-primary hover:underline">
               Upgrade to Pro
             </button>
@@ -106,18 +113,16 @@ export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
 
       {/* Mobile drawer */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-60 flex-col border-r border-border bg-sidebar transition-transform duration-200 md:hidden ${
-          mobileOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`fixed inset-y-0 left-0 z-50 flex w-60 flex-col border-r border-border bg-sidebar transition-transform duration-200 md:hidden ${mobileOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
       >
         {sidebarContent}
       </aside>
 
       {/* Desktop sidebar */}
       <aside
-        className={`hidden md:flex flex-col border-r border-border bg-sidebar transition-all duration-200 ${
-          collapsed ? "w-16" : "w-60"
-        }`}
+        className={`hidden md:flex flex-col border-r border-border bg-sidebar transition-all duration-200 ${collapsed ? "w-16" : "w-60"
+          }`}
       >
         {sidebarContent}
       </aside>

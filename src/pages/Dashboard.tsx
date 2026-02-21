@@ -1,25 +1,39 @@
-import { GitBranch, MessageSquare, GitPullRequest, Activity, ArrowRight, Plus, Zap } from "lucide-react";
+import { useState, useEffect } from "react";
+import { GitBranch, MessageSquare, GitPullRequest, Activity, ArrowRight, Plus, Zap, Loader2 } from "lucide-react";
 import { StatCard } from "@/components/shared/StatCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { mockActivities } from "@/lib/mock-data";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-
-const stats = [
-  { title: "Repositories Indexed", value: 5, icon: GitBranch, trend: { value: "+2 this week", positive: true } },
-  { title: "AI Queries This Month", value: 48, icon: MessageSquare, subtitle: "50 limit on Free plan" },
-  { title: "PRs Analyzed", value: 23, icon: GitPullRequest, trend: { value: "+8 this week", positive: true } },
-  { title: "System Status", value: "Operational", icon: Activity },
-];
-
-const typeIcons: Record<string, string> = {
-  index: "📦",
-  chat: "💬",
-  pr_review: "🔍",
-  alert: "⚠️",
-};
+import { apiClient } from "@/lib/api-client";
+import type { Repository } from "@/lib/types";
 
 export default function DashboardPage() {
+  const [repos, setRepos] = useState<Repository[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const data = await apiClient.get<{ repositories: Repository[]; total: number }>('/api/v1/repos');
+        setRepos(data.repositories || []);
+      } catch (err) {
+        console.error('Failed to fetch repos:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
+
+  const indexedCount = repos.filter(r => r.indexed_status === 'completed').length;
+
+  const stats = [
+    { title: "Repositories", value: repos.length, icon: GitBranch, trend: indexedCount > 0 ? { value: `${indexedCount} indexed`, positive: true } : undefined },
+    { title: "AI Queries", value: "—", icon: MessageSquare, subtitle: "Chat with indexed repos" },
+    { title: "PRs Analyzed", value: "—", icon: GitPullRequest, subtitle: "Review pull requests" },
+    { title: "System Status", value: "Operational", icon: Activity },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -37,19 +51,39 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Activity Feed */}
+        {/* Repositories overview */}
         <div className="lg:col-span-2 rounded-xl border border-border bg-card p-5">
-          <h2 className="font-semibold text-card-foreground">Recent Activity</h2>
+          <h2 className="font-semibold text-card-foreground">Your Repositories</h2>
           <div className="mt-4 space-y-3">
-            {mockActivities.map((item) => (
-              <div key={item.id} className="flex items-start gap-3 rounded-lg p-2 hover:bg-accent transition-colors">
-                <span className="text-base">{typeIcons[item.type]}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-card-foreground">{item.message}</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">{item.timestamp}</p>
-                </div>
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
-            ))}
+            ) : repos.length === 0 ? (
+              <div className="text-center py-8">
+                <GitBranch className="h-8 w-8 mx-auto text-muted-foreground" />
+                <p className="mt-2 text-sm text-muted-foreground">No repositories connected yet</p>
+                <Link to="/repositories">
+                  <Button size="sm" className="mt-3 gap-2">
+                    <Plus className="h-3 w-3" />
+                    Connect Repository
+                  </Button>
+                </Link>
+              </div>
+            ) : (
+              repos.slice(0, 5).map((repo) => (
+                <div key={repo.id} className="flex items-start gap-3 rounded-lg p-2 hover:bg-accent transition-colors">
+                  <span className="text-base">📦</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-card-foreground font-medium">{repo.full_name}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {repo.language ? `${repo.language} · ` : ''}
+                      {repo.indexed_status === 'completed' ? 'Indexed' : repo.indexed_status === 'in_progress' ? 'Indexing...' : 'Not indexed'}
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 

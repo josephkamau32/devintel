@@ -8,9 +8,9 @@ export interface AuthUser {
     id: string;
     email: string | null;
     name: string | null;
-    username: string | null;
     avatar_url: string | null;
     github_id: string;
+    created_at?: string;
 }
 
 export interface TokenResponse {
@@ -60,6 +60,17 @@ export function getCurrentUser(): AuthUser | null {
     } catch {
         return null;
     }
+}
+
+/**
+ * Returns display-safe name: real name → email prefix → 'User'
+ */
+export function getDisplayName(): string {
+    const user = getCurrentUser();
+    if (!user) return 'User';
+    if (user.name) return user.name;
+    if (user.email) return user.email.split('@')[0];
+    return 'User';
 }
 
 /**
