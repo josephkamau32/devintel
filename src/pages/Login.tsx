@@ -1,11 +1,23 @@
 import { Link } from "react-router-dom";
-import { Zap, Github } from "lucide-react";
+import { Zap, Github, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { initiateGithubLogin } from "@/lib/auth";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleGithubLogin = async () => {
+    setIsLoading(true);
+    try {
+      await initiateGithubLogin();
+    } catch (error) {
+      console.error("Failed to initiate GitHub login:", error);
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -22,8 +34,18 @@ export default function LoginPage() {
         </div>
 
         <div className="space-y-4">
-          <Button variant="outline" className="w-full gap-2">
-            <Github className="h-4 w-4" /> Continue with GitHub
+          <Button
+            variant="outline"
+            className="w-full gap-2"
+            onClick={handleGithubLogin}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Github className="h-4 w-4" />
+            )}
+            {isLoading ? "Redirecting to GitHub..." : "Continue with GitHub"}
           </Button>
 
           <div className="flex items-center gap-3">
