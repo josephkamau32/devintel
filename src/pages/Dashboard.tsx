@@ -25,7 +25,7 @@ export default function DashboardPage() {
     fetchData();
   }, []);
 
-  const indexedCount = repos.filter(r => r.indexed_status === 'completed').length;
+  const indexedCount = repos.filter(r => r.indexed_status === true).length;
 
   const stats = [
     { title: "Repositories", value: repos.length, icon: GitBranch, trend: indexedCount > 0 ? { value: `${indexedCount} indexed`, positive: true } : undefined },
@@ -78,7 +78,7 @@ export default function DashboardPage() {
                     <p className="text-sm text-card-foreground font-medium">{repo.full_name}</p>
                     <p className="mt-0.5 text-xs text-muted-foreground">
                       {repo.language ? `${repo.language} · ` : ''}
-                      {repo.indexed_status === 'completed' ? 'Indexed' : repo.indexed_status === 'in_progress' ? 'Indexing...' : 'Not indexed'}
+                      {repo.indexed_status ? 'Indexed' : (repo.indexing_progress > 0 ? 'Indexing...' : 'Not indexed')}
                     </p>
                   </div>
                 </div>

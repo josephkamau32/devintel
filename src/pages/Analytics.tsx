@@ -41,8 +41,8 @@ export default function AnalyticsPage() {
     .map(([language, count]) => ({ language, count }))
     .sort((a, b) => b.count - a.count);
 
-  const indexedCount = repos.filter(r => r.indexed_status === 'completed').length;
-  const pendingCount = repos.filter(r => r.indexed_status === 'in_progress').length;
+  const indexedCount = repos.filter(r => r.indexed_status === true).length;
+  const pendingCount = repos.filter(r => !r.indexed_status && r.indexing_progress > 0).length;
   const notIndexedCount = repos.length - indexedCount - pendingCount;
 
   const statusData = [
@@ -158,14 +158,14 @@ export default function AnalyticsPage() {
                     <div className="flex items-center justify-between">
                       <p className="truncate text-sm font-mono text-card-foreground">{repo.full_name}</p>
                       <span className="shrink-0 text-xs text-muted-foreground">
-                        {repo.indexed_status === 'completed' ? '✅ Indexed' : repo.indexed_status === 'in_progress' ? '⏳ Indexing' : '⬜ Not indexed'}
+                        {repo.indexed_status ? '✅ Indexed' : (repo.indexing_progress > 0 ? '⏳ Indexing' : '⬜ Not indexed')}
                       </span>
                     </div>
                     <div className="mt-1.5 h-1.5 w-full rounded-full bg-muted">
                       <div
-                        className={`h-1.5 rounded-full transition-all ${repo.indexed_status === 'completed' ? 'bg-success' : repo.indexed_status === 'in_progress' ? 'bg-warning' : 'bg-muted-foreground/30'
+                        className={`h-1.5 rounded-full transition-all ${repo.indexed_status ? 'bg-success' : (repo.indexing_progress > 0 ? 'bg-warning' : 'bg-muted-foreground/30')
                           }`}
-                        style={{ width: repo.indexed_status === 'completed' ? '100%' : repo.indexed_status === 'in_progress' ? `${repo.indexing_progress || 50}%` : '0%' }}
+                        style={{ width: repo.indexed_status ? '100%' : (repo.indexing_progress > 0 ? `${repo.indexing_progress}%` : '0%') }}
                       />
                     </div>
                   </div>

@@ -6,11 +6,11 @@ import { apiClient } from "@/lib/api-client";
 import { toast } from "sonner";
 import type { Repository, GitHubRepo } from "@/lib/types";
 
-const statusVariant = (s?: string) =>
-  s === "completed" ? "success" : s === "in_progress" ? "warning" : "default";
+const statusVariant = (indexed: boolean, progress?: number) =>
+  indexed ? "success" : (progress && progress > 0) ? "warning" : "default";
 
-const statusLabel = (s?: string) =>
-  s === "completed" ? "Indexed" : s === "in_progress" ? "Indexing..." : "Not Indexed";
+const statusLabel = (indexed: boolean, progress?: number) =>
+  indexed ? "Indexed" : (progress && progress > 0) ? "Indexing..." : "Not Indexed";
 
 export default function RepositoriesPage() {
   const [repos, setRepos] = useState<Repository[]>([]);
@@ -59,11 +59,12 @@ export default function RepositoriesPage() {
   const connectRepo = async (fullName: string, url: string) => {
     setConnecting(true);
     try {
-      const name = fullName.split('/').pop() || fullName;
+      const repoName = fullName.split('/').pop() || fullName;
       await apiClient.post('/api/v1/repos', {
-        name,
+        repo_name: repoName,
         full_name: fullName,
         url,
+        stars: 0,
       });
       toast.success(`Connected ${fullName}`);
       setShowModal(false);
@@ -114,7 +115,7 @@ export default function RepositoriesPage() {
     }
   };
 
-  const filtered = repos.filter((r) => (r.full_name || r.name).toLowerCase().includes(search.toLowerCase()));
+  const filtered = repos.filter((r) => (r.full_name || r.repo_name).toLowerCase().includes(search.toLowerCase()));
 
   return (
     <div className="space-y-6">
@@ -171,12 +172,12 @@ export default function RepositoriesPage() {
                 <tr key={repo.id} className="border-b border-border last:border-0 hover:bg-accent/50 transition-colors">
                   <td className="px-4 py-3">
                     <div>
-                      <p className="font-medium text-foreground">{repo.name}</p>
+                      <p className="font-medium text-foreground">{repo.repo_name}</p>
                       <p className="text-xs text-muted-foreground">{repo.full_name}</p>
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <StatusBadge status={statusLabel(repo.indexed_status)} variant={statusVariant(repo.indexed_status)} />
+                    <StatusBadge status={statusLabel(repo.indexed_status, repo.indexing_progress)} variant={statusVariant(repo.indexed_status, repo.indexing_progress)} />
                   </td>
                   <td className="hidden px-4 py-3 text-muted-foreground sm:table-cell">{repo.language || '—'}</td>
                   <td className="px-4 py-3">
@@ -253,8 +254,8 @@ export default function RepositoriesPage() {
                       disabled={alreadyConnected || connecting}
                       onClick={() => connectRepo(ghRepo.full_name, ghRepo.html_url)}
                       className={`w-full flex items-center gap-3 rounded-lg p-3 text-left transition-colors ${alreadyConnected
-                          ? 'opacity-50 cursor-not-allowed bg-accent/30'
-                          : 'hover:bg-accent'
+                        ? 'opacity-50 cursor-not-allowed bg-accent/30'
+                        : 'hover:bg-accent'
                         }`}
                     >
                       <Github className="h-4 w-4 text-muted-foreground shrink-0" />

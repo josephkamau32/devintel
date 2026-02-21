@@ -4,15 +4,17 @@
 
 export interface Repository {
     id: string;
-    name: string;
+    repo_name: string;
     full_name: string;
-    url?: string;
-    description?: string;
-    language?: string;
-    stars?: number;
-    indexed_status?: string;
-    indexing_progress?: number;
-    indexing_error?: string;
+    url: string;
+    description?: string | null;
+    language?: string | null;
+    stars: number;
+    user_id?: string;
+    indexed_status: boolean;
+    last_indexed_at?: string | null;
+    indexing_error?: string | null;
+    indexing_progress: number;
     created_at?: string;
     updated_at?: string;
 }

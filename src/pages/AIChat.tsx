@@ -26,7 +26,7 @@ export default function AIChatPage() {
         const repoList = data.repositories || [];
         setRepos(repoList);
         // Auto-select first indexed repo
-        const indexed = repoList.find(r => r.indexed_status === 'completed');
+        const indexed = repoList.find(r => r.indexed_status === true);
         if (indexed) setSelectedRepo(indexed);
       } catch (err) {
         console.error('Failed to fetch repos:', err);
@@ -158,8 +158,8 @@ export default function AIChatPage() {
           >
             <option value="" disabled>Select a repository</option>
             {repos.map(r => (
-              <option key={r.id} value={r.id} disabled={r.indexed_status !== 'completed'}>
-                {r.full_name} {r.indexed_status !== 'completed' ? '(not indexed)' : ''}
+              <option key={r.id} value={r.id} disabled={!r.indexed_status}>
+                {r.full_name} {!r.indexed_status ? '(not indexed)' : ''}
               </option>
             ))}
           </select>
