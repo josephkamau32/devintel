@@ -20,15 +20,14 @@ export interface Repository {
 }
 
 export interface GitHubRepo {
-    id: number;
-    name: string;
+    repo_name: string;
     full_name: string;
-    html_url: string;
     description: string | null;
+    url: string;
+    clone_url: string;
+    stars: number;
     language: string | null;
-    stargazers_count: number;
     private: boolean;
-    updated_at: string;
 }
 
 export interface ChatMessageData {

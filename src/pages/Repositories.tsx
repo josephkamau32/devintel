@@ -42,7 +42,7 @@ export default function RepositoriesPage() {
     setLoadingGH(true);
     try {
       const data = await apiClient.get<{ repositories: GitHubRepo[] }>('/api/v1/repos/github?per_page=50');
-      setGithubRepos(data.repositories || []);
+      setGithubRepos(Array.isArray(data.repositories) ? data.repositories : []);
     } catch (err) {
       console.error('Failed to fetch GitHub repos:', err);
       toast.error('Failed to fetch your GitHub repositories');
@@ -56,17 +56,18 @@ export default function RepositoriesPage() {
     fetchGithubRepos();
   };
 
-  const connectRepo = async (fullName: string, url: string) => {
+  const connectRepo = async (ghRepo: GitHubRepo) => {
     setConnecting(true);
     try {
-      const repoName = fullName.split('/').pop() || fullName;
       await apiClient.post('/api/v1/repos', {
-        repo_name: repoName,
-        full_name: fullName,
-        url,
-        stars: 0,
+        repo_name: ghRepo.repo_name,
+        full_name: ghRepo.full_name,
+        url: ghRepo.url,
+        description: ghRepo.description || '',
+        stars: ghRepo.stars || 0,
+        language: ghRepo.language || null,
       });
-      toast.success(`Connected ${fullName}`);
+      toast.success(`Connected ${ghRepo.full_name}`);
       setShowModal(false);
       setRepoUrl("");
       await fetchRepos();
@@ -82,7 +83,17 @@ export default function RepositoriesPage() {
     // Extract owner/repo from URL
     const match = repoUrl.match(/github\.com\/([^/]+\/[^/]+)/);
     if (match) {
-      connectRepo(match[1].replace(/\.git$/, ''), repoUrl.trim());
+      const fullName = match[1].replace(/\.git$/, '');
+      const name = fullName.split('/').pop() || fullName;
+      connectRepo({
+        repo_name: name,
+        full_name: fullName,
+        url: repoUrl.trim(),
+        description: null,
+        stars: 0,
+        language: null,
+        private: false,
+      } as GitHubRepo);
     } else {
       toast.error('Invalid GitHub URL. Expected: https://github.com/owner/repo');
     }
@@ -250,9 +261,9 @@ export default function RepositoriesPage() {
                   const alreadyConnected = repos.some(r => r.full_name === ghRepo.full_name);
                   return (
                     <button
-                      key={ghRepo.id}
+                      key={ghRepo.full_name}
                       disabled={alreadyConnected || connecting}
-                      onClick={() => connectRepo(ghRepo.full_name, ghRepo.html_url)}
+                      onClick={() => connectRepo(ghRepo)}
                       className={`w-full flex items-center gap-3 rounded-lg p-3 text-left transition-colors ${alreadyConnected
                         ? 'opacity-50 cursor-not-allowed bg-accent/30'
                         : 'hover:bg-accent'
@@ -262,7 +273,7 @@ export default function RepositoriesPage() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-card-foreground truncate">{ghRepo.full_name}</p>
                         <p className="text-xs text-muted-foreground truncate">
-                          {ghRepo.language || 'Unknown'} · {ghRepo.stargazers_count} ★{ghRepo.private ? ' · Private' : ''}
+                          {ghRepo.language || 'Unknown'} · {ghRepo.stars || 0} ★{ghRepo.private ? ' · Private' : ''}
                         </p>
                       </div>
                       {alreadyConnected && (
