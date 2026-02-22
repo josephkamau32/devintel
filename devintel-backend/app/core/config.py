@@ -24,7 +24,7 @@ class Settings(BaseSettings):
 
     # Database
     database_url: str = Field(..., alias="DATABASE_URL")
-    database_pool_size: int = Field(default=20, alias="DATABASE_POOL_SIZE")
+    database_pool_size: int = Field(default=50, alias="DATABASE_POOL_SIZE")
     database_max_overflow: int = Field(default=10, alias="DATABASE_MAX_OVERFLOW")
 
     # Redis and Cache

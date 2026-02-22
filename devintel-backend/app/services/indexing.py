@@ -38,7 +38,8 @@ class IndexingService:
                 )
             
             logger.info(f"Cloning repository to {temp_dir}")
-            Repo.clone_from(clone_url, temp_dir, depth=1)
+            import asyncio
+            await asyncio.to_thread(Repo.clone_from, clone_url, temp_dir, depth=1)
             
             return temp_dir
         except Exception as e:

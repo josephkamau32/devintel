@@ -73,8 +73,66 @@ def smart_chunk_code(
 ) -> List[str]:
     """
     Chunk code while trying to preserve structure.
-    For now, falls back to token-based chunking.
-    Future: Add language-specific parsing.
+    Uses regex-based splitting for common languages (Python, JS/TS).
     """
-    chunks_with_pos = chunk_text(code, chunk_size, chunk_overlap)
-    return [chunk[0] for chunk in chunks_with_pos]
+    import re
+    
+    # Identify file type
+    ext = file_path.split('.')[-1].lower() if '.' in file_path else ""
+    
+    # Define splitting patterns per language
+    # We want to split BEFORE these keywords to keep them at the start of chunks
+    patterns = {
+        "py": r"\n(?=class\s+|def\s+)",
+        "js": r"\n(?=function\s+|class\s+|const\s+\w+\s*=\s*(async\s+)?(\(.*\)|.*)=>|export\s+)",
+        "ts": r"\n(?=function\s+|class\s+|interface\s+|type\s+|const\s+\w+\s*=\s*(async\s+)?(\(.*\)|.*)=>|export\s+)",
+        "tsx": r"\n(?=function\s+|class\s+|interface\s+|type\s+|const\s+\w+\s*=\s*(async\s+)?(\(.*\)|.*)=>|export\s+)",
+        "jsx": r"\n(?=function\s+|class\s+|const\s+\w+\s*=\s*(async\s+)?(\(.*\)|.*)=>|export\s+)",
+    }
+    
+    pattern = patterns.get(ext)
+    
+    if not pattern:
+        # Fallback to token-based chunking for unsupported languages
+        chunks_with_pos = chunk_text(code, chunk_size, chunk_overlap)
+        return [chunk[0] for chunk in chunks_with_pos]
+    
+    # Split code by logical blocks
+    blocks = re.split(pattern, code)
+    
+    final_chunks = []
+    current_chunk = ""
+    current_tokens = 0
+    
+    for block in blocks:
+        block_tokens = get_token_count(block)
+        
+        # If a single block is larger than chunk_size, split it normally
+        if block_tokens > chunk_size:
+            # Add current_chunk if not empty
+            if current_chunk:
+                final_chunks.append(current_chunk)
+                current_chunk = ""
+                current_tokens = 0
+            
+            # Sub-chunk the large block
+            sub_chunks = chunk_text(block, chunk_size, chunk_overlap)
+            final_chunks.extend([sc[0] for sc in sub_chunks])
+            continue
+            
+        # If adding block exceeds size, save current and start new
+        if current_tokens + block_tokens > chunk_size:
+            final_chunks.append(current_chunk)
+            # Start next chunk with overlap - simple approach: overlap current block with previous if possible
+            # For simplicity in code structure preserving, we just start fresh with the block
+            current_chunk = block
+            current_tokens = block_tokens
+        else:
+            current_chunk += block
+            current_tokens += block_tokens
+            
+    if current_chunk:
+        final_chunks.append(current_chunk)
+        
+    logger.info(f"Smart-chunked {file_path} into {len(final_chunks)} chunks")
+    return final_chunks

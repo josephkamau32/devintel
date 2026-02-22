@@ -43,4 +43,22 @@ class AnalyticsRepository(BaseRepository[Analytics]):
             await self.db.flush()
             await self.db.refresh(analytics)
 
+    async def increment_repositories_indexed(self, user_id: UUID) -> Analytics:
+        """Increment repositories indexed count for a user."""
+        from datetime import datetime
+
+        analytics = await self.get_by_user(user_id)
+
+        if not analytics:
+            analytics = await self.create(
+                user_id=user_id,
+                repositories_indexed=1,
+                last_active_at=datetime.utcnow(),
+            )
+        else:
+            analytics.repositories_indexed += 1
+            analytics.last_active_at = datetime.utcnow()
+            await self.db.flush()
+            await self.db.refresh(analytics)
+
         return analytics

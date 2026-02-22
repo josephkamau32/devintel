@@ -123,6 +123,12 @@ async def _index_repository_async(
                 indexing_progress=100,
                 indexing_error=None,
             )
+            
+            # Update analytics counter
+            from app.repositories.analytics import AnalyticsRepository
+            analytics_repo = AnalyticsRepository(db)
+            await analytics_repo.increment_repositories_indexed(repo.user_id)
+            
             await db.commit()
             
             logger.info(f"Successfully indexed repository: {repo_id}")
