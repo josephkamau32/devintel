@@ -83,15 +83,22 @@ class OpenAIClient:
         messages: List[dict],
         temperature: float = 0.7,
         max_tokens: int = settings.openai_max_tokens,
+        json_mode: bool = False,
     ) -> str:
         """Generate chat completion (non-streaming)."""
         try:
-            response = await self.client.chat.completions.create(
-                model=settings.openai_chat_model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-            )
+            kwargs = {
+                "model": settings.openai_chat_model,
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+            }
+            
+            # Use structured JSON output when requested
+            if json_mode:
+                kwargs["response_format"] = {"type": "json_object"}
+            
+            response = await self.client.chat.completions.create(**kwargs)
             return response.choices[0].message.content or ""
         except Exception as e:
             logger.error(f"Failed to generate chat completion: {e}")

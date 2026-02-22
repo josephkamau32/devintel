@@ -40,7 +40,8 @@ class RepositoryRepository(BaseRepository[Repository]):
 
     async def count_by_user(self, user_id: UUID) -> int:
         """Count repositories for a user."""
+        from sqlalchemy import func
         result = await self.db.execute(
-            select(Repository).where(Repository.user_id == user_id)
+            select(func.count()).select_from(Repository).where(Repository.user_id == user_id)
         )
-        return len(list(result.scalars().all()))
+        return result.scalar_one()

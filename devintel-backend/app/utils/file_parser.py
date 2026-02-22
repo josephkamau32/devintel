@@ -12,10 +12,12 @@ logger = get_logger(__name__)
 
 def should_ignore_path(path: Path) -> bool:
     """Check if path should be ignored based on configuration."""
-    path_str = str(path)
+    # Match against individual path components, not substrings
+    # e.g. "build" in ignored_dirs should match "/build/file.py" but not "/my_build_tools/file.py"
+    path_parts = set(path.parts)
     
     for ignored_dir in settings.ignored_directories:
-        if ignored_dir in path_str:
+        if ignored_dir in path_parts:
             return True
     
     return False

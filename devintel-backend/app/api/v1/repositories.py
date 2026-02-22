@@ -138,6 +138,13 @@ async def index_repository(
             detail="Not authorized to index this repository",
         )
     
+    # Indexing mutex: prevent concurrent indexing of the same repo
+    if 0 < repository.indexing_progress < 100:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Repository is already being indexed. Please wait for the current indexing to complete.",
+        )
+    
     # Decrypt GitHub token for cloning private repos
     access_token = ""
     if current_user.github_access_token_encrypted:

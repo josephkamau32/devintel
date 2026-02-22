@@ -23,6 +23,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
     def __init__(self, app: ASGIApp):
         super().__init__(app)
+        from app.core.config import settings
+        
         self.security_headers = {
             # Prevent MIME type sniffing
             "X-Content-Type-Options": "nosniff",
@@ -30,8 +32,6 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "X-Frame-Options": "DENY",
             # Enable XSS protection (legacy, but doesn't hurt)
             "X-XSS-Protection": "1; mode=block",
-            # Force HTTPS (only in production)
-            "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
             # Content Security Policy (restrictive default)
             "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self'; frame-ancestors 'none';",
             # Referrer policy
@@ -39,6 +39,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             # Permissions policy
             "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
         }
+        
+        # Only add HSTS in production (breaks HTTP localhost in dev)
+        if settings.environment == "production":
+            self.security_headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Add security headers to response."""
@@ -183,6 +187,12 @@ class SQLInjectionDetectionMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Check request for SQL injection patterns and block if detected."""
         from app.core.validators import detect_sql_injection
+        
+        # Exempt chat and PR review paths — users naturally discuss SQL code
+        # These endpoints have their own input validation (prompt injection defense, etc.)
+        exempt_prefixes = ("/api/v1/chat", "/api/v1/pr-review")
+        if any(request.url.path.startswith(p) for p in exempt_prefixes):
+            return await call_next(request)
         
         # Check query parameters
         for key, value in request.query_params.items():

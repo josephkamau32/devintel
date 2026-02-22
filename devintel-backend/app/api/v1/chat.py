@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import time
 from datetime import datetime
 from typing import AsyncGenerator
 
@@ -57,35 +58,46 @@ async def stream_chat_response(
             embedding_repo=embedding_repo,
         )
         
+        # Track response time
+        start_time = time.time()
+        
         # Stream response
         full_response = ""
         async for chunk in chat_service.stream_chat(
             repo_name=repository.full_name,
             question=chat_request.question,
             context_chunks=context_chunks,
+            chat_history=chat_request.chat_history,
         ):
             full_response += chunk
             # Send SSE chunk
             yield f"data: {json.dumps({'content': chunk, 'done': False})}\n\n"
         
-        # Save chat history
+        # Calculate real token usage
+        response_time_ms = int((time.time() - start_time) * 1000)
+        prompt_tokens = chat_service.count_tokens(chat_request.question)
+        response_tokens = chat_service.count_tokens(full_response)
+        total_tokens = prompt_tokens + response_tokens
+        
+        # Save chat history with real token counts
         chat_repo = ChatRepository(db)
         chat = await chat_repo.create(
             user_id=current_user.id,
             repo_id=chat_request.repository_id,
             question=chat_request.question,
             response=full_response,
-            token_usage=0,  # Calculate in production
+            token_usage=total_tokens,
+            response_time_ms=response_time_ms,
         )
         
-        # Update analytics
+        # Update analytics with real token count
         analytics_repo = AnalyticsRepository(db)
-        await analytics_repo.increment_query_count(current_user.id, tokens=0)
+        await analytics_repo.increment_query_count(current_user.id, tokens=total_tokens)
         
         await db.commit()
         
-        # Send final chunk
-        yield f"data: {json.dumps({'content': '', 'done': True, 'chat_id': str(chat.id)})}\n\n"
+        # Send final chunk with token info
+        yield f"data: {json.dumps({'content': '', 'done': True, 'chat_id': str(chat.id), 'token_usage': total_tokens, 'response_time_ms': response_time_ms})}\n\n"
         
     except Exception as e:
         logger.error(f"Chat streaming error: {e}")

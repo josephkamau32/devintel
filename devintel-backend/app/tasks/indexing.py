@@ -82,6 +82,12 @@ async def _index_repository_async(
             await repo_repo.update(UUID(repo_id), indexing_progress=40)
             await db.commit()
             
+            # Delete old embeddings before re-indexing (prevents duplicates)
+            deleted_count = await embedding_repo.delete_by_repo(UUID(repo_id))
+            if deleted_count > 0:
+                logger.info(f"Deleted {deleted_count} old embeddings for repo {repo_id}")
+                await db.commit()
+            
             # Generate embeddings
             logger.info(f"Generating embeddings for {len(chunks)} chunks")
             embedding_service = EmbeddingService()

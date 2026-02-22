@@ -127,12 +127,17 @@ async def refresh_access_token(
                 detail="Invalid refresh token",
             )
         
-        # Create new access token
+        # Create new access token AND rotate refresh token
         new_access_token = create_access_token({"sub": str(user.id)})
+        new_refresh_token = create_refresh_token({"sub": str(user.id)})
+        
+        # Store new refresh token (invalidates old one)
+        user.refresh_token = new_refresh_token
+        await db.commit()
         
         return TokenResponse(
             access_token=new_access_token,
-            refresh_token=refresh_request.refresh_token,
+            refresh_token=new_refresh_token,
             token_type="bearer",
             user=UserResponse.model_validate(user),
         )

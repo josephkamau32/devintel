@@ -1,5 +1,8 @@
 """PR review routes."""
 
+import asyncio
+import json
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,8 +14,12 @@ from app.models.user import User
 from app.repositories.repository import RepositoryRepository
 from app.schemas.pr_review import PRReviewRequest, PRReviewResponse
 
-logger =get_logger(__name__)
+logger = get_logger(__name__)
 router = APIRouter(prefix="/pr-review", tags=["PR Review"])
+
+# Maximum diff size to prevent context window overflow and runaway API costs
+MAX_DIFF_CHARS = 100_000  # ~30K tokens
+REVIEW_TIMEOUT_SECONDS = 60
 
 
 @router.post("", response_model=PRReviewResponse)
@@ -38,6 +45,15 @@ async def review_pull_request(
             detail="Not authorized",
         )
     
+    # Validate diff size to prevent context window overflow
+    if len(request.pull_request_diff) > MAX_DIFF_CHARS:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"PR diff is too large ({len(request.pull_request_diff):,} chars). "
+                   f"Maximum allowed is {MAX_DIFF_CHARS:,} chars (~30K tokens). "
+                   f"Please split the PR into smaller changes.",
+        )
+    
     # Build prompt
     prompt = f"""You are an expert code reviewer. Review the following pull request and provide structured feedback.
 
@@ -48,25 +64,35 @@ PR Description: {request.pr_description}
 Diff:
 {request.pull_request_diff}
 
-Provide a review in the following JSON format:
+Provide a review as a JSON object with these exact keys:
 {{
-  "summary": "Overall assessment",
-  "potential_issues": ["Issue 1", "Issue 2"],
-  "refactoring_suggestions": ["Suggestion 1"],
-  "security_warnings": ["Warning 1"],
-  "performance_notes": ["Note 1"]
+  "summary": "Overall assessment of the PR quality, correctness, and impact",
+  "potential_issues": ["List of bugs, logic errors, or correctness concerns"],
+  "refactoring_suggestions": ["Code quality improvements and cleaner approaches"],
+  "security_warnings": ["Security vulnerabilities or unsafe patterns"],
+  "performance_notes": ["Performance impacts or optimization opportunities"]
 }}
 """
     
-    # Call OpenAI
+    # Call OpenAI with timeout and structured JSON output
     openai_client = OpenAIClient()
-    response = await openai_client.chat_completion(
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.3,
-    )
+    try:
+        response = await asyncio.wait_for(
+            openai_client.chat_completion(
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3,
+                json_mode=True,
+            ),
+            timeout=REVIEW_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError:
+        logger.error(f"PR review timed out after {REVIEW_TIMEOUT_SECONDS}s")
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail="PR review timed out. The diff may be too complex. Try a smaller PR.",
+        )
     
     # Parse response
-    import json
     try:
         review_data = json.loads(response)
         return PRReviewResponse(**review_data)
