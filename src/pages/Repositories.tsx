@@ -6,11 +6,20 @@ import { apiClient } from "@/lib/api-client";
 import { toast } from "sonner";
 import type { Repository, GitHubRepo } from "@/lib/types";
 
-const statusVariant = (indexed: boolean, progress?: number) =>
-  indexed ? "success" : (progress && progress > 0) ? "warning" : "default";
+const statusVariant = (repo: Repository) => {
+  if (repo.indexing_error) return "error";
+  if (repo.indexed_status) return "success";
+  if (repo.indexing_progress > 0 && repo.indexing_progress < 100) return "warning";
+  return "default";
+};
 
-const statusLabel = (indexed: boolean, progress?: number) =>
-  indexed ? "Indexed" : (progress && progress > 0) ? "Indexing..." : "Not Indexed";
+const statusLabel = (repo: Repository) => {
+  if (repo.indexing_error) return "Failed";
+  if (repo.indexed_status) return "Indexed";
+  if (repo.indexing_progress > 0 && repo.indexing_progress < 100)
+    return `Indexing ${repo.indexing_progress}%`;
+  return "Not Indexed";
+};
 
 export default function RepositoriesPage() {
   const [repos, setRepos] = useState<Repository[]>([]);
@@ -188,7 +197,17 @@ export default function RepositoriesPage() {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <StatusBadge status={statusLabel(repo.indexed_status, repo.indexing_progress)} variant={statusVariant(repo.indexed_status, repo.indexing_progress)} />
+                    <div className="flex items-center gap-2">
+                      <StatusBadge status={statusLabel(repo)} variant={statusVariant(repo)} />
+                      {repo.indexing_error && (
+                        <div className="group relative">
+                          <AlertCircle className="h-4 w-4 text-destructive cursor-help" />
+                          <div className="absolute bottom-full left-1/2 mb-2 hidden -translate-x-1/2 rounded bg-destructive px-2 py-1 text-[10px] text-destructive-foreground group-hover:block whitespace-nowrap z-50">
+                            {repo.indexing_error}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td className="hidden px-4 py-3 text-muted-foreground sm:table-cell">{repo.language || '—'}</td>
                   <td className="px-4 py-3">

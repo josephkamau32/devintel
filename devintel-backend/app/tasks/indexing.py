@@ -65,10 +65,14 @@ async def _index_repository_async(
             # Clone repository
             logger.info(f"Cloning repository: {clone_url}")
             indexing_service = IndexingService()
-            repo_path = await indexing_service.clone_repository(clone_url, access_token)
+            # 10 minute timeout for cloning
+            repo_path = await asyncio.wait_for(
+                indexing_service.clone_repository(clone_url, access_token),
+                timeout=600 
+            )
             
-            # Update progress
-            await repo_repo.update(UUID(repo_id), indexing_progress=20)
+            # Update progress: Finished cloning
+            await repo_repo.update(UUID(repo_id), indexing_progress=15)
             await db.commit()
             
             # Parse and chunk files
@@ -76,10 +80,18 @@ async def _index_repository_async(
             chunks = await indexing_service.parse_and_chunk_repository(repo_path)
             
             if not chunks:
-                raise Exception("No supported files found in repository")
+                logger.warning(f"No supported files found in repo {repo_id}")
+                await repo_repo.update(
+                    UUID(repo_id),
+                    indexed_status=True, # Mark as "indexed" even if empty to avoid stuck status
+                    indexing_progress=100,
+                    indexing_error="No supported files found"
+                )
+                await db.commit()
+                return
             
-            # Update progress
-            await repo_repo.update(UUID(repo_id), indexing_progress=40)
+            # Update progress: Finished parsing
+            await repo_repo.update(UUID(repo_id), indexing_progress=30)
             await db.commit()
             
             # Delete old embeddings before re-indexing (prevents duplicates)
@@ -88,15 +100,23 @@ async def _index_repository_async(
                 logger.info(f"Deleted {deleted_count} old embeddings for repo {repo_id}")
                 await db.commit()
             
+            # Update progress: Starting embedding
+            await repo_repo.update(UUID(repo_id), indexing_progress=40)
+            await db.commit()
+
             # Generate embeddings
             logger.info(f"Generating embeddings for {len(chunks)} chunks")
             embedding_service = EmbeddingService()
             
             chunk_texts = [chunk[2] for chunk in chunks]
-            embeddings = await embedding_service.generate_embeddings_batch(chunk_texts)
+            # 15 minute timeout for embedding generation
+            embeddings = await asyncio.wait_for(
+                embedding_service.generate_embeddings_batch(chunk_texts),
+                timeout=900
+            )
             
-            # Update progress
-            await repo_repo.update(UUID(repo_id), indexing_progress=70)
+            # Update progress: Finished embeddings
+            await repo_repo.update(UUID(repo_id), indexing_progress=80)
             await db.commit()
             
             # Store embeddings in database
@@ -130,28 +150,36 @@ async def _index_repository_async(
             await analytics_repo.increment_repositories_indexed(repo.user_id)
             
             await db.commit()
+            logger.info(f"Successfully indexed repository: {repo_id} ({len(chunks)} chunks)")
             
-            logger.info(f"Successfully indexed repository: {repo_id}")
-            
+        except asyncio.TimeoutError:
+            error_msg = "Indexing timed out during processing (cloning or embedding)"
+            logger.error(f"Timeout indexing repository {repo_id}")
+            await _handle_indexing_failure(repo_repo, db, repo_id, error_msg)
         except Exception as e:
-            logger.error(f"Failed to index repository {repo_id}: {e}")
-            
-            # Update repository with error
-            try:
-                await repo_repo.update(
-                    UUID(repo_id),
-                    indexed_status=False,
-                    indexing_error=str(e),
-                    indexing_progress=0,
-                )
-                await db.commit()
-            except Exception as update_error:
-                logger.error(f"Failed to update repository error status: {update_error}")
-            
-            # Retry task
+            error_msg = f"Unexpected error: {str(e)}"
+            logger.error(f"Failed to index repository {repo_id}: {e}", exc_info=True)
+            await _handle_indexing_failure(repo_repo, db, repo_id, error_msg)
+            # Only retry on unexpected exceptions, not timeouts or specific business logic failures
             raise self.retry(exc=e, countdown=60)
         
         finally:
             # Cleanup
             if repo_path:
-                await indexing_service.cleanup_repository(repo_path)
+                try:
+                    await indexing_service.cleanup_repository(repo_path)
+                except Exception as cleanup_error:
+                    logger.error(f"Failed to cleanup repo path {repo_path}: {cleanup_error}")
+
+async def _handle_indexing_failure(repo_repo, db, repo_id, error_msg):
+    """Helper to safely record indexing failure."""
+    try:
+        await repo_repo.update(
+            UUID(repo_id),
+            indexed_status=False,
+            indexing_error=error_msg,
+            indexing_progress=0,
+        )
+        await db.commit()
+    except Exception as update_error:
+        logger.error(f"Critical: Failed to update error status for repo {repo_id}: {update_error}")
