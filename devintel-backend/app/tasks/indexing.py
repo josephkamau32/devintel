@@ -114,10 +114,21 @@ async def _index_repository_async(
             embedding_service = EmbeddingService()
             
             chunk_texts = [chunk[2] for chunk in chunks]
-            # 15 minute timeout for embedding generation
+            
+            async def update_embedding_progress(current: int, total: int):
+                # Map current progress between 40% and 80%
+                progress = 40 + int((current / total) * 40)
+                await repo_repo.update(UUID(repo_id), indexing_progress=progress)
+                await db.commit()
+
+            # 30 minute timeout for large embedding jobs
             embeddings = await asyncio.wait_for(
-                embedding_service.generate_embeddings_batch(chunk_texts),
-                timeout=900
+                embedding_service.generate_embeddings_batch(
+                    chunk_texts, 
+                    batch_size=50,
+                    on_progress=update_embedding_progress
+                ),
+                timeout=1800
             )
             
             # Update progress: Finished embeddings
@@ -166,7 +177,7 @@ async def _index_repository_async(
             logger.error(f"Failed to index repository {repo_id}: {e}", exc_info=True)
             await _handle_indexing_failure(repo_repo, db, repo_id, error_msg)
             # Only retry on unexpected exceptions, not timeouts or specific business logic failures
-            raise self.retry(exc=e, countdown=60)
+            raise task.retry(exc=e, countdown=60)
         
         finally:
             # Cleanup
