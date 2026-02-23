@@ -5,9 +5,10 @@ from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
+from asgiref.sync import async_to_sync
 
 from app.core.logging import get_logger
-from app.db.session import AsyncSessionLocal
+from app.db.session import AsyncSessionLocal, engine
 from app.models.repository import Repository
 from app.repositories.embedding import EmbeddingRepository
 from app.repositories.repository import RepositoryRepository
@@ -28,8 +29,12 @@ def index_repository_task(self, repo_id: str, clone_url: str, access_token: str 
         clone_url: Git clone URL
         access_token: GitHub access token for private repos
     """
-    # Run async code in thread
-    asyncio.run(_index_repository_async(repo_id, clone_url, access_token, self))
+    # Use async_to_sync for more robust event loop management in Celery threads/processes
+    try:
+        async_to_sync(_index_repository_async)(repo_id, clone_url, access_token, self)
+    except Exception as e:
+        logger.error(f"Celery task wrapper failed: {e}")
+        raise
     return {"status": "completed", "repo_id": repo_id}
 
 
@@ -170,6 +175,10 @@ async def _index_repository_async(
                     await indexing_service.cleanup_repository(repo_path)
                 except Exception as cleanup_error:
                     logger.error(f"Failed to cleanup repo path {repo_path}: {cleanup_error}")
+            
+            # Dispose engine pool to ensure connections aren't shared across different event loops
+            # especially important when using asyncio.run or async_to_sync in long-lived processes
+            await engine.dispose()
 
 async def _handle_indexing_failure(repo_repo, db, repo_id, error_msg):
     """Helper to safely record indexing failure."""
