@@ -73,11 +73,26 @@ def smart_chunk_code(
 ) -> List[str]:
     """
     Chunk code while trying to preserve structure.
-    Uses regex-based splitting for common languages (Python, JS/TS).
     """
     import re
+    from app.utils.tree_sitter_chunking import chunk_code_with_tree_sitter
     
-    # Identify file type
+    # Try Tree-Sitter first
+    ts_chunks = chunk_code_with_tree_sitter(code, file_path, chunk_size)
+    if ts_chunks:
+        # Check if we need further token-based chunking for any large ts_chunks
+        final_chunks = []
+        for tc in ts_chunks:
+            if get_token_count(tc) > chunk_size:
+                sub_chunks = chunk_text(tc, chunk_size, chunk_overlap)
+                final_chunks.extend([sc[0] for sc in sub_chunks])
+            else:
+                final_chunks.append(tc)
+        
+        logger.info(f"Tree-Sitter chunked {file_path} into {len(final_chunks)} chunks")
+        return final_chunks
+
+    # Fallback to regex-based splitting
     ext = file_path.split('.')[-1].lower() if '.' in file_path else ""
     
     # Define splitting patterns per language

@@ -30,6 +30,26 @@ export async function initiateGithubLogin(): Promise<void> {
 }
 
 /**
+ * Log in with email and password.
+ */
+export async function signInWithEmail(email: string, password: string): Promise<AuthUser> {
+    const data = await apiClient.post<TokenResponse>('/api/v1/auth/login', {
+        username: email, // Backend expect 'username' which is used for email in this system
+        password: password
+    });
+
+    // Store auth data in localStorage
+    localStorage.setItem('access_token', data.access_token);
+    localStorage.setItem('refresh_token', data.refresh_token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+
+    // Dispatch event so other components can react
+    window.dispatchEvent(new CustomEvent('user-updated', { detail: data.user }));
+
+    return data.user;
+}
+
+/**
  * Exchange the OAuth code for tokens and store auth data.
  * Called from the AuthCallback page after GitHub redirects back.
  */

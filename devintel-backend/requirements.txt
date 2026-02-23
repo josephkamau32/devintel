@@ -8,7 +8,9 @@ python-multipart>=0.0.22
 # ===========================================
 # DATABASE
 # ===========================================
-sqlalchemy==2.0.27
+sqlalchemy>=2.0.30
+tree-sitter>=0.21.3
+tree-sitter-language-pack>=0.0.1
 asyncpg>=0.29.0
 alembic==1.13.1
 pgvector>=0.2.5
