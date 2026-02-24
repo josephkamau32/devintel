@@ -103,6 +103,7 @@ app.include_router(auth.router, prefix=settings.api_v1_prefix)
 app.include_router(repositories.router, prefix=settings.api_v1_prefix)
 app.include_router(chat.router, prefix=settings.api_v1_prefix)
 app.include_router(pr_review.router, prefix=settings.api_v1_prefix)
+app.include_router(analytics.router, prefix=settings.api_v1_prefix)
 
 
 # Root endpoint

@@ -158,7 +158,31 @@ export const reviewPullRequest = async (data: PRReviewRequest): Promise<PRReview
     return apiClient.post<PRReviewResponse>('/api/v1/pr-review', data);
 };
 
+export interface UsageTrend {
+    date: string;
+    queries: number;
+}
+
+export interface RepoUsage {
+    repo_name: string;
+    queries: number;
+}
+
+export interface AnalyticsDashboard {
+    total_queries: number;
+    total_tokens: number;
+    total_repos_indexed: number;
+    usage_trend: UsageTrend[];
+    top_repositories: RepoUsage[];
+    last_active_at: string | null;
+}
+
 /** Perform semantic search in a repository. */
 export const searchRepository = async (repositoryId: string, query: string, topK = 10): Promise<SearchResponse> => {
     return apiClient.get<SearchResponse>(`/api/v1/repos/${repositoryId}/search?q=${encodeURIComponent(query)}&top_k=${topK}`);
+};
+
+/** Get real-time analytics dashboard data. */
+export const getAnalyticsDashboard = async (): Promise<AnalyticsDashboard> => {
+    return apiClient.get<AnalyticsDashboard>('/api/v1/analytics/dashboard');
 };
