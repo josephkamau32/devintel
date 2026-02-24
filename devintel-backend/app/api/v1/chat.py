@@ -18,11 +18,61 @@ from app.repositories.analytics import AnalyticsRepository
 from app.repositories.chat import ChatRepository
 from app.repositories.embedding import EmbeddingRepository
 from app.repositories.repository import RepositoryRepository
-from app.schemas.chat import ChatRequest, ChatResponse
+from app.schemas.chat import (
+    ChatHistoryRecord,
+    ChatHistoryResponse,
+    ChatRequest,
+    ChatResponse,
+)
 from app.services.chat import ChatService
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/chat", tags=["Chat"])
+
+
+@router.get("/history/{repository_id}", response_model=ChatHistoryResponse)
+async def get_chat_history(
+    repository_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Retrieve chat history for a repository."""
+    # Check repo access
+    repo_repo = RepositoryRepository(db)
+    repository = await repo_repo.get_by_id(repository_id)
+    if not repository or repository.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Repository not found",
+        )
+
+    chat_repo = ChatRepository(db)
+    chats = await chat_repo.get_by_user_and_repo(
+        user_id=current_user.id,
+        repo_id=repository_id,
+        limit=50,
+    )
+
+    # Convert to messages (two messages per chat record)
+    messages = []
+    # Reverse to get chronological order (repo returns desc)
+    for chat in reversed(chats):
+        messages.append(
+            ChatHistoryRecord(
+                role="user",
+                content=chat.question,
+                timestamp=chat.created_at,
+            )
+        )
+        messages.append(
+            ChatHistoryRecord(
+                role="assistant",
+                content=chat.response,
+                timestamp=chat.created_at,
+            )
+        )
+
+    return ChatHistoryResponse(messages=messages, repository_id=repository_id)
 
 
 async def stream_chat_response(

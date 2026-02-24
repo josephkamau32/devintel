@@ -24,6 +24,23 @@ class RepositoryCreate(RepositoryBase):
     pass
 
 
+class SearchResult(BaseModel):
+    """Semantic search result."""
+
+    file_path: str
+    chunk_text: str
+    similarity: float
+    chunk_index: int
+
+
+class SearchResponse(BaseModel):
+    """Search response schema."""
+
+    results: list[SearchResult]
+    repository_id: UUID
+    query: str
+
+
 class RepositoryResponse(RepositoryBase):
     """Repository response schema."""
 

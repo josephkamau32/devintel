@@ -6,7 +6,7 @@ export interface ChatMessageData {
   id: string;
   role: 'user' | 'assistant';
   content: string;
-  timestamp: string;
+  timestamp?: string;
 }
 
 export interface PullRequest {

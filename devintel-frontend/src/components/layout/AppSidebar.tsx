@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   Zap,
   X,
+  Search,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -18,6 +19,7 @@ const navItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "My Repositories", url: "/repositories", icon: GitBranch },
   { title: "AI Chat", url: "/chat", icon: MessageSquare },
+  { title: "Semantic Search", url: "/search", icon: Search },
   { title: "Pull Requests", url: "/pull-requests", icon: GitPullRequest },
   { title: "Analytics", url: "/analytics", icon: BarChart3 },
   { title: "Settings", url: "/settings", icon: Settings },

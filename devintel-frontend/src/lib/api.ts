@@ -1,12 +1,26 @@
 import apiClient from './api-client';
 
-// ─── Chat ────────────────────────────────────────────────────────
-export const sendChatMessage = async (message: string) => {
-    return apiClient.post('/chat', { message });
+export interface ChatMessage {
+    role: 'user' | 'assistant';
+    content: string;
+    timestamp?: string;
+}
+
+export interface ChatHistoryResponse {
+    messages: ChatMessage[];
+    repository_id: string;
+}
+
+export const sendChatMessage = async (data: {
+    question: string,
+    repository_id: string,
+    chat_history?: ChatMessage[]
+}) => {
+    return apiClient.post('/api/v1/chat', data);
 };
 
-export const getChatHistory = async () => {
-    return apiClient.get('/chat/history');
+export const getChatHistory = async (repositoryId: string): Promise<ChatHistoryResponse> => {
+    return apiClient.get<ChatHistoryResponse>(`/api/v1/chat/history/${repositoryId}`);
 };
 
 // ─── Repositories ────────────────────────────────────────────────
@@ -121,12 +135,30 @@ export interface PRReviewResponse {
     performance_notes: string[];
 }
 
+export interface SearchResult {
+    file_path: string;
+    chunk_text: string;
+    similarity: number;
+    chunk_index: number;
+}
+
+export interface SearchResponse {
+    results: SearchResult[];
+    repository_id: string;
+    query: string;
+}
+
 /** List PRs for a specific repository. */
 export const getRepositoryPulls = async (repositoryId: string): Promise<{ pulls: PullRequest[] }> => {
     return apiClient.get<{ pulls: PullRequest[] }>(`/api/v1/repos/${repositoryId}/pulls`);
 };
 
-/** Conduct a PR review. */
+/** conduct a PR review. */
 export const reviewPullRequest = async (data: PRReviewRequest): Promise<PRReviewResponse> => {
     return apiClient.post<PRReviewResponse>('/api/v1/pr-review', data);
+};
+
+/** Perform semantic search in a repository. */
+export const searchRepository = async (repositoryId: string, query: string, topK = 10): Promise<SearchResponse> => {
+    return apiClient.get<SearchResponse>(`/api/v1/repos/${repositoryId}/search?q=${encodeURIComponent(query)}&top_k=${topK}`);
 };

@@ -11,7 +11,7 @@ from app.core.logging import get_logger
 from app.db.session import get_db
 from app.integrations.github_client import GitHubClient
 from app.models.user import User
-from app.repositories.repository import RepositoryRepository
+from app.repositories.embedding import EmbeddingRepository
 from app.schemas.repository import (
     RepositoryCreate,
     RepositoryIndexRequest,
@@ -19,13 +19,70 @@ from app.schemas.repository import (
     RepositoryListResponse,
     RepositoryResponse,
     RepositoryStatusResponse,
+    SearchResponse,
+    SearchResult,
 )
 from app.schemas.pr_review import PullRequestListResponse, PullRequestResponse
 from app.services.encryption import encryption_service
+from app.services.embedding import EmbeddingService
 from app.tasks.indexing import index_repository_task
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/repos", tags=["Repositories"])
+
+
+@router.get("/{repository_id}/search", response_model=SearchResponse)
+async def search_repository(
+    repository_id: UUID,
+    q: str = Query(..., min_length=1, max_length=500),
+    top_k: int = Query(10, ge=1, le=50),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Semantic search across indexed code in a repository."""
+    # Check access
+    repo_repo = RepositoryRepository(db)
+    repository = await repo_repo.get_by_id(repository_id)
+    if not repository or repository.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Repository not found",
+        )
+
+    if not repository.indexed_status:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Repository not indexed yet",
+        )
+
+    # Generate query embedding
+    embedding_service = EmbeddingService()
+    query_embedding = await embedding_service.generate_embedding(q)
+
+    # Search
+    embedding_repo = EmbeddingRepository(db)
+    results = await embedding_repo.vector_search(
+        repo_id=repository_id,
+        query_embedding=query_embedding,
+        top_k=top_k,
+    )
+
+    # Convert results
+    search_results = [
+        SearchResult(
+            file_path=emb.file_path,
+            chunk_text=emb.chunk_text,
+            similarity=sim,
+            chunk_index=emb.chunk_index,
+        )
+        for emb, sim in results
+    ]
+
+    return SearchResponse(
+        results=search_results,
+        repository_id=repository_id,
+        query=q,
+    )
 
 
 def _get_github_token(user: User) -> str:

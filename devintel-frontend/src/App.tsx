@@ -12,6 +12,7 @@ import AuthCallback from "./pages/AuthCallback";
 import Dashboard from "./pages/Dashboard";
 import Repositories from "./pages/Repositories";
 import AIChat from "./pages/AIChat";
+import Search from "./pages/Search";
 import PullRequests from "./pages/PullRequests";
 import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
@@ -35,6 +36,7 @@ const App = () => (
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/repositories" element={<Repositories />} />
               <Route path="/chat" element={<AIChat />} />
+              <Route path="/search" element={<Search />} />
               <Route path="/pull-requests" element={<PullRequests />} />
               <Route path="/analytics" element={<Analytics />} />
               <Route path="/settings" element={<Settings />} />

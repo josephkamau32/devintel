@@ -34,12 +34,28 @@ class ChatResponse(BaseModel):
     question: str
     response: str
     token_usage: int
+    response_time_ms: Optional[int] = None
     created_at: datetime
 
     class Config:
         """Pydantic config."""
 
         from_attributes = True
+
+
+class ChatHistoryRecord(BaseModel):
+    """Record retrieved from database."""
+
+    role: str
+    content: str
+    timestamp: datetime
+
+
+class ChatHistoryResponse(BaseModel):
+    """Chat history response schema."""
+
+    messages: list[ChatHistoryRecord]
+    repository_id: UUID
 
 
 class StreamChunk(BaseModel):
