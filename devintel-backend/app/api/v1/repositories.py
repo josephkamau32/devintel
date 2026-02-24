@@ -20,6 +20,7 @@ from app.schemas.repository import (
     RepositoryResponse,
     RepositoryStatusResponse,
 )
+from app.schemas.pr_review import PullRequestListResponse, PullRequestResponse
 from app.services.encryption import encryption_service
 from app.tasks.indexing import index_repository_task
 
@@ -164,6 +165,53 @@ async def index_repository(
         message="Indexing started",
         repository_id=request.repository_id,
     )
+
+
+@router.get("/{repository_id}/pulls", response_model=PullRequestListResponse)
+async def list_repository_pulls(
+    repository_id: UUID,
+    state: str = Query("open", regex="^(open|closed|all)$"),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(30, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """List pull requests for a repository."""
+    repo_repo = RepositoryRepository(db)
+    repository = await repo_repo.get_by_id(repository_id)
+    
+    if not repository:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Repository not found",
+        )
+        
+    if repository.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access this repository",
+        )
+    
+    token = _get_github_token(current_user)
+    github_client = GitHubClient(token)
+    
+    try:
+        pulls = await github_client.get_repository_pull_requests(
+            full_name=repository.full_name,
+            state=state,
+            page=page,
+            per_page=per_page,
+        )
+        return PullRequestListResponse(
+            pulls=[PullRequestResponse(**p) for p in pulls],
+            repository_id=repository_id,
+        )
+    except Exception as e:
+        logger.error(f"Failed to fetch PRs for {repository.full_name}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Failed to fetch pull requests from GitHub",
+        )
 
 
 @router.get("/{repository_id}/status", response_model=RepositoryStatusResponse)

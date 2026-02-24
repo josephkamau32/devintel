@@ -78,6 +78,80 @@ class GitHubClient:
                 details={"error": str(e)},
             )
 
+    async def get_repository_pull_requests(
+        self,
+        full_name: str,
+        state: str = "open",
+        page: int = 1,
+        per_page: int = 30,
+    ) -> List[Dict[str, Any]]:
+        """Get pull requests for a specific repository."""
+        try:
+            repo = self.client.get_repo(full_name)
+            pulls = repo.get_pulls(
+                state=state,
+                sort="created",
+                direction="desc",
+            )
+            
+            # Paginate
+            start = (page - 1) * per_page
+            end = start + per_page
+            
+            pulls_data = []
+            for pr in list(pulls)[start:end]:
+                pulls_data.append({
+                    "number": pr.number,
+                    "title": pr.title,
+                    "state": pr.state,
+                    "author": pr.user.login,
+                    "author_avatar": pr.user.avatar_url,
+                    "created_at": pr.created_at.isoformat(),
+                    "updated_at": pr.updated_at.isoformat(),
+                    "additions": pr.additions,
+                    "deletions": pr.deletions,
+                    "url": pr.html_url,
+                })
+            
+            return pulls_data
+            
+        except GithubException as e:
+            logger.error(f"Failed to get pull requests for {full_name}: {e}")
+            raise ExternalServiceError(
+                message=f"Failed to fetch pull requests from GitHub",
+                details={"error": str(e)},
+            )
+
+    async def get_pull_request_diff(self, full_name: str, pr_number: int) -> str:
+        """Get the diff for a pull request."""
+        try:
+            repo = self.client.get_repo(full_name)
+            pr = repo.get_pull(pr_number)
+            
+            # Use raw patch/diff via httpx for cleaner handling if needed,
+            # but PyGithub provides get_files() which we could use, 
+            # however a single diff string is what our current API expects.
+            # PyGithub's pr.diff_url provides the raw diff.
+            
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    pr.diff_url,
+                    headers={"Authorization": f"token {self.access_token}"}
+                )
+                if response.status_code != 200:
+                    raise ExternalServiceError(
+                        message="Failed to fetch PR diff from GitHub",
+                        details={"status_code": response.status_code}
+                    )
+                return response.text
+                
+        except (GithubException, httpx.HTTPError) as e:
+            logger.error(f"Failed to get diff for PR #{pr_number} in {full_name}: {e}")
+            raise ExternalServiceError(
+                message=f"Failed to fetch PR diff from GitHub",
+                details={"error": str(e)},
+            )
+
     def close(self) -> None:
         """Close client connections."""
         pass

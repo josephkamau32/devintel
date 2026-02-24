@@ -131,48 +131,72 @@ Rules:
         question: str,
         embedding_repo: EmbeddingRepository,
         top_k: int = settings.top_k_chunks,
+        expand_context: bool = True,
     ) -> List[Tuple[Embedding, float]]:
         """Retrieve relevant chunks using vector similarity search."""
         # Check cache
         cache_key = f"embed:{repo_id}:{hashlib.md5(question.encode()).hexdigest()}"
         cached_result = await cache.get(cache_key)
         
+        results = []
         if cached_result:
             logger.info("Retrieved chunks from cache")
-            # Deserialize cached results
             import json
             try:
                 cached_data = json.loads(cached_result)
-                # Reconstruct results from cached data
-                results = []
                 for item in cached_data:
-                    # Re-fetch embedding objects from database
                     embedding = await embedding_repo.get_by_id(UUID(item["embedding_id"]))
                     if embedding:
                         results.append((embedding, item["similarity"]))
-                return results
             except Exception as e:
                 logger.warning(f"Cache deserialization failed: {e}, fetching from DB")
         
-        # Generate question embedding
-        question_embedding = await self.embedding_service.generate_embedding(question)
+        if not results:
+            # Generate question embedding
+            question_embedding = await self.embedding_service.generate_embedding(question)
+            
+            # Vector search
+            results = await embedding_repo.vector_search(
+                repo_id=repo_id,
+                query_embedding=question_embedding,
+                top_k=top_k,
+            )
+            
+            # Cache results (serialize to JSON)
+            import json
+            cache_data = [
+                {"embedding_id": str(emb.id), "similarity": sim}
+                for emb, sim in results
+            ]
+            await cache.set(cache_key, json.dumps(cache_data), ttl=3600)
         
-        # Vector search
-        results = await embedding_repo.vector_search(
-            repo_id=repo_id,
-            query_embedding=question_embedding,
-            top_k=top_k,
-        )
+        if not expand_context:
+            return results
+
+        # --- Context Expansion ---
+        # For each hit, retrieve adjacent chunks to provide semantic continuity
+        expanded_results = {} # map (file_path, chunk_index) -> (Embedding, similarity)
         
-        # Cache results (serialize to JSON)
-        import json
-        cache_data = [
-            {"embedding_id": str(emb.id), "similarity": sim}
-            for emb, sim in results
-        ]
-        await cache.set(cache_key, json.dumps(cache_data), ttl=3600)
-        
-        return results
+        for emb, sim in results:
+            # Load neighbors
+            neighbors = await embedding_repo.get_neighbors(
+                repo_id=repo_id,
+                file_path=emb.file_path,
+                chunk_index=emb.chunk_index,
+                radius=1
+            )
+            for n in neighbors:
+                key = (n.file_path, n.chunk_index)
+                # If it's the original hit, use its similarity. 
+                # If it's a neighbor, use a slightly decayed similarity or just the original hit's sim.
+                if key not in expanded_results:
+                    # Neighboring chunks inherit a fraction of the relevance
+                    relevance = sim if n.id == emb.id else sim * 0.95
+                    expanded_results[key] = (n, relevance)
+
+        # Sort combined results by file then index to maintain logical order in prompt
+        sorted_keys = sorted(expanded_results.keys())
+        return [expanded_results[k] for k in sorted_keys]
 
     async def stream_chat(
         self,

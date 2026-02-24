@@ -99,3 +99,17 @@ class EmbeddingRepository(BaseRepository[Embedding]):
         )
         await self.db.flush()
         return result.rowcount
+
+    async def get_neighbors(self, repo_id: UUID, file_path: str, chunk_index: int, radius: int = 1) -> List[Embedding]:
+        """Fetch adjacent chunks for a given file and chunk index."""
+        result = await self.db.execute(
+            select(Embedding)
+            .where(
+                Embedding.repo_id == repo_id,
+                Embedding.file_path == file_path,
+                Embedding.chunk_index >= chunk_index - radius,
+                Embedding.chunk_index <= chunk_index + radius
+            )
+            .order_by(Embedding.chunk_index.asc())
+        )
+        return list(result.scalars().all())

@@ -89,3 +89,44 @@ export const indexRepository = async (repositoryId: string): Promise<{ task_id: 
 export const getRepoStatus = async (id: string): Promise<RepoStatusResponse> => {
     return apiClient.get<RepoStatusResponse>(`/api/v1/repos/${id}/status`);
 };
+
+// ─── Pull Requests ─────────────────────────────────────────────
+
+export interface PullRequest {
+    number: number;
+    title: string;
+    state: string;
+    author: string;
+    author_avatar: string | null;
+    created_at: string;
+    updated_at: string;
+    additions: number;
+    deletions: number;
+    url: string;
+}
+
+export interface PRReviewRequest {
+    repository_id: string;
+    pr_number?: number;
+    pull_request_diff?: string;
+    pr_title: string;
+    pr_description?: string;
+}
+
+export interface PRReviewResponse {
+    summary: string;
+    potential_issues: string[];
+    refactoring_suggestions: string[];
+    security_warnings: string[];
+    performance_notes: string[];
+}
+
+/** List PRs for a specific repository. */
+export const getRepositoryPulls = async (repositoryId: string): Promise<{ pulls: PullRequest[] }> => {
+    return apiClient.get<{ pulls: PullRequest[] }>(`/api/v1/repos/${repositoryId}/pulls`);
+};
+
+/** Conduct a PR review. */
+export const reviewPullRequest = async (data: PRReviewRequest): Promise<PRReviewResponse> => {
+    return apiClient.post<PRReviewResponse>('/api/v1/pr-review', data);
+};
