@@ -1,0 +1,42 @@
+﻿python : ImportError 
+while loading 
+conftest 'C:\Users\HP
+\Documents\Projects\d
+evintel\devintel-back
+end\tests\conftest.py
+'.
+At line:1 char:1
++ python -m pytest 
+tests/ -v --tb=short 
+2>&1 | Out-File 
+-Encoding utf8  ...
++ ~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
+~~
+    + CategoryInfo   
+           : NotSpe  
+  cified: (ImportE   
+ rror whi...s\con    
+ftest.py'.:Strin    
+g) [], RemoteExc    
+eption
+    + FullyQualified 
+   ErrorId : Native  
+  CommandError
+ 
+tests\conftest.py:25:
+ in <module>
+    from app.main 
+import app
+app\main.py:12: in 
+<module>
+    from app.api.v1 
+import analytics, 
+auth, repositories, 
+chat, pr_review
+app\api\v1\chat.py:35
+: in <module>
+    repository_id: 
+UUID,
+E   NameError: name 
+'UUID' is not defined

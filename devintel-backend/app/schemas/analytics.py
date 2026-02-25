@@ -1,10 +1,10 @@
 """Analytics schemas."""
 
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class AnalyticsResponse(BaseModel):
@@ -17,10 +17,7 @@ class AnalyticsResponse(BaseModel):
     repositories_indexed: int
     last_active_at: Optional[datetime] = None
 
-    class Config:
-        """Pydantic config."""
-
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UsageTrend(BaseModel):

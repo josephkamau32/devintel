@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from typing import List, Tuple
 from uuid import UUID
 
-from sqlalchemy import desc, func, select
+from sqlalchemy import Date, cast, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.analytics import Analytics
@@ -29,7 +29,7 @@ class AnalyticsRepository(BaseRepository[Analytics]):
 
     async def increment_query_count(self, user_id: UUID, tokens: int = 0) -> Analytics:
         """Increment query count and token usage for a user."""
-        from datetime import datetime
+        from datetime import datetime, timezone
 
         analytics = await self.get_by_user(user_id)
 
@@ -38,18 +38,18 @@ class AnalyticsRepository(BaseRepository[Analytics]):
                 user_id=user_id,
                 query_count=1,
                 token_usage=tokens,
-                last_active_at=datetime.utcnow(),
+                last_active_at=datetime.now(timezone.utc),
             )
         else:
             analytics.query_count += 1
             analytics.token_usage += tokens
-            analytics.last_active_at = datetime.utcnow()
+            analytics.last_active_at = datetime.now(timezone.utc)
             await self.db.flush()
             await self.db.refresh(analytics)
 
     async def increment_repositories_indexed(self, user_id: UUID) -> Analytics:
         """Increment repositories indexed count for a user."""
-        from datetime import datetime
+        from datetime import datetime, timezone
 
         analytics = await self.get_by_user(user_id)
 
@@ -57,11 +57,11 @@ class AnalyticsRepository(BaseRepository[Analytics]):
             analytics = await self.create(
                 user_id=user_id,
                 repositories_indexed=1,
-                last_active_at=datetime.utcnow(),
+                last_active_at=datetime.now(timezone.utc),
             )
         else:
             analytics.repositories_indexed += 1
-            analytics.last_active_at = datetime.utcnow()
+            analytics.last_active_at = datetime.now(timezone.utc)
             await self.db.flush()
             await self.db.refresh(analytics)
 
@@ -87,12 +87,12 @@ class AnalyticsRepository(BaseRepository[Analytics]):
         seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
         trend_query = (
             select(
-                func.cast(Chat.created_at, func.date).label("date"),
+                cast(Chat.created_at, Date).label("date"),
                 func.count(Chat.id).label("count")
             )
             .where(Chat.user_id == user_id, Chat.created_at >= seven_days_ago)
-            .group_by(func.cast(Chat.created_at, func.date))
-            .order_by(func.cast(Chat.created_at, func.date))
+            .group_by(cast(Chat.created_at, Date))
+            .order_by(cast(Chat.created_at, Date))
         )
         trend_result = await self.db.execute(trend_query)
         usage_trend = [

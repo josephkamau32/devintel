@@ -5,6 +5,7 @@ import json
 import time
 from datetime import datetime
 from typing import AsyncGenerator
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse

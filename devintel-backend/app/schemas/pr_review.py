@@ -1,6 +1,6 @@
 """PR review schemas."""
 
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field

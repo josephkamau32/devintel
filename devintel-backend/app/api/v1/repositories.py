@@ -12,6 +12,7 @@ from app.db.session import get_db
 from app.integrations.github_client import GitHubClient
 from app.models.user import User
 from app.repositories.embedding import EmbeddingRepository
+from app.repositories.repository import RepositoryRepository
 from app.schemas.repository import (
     RepositoryCreate,
     RepositoryIndexRequest,
