@@ -39,11 +39,17 @@ class EmbeddingRepository(BaseRepository[Embedding]):
         repo_id: UUID,
         query_embedding: List[float],
         top_k: int = 6,
+        threshold: float = 0.3,
     ) -> List[Tuple[Embedding, float]]:
         """
         Perform vector similarity search using cosine distance.
         Returns list of (Embedding, similarity_score) tuples.
         """
+        from app.core.constants import SIMILARITY_THRESHOLD
+        
+        # Use provided threshold or default from constants
+        active_threshold = threshold if threshold is not None else SIMILARITY_THRESHOLD
+
         # Use pgvector's cosine distance operator
         query = text("""
             SELECT 
@@ -57,7 +63,8 @@ class EmbeddingRepository(BaseRepository[Embedding]):
                 updated_at,
                 (1 - (embedding <=> :query_embedding)) as similarity
             FROM embeddings
-            WHERE repo_id = :repo_id
+            WHERE repo_id = :repo_id 
+              AND (1 - (embedding <=> :query_embedding)) >= :threshold
             ORDER BY embedding <=> :query_embedding
             LIMIT :top_k
         """)
@@ -68,6 +75,7 @@ class EmbeddingRepository(BaseRepository[Embedding]):
                 "query_embedding": query_embedding,
                 "repo_id": str(repo_id),
                 "top_k": top_k,
+                "threshold": active_threshold,
             },
         )
 

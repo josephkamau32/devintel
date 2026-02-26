@@ -207,7 +207,16 @@ class SQLInjectionDetectionMiddleware(BaseHTTPMiddleware):
                         "ip": request.client.host if request.client else "unknown",
                     },
                 )
-                raise
+                return JSONResponse(
+                    status_code=e.status_code,
+                    content={"detail": e.detail},
+                )
+            except Exception as e:
+                logger.error(f"Unexpected error in SQL injection check: {e}")
+                return JSONResponse(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    content={"detail": "Invalid input detected"},
+                )
 
         # Check path parameters (from URL)
         try:
@@ -220,6 +229,15 @@ class SQLInjectionDetectionMiddleware(BaseHTTPMiddleware):
                     "ip": request.client.host if request.client else "unknown",
                 },
             )
-            raise
+            return JSONResponse(
+                status_code=e.status_code,
+                content={"detail": e.detail},
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error in SQL injection path check: {e}")
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"detail": "Invalid input detected"},
+            )
 
         return await call_next(request)

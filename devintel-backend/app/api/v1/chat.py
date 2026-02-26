@@ -79,35 +79,40 @@ async def get_chat_history(
 async def stream_chat_response(
     chat_request: ChatRequest,
     current_user: User,
-    db: AsyncSession,
 ) -> AsyncGenerator[str, None]:
     """Stream chat response as Server-Sent Events."""
+    from app.db.session import AsyncSessionLocal
+    
     try:
-        # Get repository
-        repo_repo = RepositoryRepository(db)
-        repository = await repo_repo.get_by_id(chat_request.repository_id)
-        
-        if not repository:
-            yield f"data: {json.dumps({'error': 'Repository not found'})}\n\n"
-            return
-        
-        if repository.user_id != current_user.id:
-            yield f"data: {json.dumps({'error': 'Not authorized'})}\n\n"
-            return
-        
-        if not repository.indexed_status:
-            yield f"data: {json.dumps({'error': 'Repository not indexed yet'})}\n\n"
-            return
-        
-        # Retrieve relevant chunks
-        chat_service = ChatService()
-        embedding_repo = EmbeddingRepository(db)
-        
-        context_chunks = await chat_service.retrieve_relevant_chunks(
-            repo_id=chat_request.repository_id,
-            question=chat_request.question,
-            embedding_repo=embedding_repo,
-        )
+        # Pre-load data in a short-lived session
+        async with AsyncSessionLocal() as db:
+            # Get repository
+            repo_repo = RepositoryRepository(db)
+            repository = await repo_repo.get_by_id(chat_request.repository_id)
+            
+            if not repository:
+                yield f"data: {json.dumps({'error': 'Repository not found'})}\n\n"
+                return
+            
+            if repository.user_id != current_user.id:
+                yield f"data: {json.dumps({'error': 'Not authorized'})}\n\n"
+                return
+            
+            if not repository.indexed_status:
+                yield f"data: {json.dumps({'error': 'Repository not indexed yet'})}\n\n"
+                return
+            
+            # Retrieve relevant chunks
+            chat_service = ChatService()
+            embedding_repo = EmbeddingRepository(db)
+            
+            context_chunks = await chat_service.retrieve_relevant_chunks(
+                repo_id=chat_request.repository_id,
+                question=chat_request.question,
+                embedding_repo=embedding_repo,
+            )
+            repo_full_name = repository.full_name
+            # db session closes here
         
         # Track response time
         start_time = time.time()
@@ -115,7 +120,7 @@ async def stream_chat_response(
         # Stream response
         full_response = ""
         async for chunk in chat_service.stream_chat(
-            repo_name=repository.full_name,
+            repo_name=repo_full_name,
             question=chat_request.question,
             context_chunks=context_chunks,
             chat_history=chat_request.chat_history,
@@ -130,39 +135,41 @@ async def stream_chat_response(
         response_tokens = chat_service.count_tokens(full_response)
         total_tokens = prompt_tokens + response_tokens
         
-        # Save chat history with real token counts
-        chat_repo = ChatRepository(db)
-        chat = await chat_repo.create(
-            user_id=current_user.id,
-            repo_id=chat_request.repository_id,
-            question=chat_request.question,
-            response=full_response,
-            token_usage=total_tokens,
-            response_time_ms=response_time_ms,
-        )
-        
-        # Update analytics with real token count
-        analytics_repo = AnalyticsRepository(db)
-        await analytics_repo.increment_query_count(current_user.id, tokens=total_tokens)
-        
-        await db.commit()
+        # Save chat history in another short-lived session
+        async with AsyncSessionLocal() as db:
+            chat_repo = ChatRepository(db)
+            chat = await chat_repo.create(
+                user_id=current_user.id,
+                repo_id=chat_request.repository_id,
+                question=chat_request.question,
+                response=full_response,
+                token_usage=total_tokens,
+                response_time_ms=response_time_ms,
+            )
+            
+            # Update analytics with real token count
+            analytics_repo = AnalyticsRepository(db)
+            await analytics_repo.increment_query_count(current_user.id, tokens=total_tokens)
+            
+            await db.commit()
+            chat_id_str = str(chat.id)
+            # db session closes here
         
         # Send final chunk with token info
-        yield f"data: {json.dumps({'content': '', 'done': True, 'chat_id': str(chat.id), 'token_usage': total_tokens, 'response_time_ms': response_time_ms})}\n\n"
+        yield f"data: {json.dumps({'content': '', 'done': True, 'chat_id': chat_id_str, 'token_usage': total_tokens, 'response_time_ms': response_time_ms})}\n\n"
         
     except Exception as e:
-        logger.error(f"Chat streaming error: {e}")
-        yield f"data: {json.dumps({'error': str(e)})}\n\n"
+        logger.error(f"Chat streaming error: {e}", exc_info=True)
+        yield f"data: {json.dumps({'error': 'An internal error occurred. Please try again.'})}\n\n"
 
 
 @router.post("")
 async def chat(
     chat_request: ChatRequest,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
 ):
     """Chat with repository using RAG (streaming)."""
     return StreamingResponse(
-        stream_chat_response(chat_request, current_user, db),
+        stream_chat_response(chat_request, current_user),
         media_type="text/event-stream",
     )

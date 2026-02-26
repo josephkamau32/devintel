@@ -135,7 +135,7 @@ Rules:
     ) -> List[Tuple[Embedding, float]]:
         """Retrieve relevant chunks using vector similarity search."""
         # Check cache
-        cache_key = f"embed:{repo_id}:{hashlib.md5(question.encode()).hexdigest()}"
+        cache_key = f"embed:{repo_id}:{hashlib.sha256(question.encode()).hexdigest()}"
         cached_result = await cache.get(cache_key)
         
         results = []

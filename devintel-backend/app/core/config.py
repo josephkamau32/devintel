@@ -60,7 +60,7 @@ class Settings(BaseSettings):
     )
 
     # Token Encryption (for storing GitHub tokens)
-    token_encryption_key: Optional[str] = Field(default=None, alias="TOKEN_ENCRYPTION_KEY")
+    token_encryption_key: str = Field(..., alias="TOKEN_ENCRYPTION_KEY")
 
     # CORS
     cors_origins: List[str] | str = Field(

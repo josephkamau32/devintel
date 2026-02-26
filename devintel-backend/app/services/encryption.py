@@ -15,12 +15,8 @@ class EncryptionService:
     
     def __init__(self):
         """Initialize encryption service with key from settings."""
-        if settings.token_encryption_key:
-            self.cipher = Fernet(settings.token_encryption_key.encode())
-        else:
-            # Generate a key for development (should be set in production)
-            logger.warning("TOKEN_ENCRYPTION_KEY not set, generating temporary key")
-            self.cipher = Fernet(Fernet.generate_key())
+        self.cipher = Fernet(settings.token_encryption_key.encode())
+        logger.info("Encryption service initialized with configured key")
     
     def encrypt(self, plaintext: str) -> str:
         """

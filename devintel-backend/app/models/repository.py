@@ -49,13 +49,13 @@ class Repository(Base, UUIDMixin, TimestampMixin):
         "Embedding",
         back_populates="repository",
         cascade="all, delete-orphan",
-        lazy="selectin",
+        lazy="raise",
     )
     chats: Mapped[List["Chat"]] = relationship(
         "Chat",
         back_populates="repository",
         cascade="all, delete-orphan",
-        lazy="selectin",
+        lazy="raise",
     )
 
     def __repr__(self) -> str:

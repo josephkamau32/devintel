@@ -49,10 +49,10 @@ class UserRepository:
             if not user.name:
                 user.name = name or username or github_id
             
-            # Note: We don't store username separately in this version to avoid DB migration issues
-            
             if avatar_url:
                 user.avatar_url = avatar_url
+            if username:
+                user.username = username
             if github_token_encrypted:
                 user.github_access_token_encrypted = github_token_encrypted
         else:
@@ -61,6 +61,7 @@ class UserRepository:
                 github_id=github_id,
                 email=email,
                 name=name or username or github_id,
+                username=username,
                 avatar_url=avatar_url,
                 github_access_token_encrypted=github_token_encrypted,
             )

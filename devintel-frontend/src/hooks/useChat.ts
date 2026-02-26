@@ -43,11 +43,11 @@ export function useChat(repositoryId?: string) {
             }
             abortControllerRef.current = new AbortController();
 
-            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/api/v1/chat`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/v1/chat`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`, // Use token from storage
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
                 },
                 body: JSON.stringify({
                     repository_id: repositoryId,

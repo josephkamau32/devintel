@@ -160,6 +160,10 @@ async def _index_repository_async(
                 indexing_error=None,
             )
             
+            # Clear embedding cache for this repository
+            from app.services.cache import cache
+            await cache.delete_pattern(f"embed:{repo_id}:*")
+            
             # Update analytics counter
             from app.repositories.analytics import AnalyticsRepository
             analytics_repo = AnalyticsRepository(db)
@@ -186,10 +190,6 @@ async def _index_repository_async(
                     await indexing_service.cleanup_repository(repo_path)
                 except Exception as cleanup_error:
                     logger.error(f"Failed to cleanup repo path {repo_path}: {cleanup_error}")
-            
-            # Dispose engine pool to ensure connections aren't shared across different event loops
-            # especially important when using asyncio.run or async_to_sync in long-lived processes
-            await engine.dispose()
 
 async def _handle_indexing_failure(repo_repo, db, repo_id, error_msg):
     """Helper to safely record indexing failure."""

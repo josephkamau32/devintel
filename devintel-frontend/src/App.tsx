@@ -17,6 +17,7 @@ import PullRequests from "./pages/PullRequests";
 import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -32,14 +33,16 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
-            <Route element={<DashboardLayout />}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/repositories" element={<Repositories />} />
-              <Route path="/chat" element={<AIChat />} />
-              <Route path="/search" element={<Search />} />
-              <Route path="/pull-requests" element={<PullRequests />} />
-              <Route path="/analytics" element={<Analytics />} />
-              <Route path="/settings" element={<Settings />} />
+            <Route element={<ProtectedRoute />}>
+              <Route element={<DashboardLayout />}>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/repositories" element={<Repositories />} />
+                <Route path="/chat" element={<AIChat />} />
+                <Route path="/search" element={<Search />} />
+                <Route path="/pull-requests" element={<PullRequests />} />
+                <Route path="/analytics" element={<Analytics />} />
+                <Route path="/settings" element={<Settings />} />
+              </Route>
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

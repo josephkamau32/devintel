@@ -18,6 +18,7 @@ class User(Base, UUIDMixin, TimestampMixin):
     github_access_token_encrypted: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)
     email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    username: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     avatar_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     
     # JWT Refresh Token
@@ -28,20 +29,20 @@ class User(Base, UUIDMixin, TimestampMixin):
         "Repository",
         back_populates="user",
         cascade="all, delete-orphan",
-        lazy="selectin",
+        lazy="raise",
     )
     chats: Mapped[List["Chat"]] = relationship(
         "Chat",
         back_populates="user",
         cascade="all, delete-orphan",
-        lazy="selectin",
+        lazy="raise",
     )
     analytics: Mapped[Optional["Analytics"]] = relationship(
         "Analytics",
         back_populates="user",
         uselist=False,
         cascade="all, delete-orphan",
-        lazy="selectin",
+        lazy="raise",
     )
 
     def __repr__(self) -> str:

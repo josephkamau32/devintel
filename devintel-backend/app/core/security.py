@@ -1,5 +1,6 @@
 """Security utilities for authentication and authorization."""
 
+import hashlib
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
@@ -73,3 +74,13 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def get_password_hash(password: str) -> str:
     """Hash a password."""
     return pwd_context.hash(password)
+
+
+def hash_token(token: str) -> str:
+    """Create SHA-256 hash of a token for secure storage."""
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def verify_token_hash(token: str, token_hash: str) -> bool:
+    """Verify a token against its stored SHA-256 hash."""
+    return hashlib.sha256(token.encode()).hexdigest() == token_hash

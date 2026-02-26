@@ -6,7 +6,7 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from app.core.logging import get_logger
-from app.core.security import create_access_token, create_refresh_token, verify_token
+from app.core.security import create_access_token, create_refresh_token, verify_token, hash_token, verify_token_hash
 from app.core.constants import AUTH_RATE_LIMIT
 from app.db.session import get_db
 from app.integrations.github_client import GitHubClient, exchange_code_for_token
@@ -71,8 +71,8 @@ async def github_callback(
         jwt_access_token = create_access_token({"sub": str(user.id)})
         jwt_refresh_token = create_refresh_token({"sub": str(user.id)})
         
-        # Store refresh token
-        user.refresh_token = jwt_refresh_token
+        # Store hashed refresh token (prevents theft from DB compromise)
+        user.refresh_token = hash_token(jwt_refresh_token)
         await db.commit()
         
         return TokenResponse(
@@ -121,7 +121,7 @@ async def refresh_access_token(
         from uuid import UUID
         user = await user_repo.get_by_id(UUID(user_id))
         
-        if not user or user.refresh_token != refresh_request.refresh_token:
+        if not user or not verify_token_hash(refresh_request.refresh_token, user.refresh_token or ""):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid refresh token",
@@ -131,8 +131,8 @@ async def refresh_access_token(
         new_access_token = create_access_token({"sub": str(user.id)})
         new_refresh_token = create_refresh_token({"sub": str(user.id)})
         
-        # Store new refresh token (invalidates old one)
-        user.refresh_token = new_refresh_token
+        # Store hashed new refresh token (invalidates old one)
+        user.refresh_token = hash_token(new_refresh_token)
         await db.commit()
         
         return TokenResponse(
