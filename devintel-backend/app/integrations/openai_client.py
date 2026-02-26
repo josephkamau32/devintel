@@ -1,6 +1,6 @@
 """OpenAI API client."""
 
-from typing import AsyncGenerator, List
+from typing import Any, AsyncGenerator, List, Optional
 
 import openai
 
@@ -84,8 +84,13 @@ class OpenAIClient:
         temperature: float = 0.7,
         max_tokens: int = settings.openai_max_tokens,
         json_mode: bool = False,
-    ) -> str:
-        """Generate chat completion (non-streaming)."""
+        tools: Optional[List[dict]] = None,
+        tool_choice: Optional[str] = None,
+    ) -> Any:
+        """
+        Generate chat completion (non-streaming).
+        Returns the string content if no tools are used, else returns the full message object.
+        """
         try:
             kwargs = {
                 "model": settings.openai_chat_model,
@@ -97,9 +102,20 @@ class OpenAIClient:
             # Use structured JSON output when requested
             if json_mode:
                 kwargs["response_format"] = {"type": "json_object"}
+                
+            if tools:
+                kwargs["tools"] = tools
+            if tool_choice:
+                kwargs["tool_choice"] = tool_choice
             
             response = await self.client.chat.completions.create(**kwargs)
-            return response.choices[0].message.content or ""
+            message = response.choices[0].message
+            
+            # If tool calls are present, return the whole message object
+            if hasattr(message, "tool_calls") and message.tool_calls:
+                return message
+                
+            return message.content or ""
         except Exception as e:
             logger.error(f"Failed to generate chat completion: {e}")
             raise ExternalServiceError(

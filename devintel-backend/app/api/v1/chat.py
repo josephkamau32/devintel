@@ -20,12 +20,18 @@ from app.repositories.chat import ChatRepository
 from app.repositories.embedding import EmbeddingRepository
 from app.repositories.repository import RepositoryRepository
 from app.schemas.chat import (
+    AgentDraftRequest,
+    AgentDraftResponse,
+    AgentExecuteRequest,
+    AgentExecuteResponse,
     ChatHistoryRecord,
     ChatHistoryResponse,
     ChatRequest,
     ChatResponse,
 )
+from app.services.agent import AgentService
 from app.services.chat import ChatService
+from app.services.encryption import encryption_service
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/chat", tags=["Chat"])
@@ -173,3 +179,79 @@ async def chat(
         stream_chat_response(chat_request, current_user),
         media_type="text/event-stream",
     )
+
+
+@router.post("/draft", response_model=AgentDraftResponse)
+async def agent_draft(
+    request: AgentDraftRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Generate a draft PR proposal for user review."""
+    repo_repo = RepositoryRepository(db)
+    repository = await repo_repo.get_by_id(request.repository_id)
+    
+    if not repository:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Repository not found")
+        
+    if repository.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+        
+    if not current_user.github_access_token_encrypted:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="GitHub token not found. Please re-authenticate.")
+        
+    if not repository.indexed_status:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Repository must be indexed.")
+
+    token = encryption_service.decrypt(current_user.github_access_token_encrypted)
+    agent_service = AgentService(token)
+    embedding_repo = EmbeddingRepository(db)
+    
+    try:
+        draft_payload = await agent_service.draft_pr_plan(
+            repository=repository,
+            instruction=request.instruction,
+            embedding_repo=embedding_repo,
+        )
+        return AgentDraftResponse(draft=draft_payload)
+    except ValueError as ve:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ve))
+    except Exception as e:
+        logger.error(f"Failed to generate agent draft: {e}", exc_info=True)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred while drafting the PR.")
+
+
+@router.post("/execute", response_model=AgentExecuteResponse)
+async def agent_execute(
+    request: AgentExecuteRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Execute an approved draft PR on GitHub."""
+    repo_repo = RepositoryRepository(db)
+    repository = await repo_repo.get_by_id(request.repository_id)
+    
+    if not repository:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Repository not found")
+        
+    if repository.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+        
+    if not current_user.github_access_token_encrypted:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="GitHub token not found. Please re-authenticate.")
+
+    token = encryption_service.decrypt(current_user.github_access_token_encrypted)
+    agent_service = AgentService(token)
+    
+    try:
+        # Convert DraftPayload schema to dict for service method
+        draft_dict = request.draft.model_dump()
+        result = await agent_service.execute_pr(
+            repository=repository,
+            draft_payload=draft_dict,
+            default_branch=repository.default_branch if hasattr(repository, "default_branch") else "main"
+        )
+        return AgentExecuteResponse(**result)
+    except Exception as e:
+        logger.error(f"Failed to execute agent PR: {e}", exc_info=True)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred while executing the PR on GitHub.")

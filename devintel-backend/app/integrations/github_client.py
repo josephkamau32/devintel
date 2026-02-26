@@ -147,6 +147,116 @@ class GitHubClient:
         """Close client connections."""
         pass
 
+    async def create_branch(self, full_name: str, base_branch: str, new_branch_name: str) -> str:
+        """Create a new branch from a base branch."""
+        try:
+            def _do_create_branch():
+                repo = self.client.get_repo(full_name)
+                # Ensure refs/heads/ prefix
+                new_ref = f"refs/heads/{new_branch_name}" if not new_branch_name.startswith("refs/") else new_branch_name
+                # Get the base branch SHA
+                base_ref = repo.get_branch(base_branch)
+                # Create the branch
+                repo.create_git_ref(ref=new_ref, sha=base_ref.commit.sha)
+                return new_branch_name
+
+            return await asyncio.to_thread(_do_create_branch)
+        except GithubException as e:
+            logger.error(f"Failed to create branch {new_branch_name} in {full_name}: {e}")
+            raise ExternalServiceError(
+                message=f"Failed to create branch on GitHub",
+                details={"error": str(e)},
+            )
+
+    async def create_commit(
+        self,
+        full_name: str,
+        branch_name: str,
+        file_changes: List[Dict[str, str]],
+        commit_message: str,
+    ) -> str:
+        """
+        Create a multi-file commit using the Git Data API.
+        file_changes: [{"path": "src/main.py", "content": "print('hello')"}]
+        """
+        try:
+            def _do_create_commit():
+                repo = self.client.get_repo(full_name)
+                
+                # Get the branch reference
+                ref = repo.get_git_ref(f"heads/{branch_name}")
+                base_commit = repo.get_git_commit(ref.object.sha)
+                base_tree = repo.get_git_tree(base_commit.tree.sha)
+                
+                # Create blobs and build tree elements
+                element_list = []
+                for change in file_changes:
+                    # Note: We are using "100644" for file mode, and "blob" for type
+                    blob = repo.create_git_blob(change["content"], "utf-8")
+                    from github.InputGitTreeElement import InputGitTreeElement
+                    element = InputGitTreeElement(
+                        path=change["path"],
+                        mode='100644',
+                        type='blob',
+                        sha=blob.sha
+                    )
+                    element_list.append(element)
+                
+                # Create the new tree
+                new_tree = repo.create_git_tree(element_list, base_tree)
+                
+                # Create the commit
+                new_commit = repo.create_git_commit(
+                    commit_message,
+                    new_tree,
+                    [base_commit]
+                )
+                
+                # Update the branch reference
+                ref.edit(new_commit.sha)
+                
+                return new_commit.sha
+
+            return await asyncio.to_thread(_do_create_commit)
+        except GithubException as e:
+            logger.error(f"Failed to create commit on branch {branch_name} in {full_name}: {e}")
+            raise ExternalServiceError(
+                message=f"Failed to commit files to GitHub",
+                details={"error": str(e)},
+            )
+
+    async def create_pull_request(
+        self,
+        full_name: str,
+        title: str,
+        body: str,
+        head_branch: str,
+        base_branch: str,
+    ) -> Dict[str, Any]:
+        """Create a new Pull Request."""
+        try:
+            def _do_create_pr():
+                repo = self.client.get_repo(full_name)
+                pr = repo.create_pull(
+                    title=title,
+                    body=body,
+                    head=head_branch,
+                    base=base_branch,
+                )
+                return {
+                    "number": pr.number,
+                    "url": pr.html_url,
+                    "title": pr.title,
+                }
+
+            return await asyncio.to_thread(_do_create_pr)
+        except GithubException as e:
+            logger.error(f"Failed to create pull request in {full_name}: {e}")
+            raise ExternalServiceError(
+                message=f"Failed to create Pull Request on GitHub",
+                details={"error": str(e)},
+            )
+
 
 async def exchange_code_for_token(code: str) -> str:
     """Exchange OAuth code for access token."""

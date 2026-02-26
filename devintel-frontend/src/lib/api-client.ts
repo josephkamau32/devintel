@@ -153,6 +153,21 @@ class APIClient {
             body: JSON.stringify(data),
         });
     }
+
+    // Agent Action endpoints
+    async draftAgentAction(repositoryId: string, instruction: string) {
+        return this.post<{ draft: { pr_title: string; pr_body: string; branch_name: string; commit_message: string; file_changes: { path: string; content: string }[] } }>(
+            '/api/v1/chat/draft',
+            { repository_id: repositoryId, instruction }
+        );
+    }
+
+    async executeAgentAction(repositoryId: string, draftPayload: { pr_title: string; pr_body: string; branch_name: string; commit_message: string; file_changes: { path: string; content: string }[] }) {
+        return this.post<{ pr_url: string; pr_number: number; branch_name: string }>(
+            '/api/v1/chat/execute',
+            { repository_id: repositoryId, draft: draftPayload }
+        );
+    }
 }
 
 // Export singleton instance

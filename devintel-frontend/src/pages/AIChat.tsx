@@ -22,6 +22,24 @@ export default function AIChatPage() {
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  // Agent mode state
+  const [isAgentMode, setIsAgentMode] = useState(false);
+  const [agentLoading, setAgentLoading] = useState(false);
+  const [agentError, setAgentError] = useState<string | null>(null);
+
+  // Draft State
+  const [agentDraft, setAgentDraft] = useState<{
+    pr_title: string;
+    pr_body: string;
+    branch_name: string;
+    commit_message: string;
+    file_changes: { path: string; content: string }[];
+  } | null>(null);
+
+  // Execution State
+  const [isExecuting, setIsExecuting] = useState(false);
+  const [agentResult, setAgentResult] = useState<{ pr_url: string; branch_name: string } | null>(null);
+
   // Initialize selected repo
   useEffect(() => {
     if (repos.length > 0 && !selectedRepoId) {
@@ -39,13 +57,52 @@ export default function AIChatPage() {
   // Scroll to bottom
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, streamingContent, loading]);
+  }, [messages, streamingContent, loading, agentLoading, agentDraft, agentResult, agentError]);
 
   const handleSend = async () => {
-    if (!input.trim() || loading || !selectedRepoId) return;
+    if (!input.trim() || loading || agentLoading || isExecuting || !selectedRepoId) return;
     const question = input.trim();
     setInput("");
-    await sendMessage(question);
+
+    // Clear previous agent results if starting a new request
+    setAgentError(null);
+    setAgentResult(null);
+    setAgentDraft(null);
+
+    if (isAgentMode) {
+      setAgentLoading(true);
+      try {
+        const { apiClient } = await import('@/lib/api-client');
+        const response: any = await apiClient.draftAgentAction(selectedRepoId, question);
+        setAgentDraft(response.draft);
+      } catch (err: any) {
+        setAgentError(err.response?.data?.detail || "Failed to generate PR draft. Check server logs.");
+      } finally {
+        setAgentLoading(false);
+      }
+    } else {
+      await sendMessage(question);
+    }
+  };
+
+  const executeDraft = async () => {
+    if (!agentDraft || !selectedRepoId || isExecuting) return;
+
+    setIsExecuting(true);
+    setAgentError(null);
+    try {
+      const { apiClient } = await import('@/lib/api-client');
+      const response: any = await apiClient.executeAgentAction(selectedRepoId, agentDraft);
+      setAgentResult({
+        pr_url: response.pr_url,
+        branch_name: response.branch_name,
+      });
+      setAgentDraft(null); // Clear draft after success
+    } catch (err: any) {
+      setAgentError(err.response?.data?.detail || "Failed to execute PR on GitHub.");
+    } finally {
+      setIsExecuting(false);
+    }
   };
 
   const selectedRepo = repos.find(r => r.id === selectedRepoId);
@@ -67,6 +124,23 @@ export default function AIChatPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Agent Mode Toggle */}
+          <div className="flex items-center gap-2 mr-2">
+            <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+              Agent Mode
+            </span>
+            <button
+              onClick={() => setIsAgentMode(!isAgentMode)}
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${isAgentMode ? 'bg-primary' : 'bg-muted'
+                }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-background shadow ring-0 transition duration-200 ease-in-out ${isAgentMode ? 'translate-x-4' : 'translate-x-0'
+                  }`}
+              />
+            </button>
+          </div>
+
           <select
             value={selectedRepoId || ""}
             onChange={(e) => setSelectedRepoId(e.target.value)}
@@ -126,6 +200,66 @@ export default function AIChatPage() {
             </div>
             <div className="rounded-2xl border border-border bg-card px-4 py-3 shadow-sm italic text-muted-foreground text-sm">
               Analyzing repository context...
+            </div>
+          </div>
+        )}
+
+        {agentLoading && (
+          <div className="flex gap-3 animate-in fade-in duration-300">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Loader2 className="h-4 w-4 animate-spin" />
+            </div>
+            <div className="rounded-2xl border border-border bg-card px-4 py-3 shadow-sm italic text-muted-foreground text-sm">
+              Drafting Proposed Changes...
+            </div>
+          </div>
+        )}
+
+        {agentDraft && (
+          <div className="flex gap-3">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+              <GitBranch className="h-4 w-4" />
+            </div>
+            <div className="rounded-2xl rounded-tl-none border border-border bg-card p-4 shadow-sm w-full max-w-2xl text-sm">
+              <h3 className="font-semibold text-lg mb-2">Review Proposed Changes</h3>
+              <div className="bg-muted p-3 flex flex-col gap-2 rounded-lg mb-4 text-xs font-mono">
+                <div><strong className="text-foreground">Branch:</strong> {agentDraft.branch_name}</div>
+                <div><strong className="text-foreground">Commit:</strong> {agentDraft.commit_message}</div>
+                <div><strong className="text-foreground">PR Title:</strong> {agentDraft.pr_title}</div>
+                <div className="mt-1"><strong className="text-foreground">PR Body:</strong><br />{agentDraft.pr_body}</div>
+              </div>
+              <div className="mb-4">
+                <strong className="text-foreground mb-2 block text-xs">Files Changed ({agentDraft.file_changes.length}):</strong>
+                <ul className="list-disc list-inside text-xs text-muted-foreground ml-2">
+                  {agentDraft.file_changes.map(fc => <li key={fc.path}>{fc.path}</li>)}
+                </ul>
+              </div>
+              <div className="flex items-center gap-3">
+                <Button onClick={executeDraft} disabled={isExecuting} className="gap-2">
+                  {isExecuting && <Loader2 className="h-4 w-4 animate-spin" />}
+                  Execute PR on GitHub
+                </Button>
+                <Button variant="outline" onClick={() => setAgentDraft(null)} disabled={isExecuting}>
+                  Discard
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {agentResult && (
+          <div className="flex items-center gap-3 p-4 rounded-xl bg-success/10 border border-success/20 text-success text-sm">
+            <GitBranch className="h-4 w-4 shrink-0" />
+            <div>
+              <p className="font-semibold">Pull Request Created Successfully!</p>
+              <a
+                href={agentResult.pr_url}
+                target="_blank"
+                rel="noreferrer"
+                className="underline underline-offset-2 hover:text-success/80 mt-1 block"
+              >
+                View PR on GitHub
+              </a>
             </div>
           </div>
         )}
