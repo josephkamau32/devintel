@@ -12,14 +12,15 @@
 
 ## ✨ Key Features
 
-- 🔐 **Secure Authentication** - GitHub OAuth with JWT tokens
-- 📂 **Smart Repository Indexing** - Automatic code parsing with vector embeddings
-- 💬 **AI Chat Interface** - RAG-powered conversations about your code
-- 🔍 **Semantic Code Search** - Find code by meaning, not just keywords
-- 📊 **Analytics Dashboard** - Track usage and AI interactions
-- 🤖 **AI-Powered PR Review** - Automated code review suggestions
-- 🔒 **Production-Ready Security** - OWASP best practices, input validation, security headers
-- ✅ **Comprehensive Tests** - 80%+ test coverage with pytest and Vitest
+- 🤖 **Autonomous AI Agent** - End-to-end AI coding assistant with "Human-in-the-Loop" Pull Request execution.
+- 💬 **Context-Aware RAG Chat** - Intelligent conversations about your architecture with semantic vector search.
+- 🚀 **One-Click PR Generation** - Agent drafts multi-file code modifications and pushes branches/PRs safely via the GitHub Git Data API.
+- 🔐 **Secure Authentication** - GitHub OAuth with encrypted token management and JWT sessions.
+- 📂 **Smart Code Indexing** - AST-aware Treesitter chunking of repositories powered by PostgreSQL `pgvector`.
+- 📊 **Real-Time Analytics** - Track usage, API performance, and token consumption metrics.
+- 🕵️ **AI-Powered PR Review** - Automated code review suggestions for open pull requests.
+- 🔒 **Enterprise-Grade Security** - Strict transaction boundaries, connection pooling optimizations, and OWASP compliance.
+- ✅ **Test-Driven Reliability** - 80%+ test coverage with `pytest` and `Vitest`.
 
 ## 🏗️ Project Structure
 
@@ -123,8 +124,11 @@ graph TB
     end
     
     subgraph Backend_Services[Backend Services]
-        API[FastAPI API]
+        API[FastAPI]
+        AGENT[Agent Service]
         WORKER[Celery Workers]
+        
+        API --> AGENT
         API --> REDIS[Redis Cache/Queue]
         WORKER --> REDIS
     end
@@ -137,13 +141,13 @@ graph TB
     
     subgraph External_APIs[External APIs]
         GITHUB[GitHub API]
-        OPENAI[OpenAI API]
+        OPENAI[OpenAI Function Calling]
     end
     
     API_CLIENT --> API
     API --> PG
-    API --> GITHUB
-    API --> OPENAI
+    AGENT --> OPENAI
+    AGENT --> GITHUB
     WORKER --> PG
     WORKER --> OPENAI
     WORKER --> GITHUB
@@ -267,23 +271,25 @@ npm run build
 
 ## 🛣️ Roadmap
 
-### Current (MVP)
+### Current (V1.0 MVP & Agent Capabilities)
 - [x] GitHub OAuth authentication
-- [x] Repository indexing with embeddings
+- [x] Advanced Tree-Sitter repository indexing
 - [x] RAG-powered chat interface
-- [x] Basic PR review
+- [x] Basic PR review capabilities
+- [x] Real-time usage analytics
+- [x] **Autonomous PR Generator (Agent Mode)**
 
-### Phase 2
-- [ ] Multi-repository chat
-- [ ] Auto-reindexing on webhooks
-- [ ] Team collaboration
-- [ ] Usage analytics
+### Phase 2: Collaboration & Automation
+- [ ] Multi-repository context integration
+- [ ] CI/CD Webhook triggers for auto-reindexing
+- [ ] Team collaboration & shared workspaces
+- [ ] Deep GitHub App Integration
 
-### Phase 3
-- [ ] Code generation
-- [ ] Automated PR generation
-- [ ] VS Code extension
-- [ ] Advanced semantic search
+### Phase 3: IDE & Local Extensions
+- [ ] Desktop/Electron local execution agent
+- [ ] Official VS Code extension
+- [ ] Direct Terminal CLI integration
+- [ ] Advanced Graph Search & Knowledge Base
 
 ## 📝 License
 
