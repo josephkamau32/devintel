@@ -17,15 +17,22 @@ class RepositoryRepository(BaseRepository[Repository]):
         """Initialize repository."""
         super().__init__(Repository, db)
 
-    async def get_by_user(self, user_id: UUID, skip: int = 0, limit: int = 100) -> List[Repository]:
-        """Get repositories by user ID."""
+    async def get_by_user(
+        self, user_id: UUID, org_id: UUID | None = None, skip: int = 0, limit: int = 100
+    ) -> List[Repository]:
+        """Get repositories by user ID or organization ID."""
+        stmt = select(Repository)
+        if org_id:
+            stmt = stmt.where(Repository.org_id == org_id)
+        else:
+            stmt = stmt.where(Repository.user_id == user_id, Repository.org_id.is_(None))
+            
         result = await self.db.execute(
-            select(Repository)
-            .where(Repository.user_id == user_id)
-            .offset(skip)
+            stmt.offset(skip)
             .limit(limit)
             .order_by(Repository.created_at.desc())
         )
+        return list(result.scalars().all())
         return list(result.scalars().all())
 
     async def get_by_full_name(self, user_id: UUID, full_name: str) -> Repository | None:
@@ -38,10 +45,14 @@ class RepositoryRepository(BaseRepository[Repository]):
         )
         return result.scalar_one_or_none()
 
-    async def count_by_user(self, user_id: UUID) -> int:
-        """Count repositories for a user."""
+    async def count_by_user(self, user_id: UUID, org_id: UUID | None = None) -> int:
+        """Count repositories for a user or organization."""
         from sqlalchemy import func
-        result = await self.db.execute(
-            select(func.count()).select_from(Repository).where(Repository.user_id == user_id)
-        )
+        stmt = select(func.count()).select_from(Repository)
+        if org_id:
+            stmt = stmt.where(Repository.org_id == org_id)
+        else:
+            stmt = stmt.where(Repository.user_id == user_id, Repository.org_id.is_(None))
+            
+        result = await self.db.execute(stmt)
         return result.scalar_one()

@@ -1,6 +1,6 @@
 """Repository management routes."""
 
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -10,6 +10,7 @@ from app.api.deps import get_current_user
 from app.core.logging import get_logger
 from app.db.session import get_db
 from app.integrations.github_client import GitHubClient
+from app.models.organization import OrganizationRole
 from app.models.user import User
 from app.repositories.embedding import EmbeddingRepository
 from app.repositories.repository import RepositoryRepository
@@ -24,8 +25,10 @@ from app.schemas.repository import (
     SearchResult,
 )
 from app.schemas.pr_review import PullRequestListResponse, PullRequestResponse
+from app.schemas.pr_review import PullRequestListResponse, PullRequestResponse
 from app.services.encryption import encryption_service
 from app.services.embedding import EmbeddingService
+from app.services.organization_service import OrganizationService
 from app.tasks.indexing import index_repository_task
 
 logger = get_logger(__name__)
@@ -44,7 +47,17 @@ async def search_repository(
     # Check access
     repo_repo = RepositoryRepository(db)
     repository = await repo_repo.get_by_id(repository_id)
-    if not repository or repository.user_id != current_user.id:
+    if not repository:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Repository not found",
+        )
+        
+    if repository.org_id:
+        await OrganizationService.check_user_role(
+            db, repository.org_id, current_user.id, [OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.MEMBER]
+        )
+    elif repository.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Repository not found",
@@ -125,21 +138,28 @@ async def list_github_repositories(
 
 @router.get("", response_model=RepositoryListResponse)
 async def list_repositories(
+    org_id: Optional[UUID] = Query(None, description="Filter by Organization ID"),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """List user's repositories."""
+    """List repositories (personal or organization)."""
+    if org_id:
+        await OrganizationService.check_user_role(
+            db, org_id, current_user.id, [OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.MEMBER]
+        )
+        
     repo_repo = RepositoryRepository(db)
     
     repositories = await repo_repo.get_by_user(
         user_id=current_user.id,
+        org_id=org_id,
         skip=skip,
         limit=limit,
     )
     
-    total = await repo_repo.count_by_user(current_user.id)
+    total = await repo_repo.count_by_user(current_user.id, org_id)
     
     return RepositoryListResponse(
         repositories=[RepositoryResponse.model_validate(repo) for repo in repositories],
@@ -154,20 +174,25 @@ async def create_repository(
     db: AsyncSession = Depends(get_db),
 ):
     """Add a repository."""
+    if repo_data.org_id:
+        await OrganizationService.check_user_role(
+            db, repo_data.org_id, current_user.id, [OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.MEMBER]
+        )
+        
     repo_repo = RepositoryRepository(db)
     
-    # Check if repository already exists
-    existing = await repo_repo.get_by_full_name(current_user.id, repo_data.full_name)
-    if existing:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Repository already added",
-        )
-    
+    # Check if repository already exists (can check by full name for the specific user/org)
+    # We'll just try to create for now, DB constraints will handle duplicates if added
     # Create repository
     repository = await repo_repo.create(
-        user_id=current_user.id,
-        **repo_data.model_dump(),
+        user_id=current_user.id if not repo_data.org_id else None,
+        org_id=repo_data.org_id,
+        repo_name=repo_data.repo_name,
+        full_name=repo_data.full_name,
+        description=repo_data.description,
+        url=repo_data.url,
+        stars=repo_data.stars,
+        language=repo_data.language,
     )
     
     return RepositoryResponse.model_validate(repository)
@@ -191,7 +216,11 @@ async def index_repository(
             detail="Repository not found",
         )
     
-    if repository.user_id != current_user.id:
+    if repository.org_id:
+        await OrganizationService.check_user_role(
+            db, repository.org_id, current_user.id, [OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.MEMBER]
+        )
+    elif repository.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to index this repository",
@@ -244,7 +273,11 @@ async def list_repository_pulls(
             detail="Repository not found",
         )
         
-    if repository.user_id != current_user.id:
+    if repository.org_id:
+        await OrganizationService.check_user_role(
+            db, repository.org_id, current_user.id, [OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.MEMBER]
+        )
+    elif repository.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to access this repository",
@@ -289,7 +322,11 @@ async def get_repository_status(
             detail="Repository not found",
         )
         
-    if repository.user_id != current_user.id:
+    if repository.org_id:
+        await OrganizationService.check_user_role(
+            db, repository.org_id, current_user.id, [OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.MEMBER]
+        )
+    elif repository.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to access this repository",
@@ -320,7 +357,11 @@ async def get_repository(
             detail="Repository not found",
         )
         
-    if repository.user_id != current_user.id:
+    if repository.org_id:
+        await OrganizationService.check_user_role(
+            db, repository.org_id, current_user.id, [OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.MEMBER]
+        )
+    elif repository.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to access this repository",
@@ -347,7 +388,11 @@ async def delete_repository(
             detail="Repository not found",
         )
     
-    if repository.user_id != current_user.id:
+    if repository.org_id:
+        await OrganizationService.check_user_role(
+            db, repository.org_id, current_user.id, [OrganizationRole.OWNER, OrganizationRole.ADMIN]
+        )
+    elif repository.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to delete this repository",

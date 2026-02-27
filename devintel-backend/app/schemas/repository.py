@@ -20,8 +20,7 @@ class RepositoryBase(BaseModel):
 
 class RepositoryCreate(RepositoryBase):
     """Repository creation schema."""
-
-    pass
+    org_id: Optional[UUID] = Field(None, description="Optional Organization ID")
 
 
 class SearchResult(BaseModel):
@@ -45,7 +44,8 @@ class RepositoryResponse(RepositoryBase):
     """Repository response schema."""
 
     id: UUID
-    user_id: UUID
+    user_id: Optional[UUID] = None
+    org_id: Optional[UUID] = None
     indexed_status: bool
     last_indexed_at: Optional[datetime] = None
     indexing_error: Optional[str] = None

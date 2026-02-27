@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user
 from app.core.logging import get_logger
 from app.db.session import get_db
+from app.models.organization import OrganizationRole
 from app.models.user import User
 from app.repositories.analytics import AnalyticsRepository
 from app.repositories.chat import ChatRepository
@@ -32,6 +33,7 @@ from app.schemas.chat import (
 from app.services.agent import AgentService
 from app.services.chat import ChatService
 from app.services.encryption import encryption_service
+from app.services.organization_service import OrganizationService
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/chat", tags=["Chat"])
@@ -47,7 +49,17 @@ async def get_chat_history(
     # Check repo access
     repo_repo = RepositoryRepository(db)
     repository = await repo_repo.get_by_id(repository_id)
-    if not repository or repository.user_id != current_user.id:
+    if not repository:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Repository not found",
+        )
+        
+    if repository.org_id:
+        await OrganizationService.check_user_role(
+            db, repository.org_id, current_user.id, [OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.MEMBER]
+        )
+    elif repository.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Repository not found",
@@ -57,6 +69,7 @@ async def get_chat_history(
     chats = await chat_repo.get_by_user_and_repo(
         user_id=current_user.id,
         repo_id=repository_id,
+        org_id=repository.org_id,
         limit=50,
     )
 
@@ -100,7 +113,15 @@ async def stream_chat_response(
                 yield f"data: {json.dumps({'error': 'Repository not found'})}\n\n"
                 return
             
-            if repository.user_id != current_user.id:
+            if repository.org_id:
+                try:
+                    await OrganizationService.check_user_role(
+                        db, repository.org_id, current_user.id, [OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.MEMBER]
+                    )
+                except Exception:
+                    yield f"data: {json.dumps({'error': 'Not authorized'})}\n\n"
+                    return
+            elif repository.user_id != current_user.id:
                 yield f"data: {json.dumps({'error': 'Not authorized'})}\n\n"
                 return
             
@@ -147,6 +168,7 @@ async def stream_chat_response(
             chat = await chat_repo.create(
                 user_id=current_user.id,
                 repo_id=chat_request.repository_id,
+                org_id=repository.org_id,
                 question=chat_request.question,
                 response=full_response,
                 token_usage=total_tokens,
@@ -194,7 +216,11 @@ async def agent_draft(
     if not repository:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Repository not found")
         
-    if repository.user_id != current_user.id:
+    if repository.org_id:
+        await OrganizationService.check_user_role(
+            db, repository.org_id, current_user.id, [OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.MEMBER]
+        )
+    elif repository.user_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
         
     if not current_user.github_access_token_encrypted:
@@ -234,7 +260,11 @@ async def agent_execute(
     if not repository:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Repository not found")
         
-    if repository.user_id != current_user.id:
+    if repository.org_id:
+        await OrganizationService.check_user_role(
+            db, repository.org_id, current_user.id, [OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.MEMBER]
+        )
+    elif repository.user_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
         
     if not current_user.github_access_token_encrypted:

@@ -66,8 +66,10 @@ export interface RepoStatusResponse {
 }
 
 /** List the user's connected (saved) repositories. */
-export const getRepositories = async (): Promise<RepoListResponse> => {
-    return apiClient.get<RepoListResponse>('/api/v1/repos');
+export const getRepositories = async (orgId?: string | null): Promise<RepoListResponse> => {
+    const params = new URLSearchParams();
+    if (orgId) params.append('org_id', orgId);
+    return apiClient.get<RepoListResponse>(`/api/v1/repos${params.toString() ? `?${params.toString()}` : ''}`);
 };
 
 /** Fetch repos from the user's GitHub account. */
@@ -83,6 +85,7 @@ export const connectRepository = async (data: {
     url: string;
     stars?: number;
     language?: string | null;
+    org_id?: string | null;
 }): Promise<RepoResponse> => {
     return apiClient.post<RepoResponse>('/api/v1/repos', data);
 };

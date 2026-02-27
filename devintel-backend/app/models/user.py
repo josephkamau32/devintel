@@ -1,11 +1,17 @@
 """User model."""
 
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDMixin
+
+if TYPE_CHECKING:
+    from app.models.analytics import Analytics
+    from app.models.chat import Chat
+    from app.models.organization import OrganizationMember
+    from app.models.repository import Repository
 
 
 class User(Base, UUIDMixin, TimestampMixin):
@@ -41,6 +47,12 @@ class User(Base, UUIDMixin, TimestampMixin):
         "Analytics",
         back_populates="user",
         uselist=False,
+        cascade="all, delete-orphan",
+        lazy="raise",
+    )
+    organizations: Mapped[List["OrganizationMember"]] = relationship(
+        "OrganizationMember",
+        back_populates="user",
         cascade="all, delete-orphan",
         lazy="raise",
     )

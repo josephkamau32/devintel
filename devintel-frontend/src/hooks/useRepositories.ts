@@ -9,6 +9,7 @@ import {
     type RepoResponse,
     type GitHubRepo,
 } from '@/lib/api';
+import { useOrganization } from '@/contexts/OrganizationContext';
 
 const POLL_INTERVAL_MS = 3000;
 
@@ -38,6 +39,8 @@ interface UseRepositoriesReturn {
 }
 
 export function useRepositories(): UseRepositoriesReturn {
+    const { currentOrganization } = useOrganization();
+
     const [repos, setRepos] = useState<RepoResponse[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -118,7 +121,7 @@ export function useRepositories(): UseRepositoriesReturn {
         setLoading(true);
         setError(null);
         try {
-            const data = await getRepositories();
+            const data = await getRepositories(currentOrganization?.id);
             setRepos(data.repositories);
         } catch (e: any) {
             const msg = e?.response?.data?.detail || e?.message || 'Failed to load repositories';
@@ -130,7 +133,7 @@ export function useRepositories(): UseRepositoriesReturn {
 
     useEffect(() => {
         refresh();
-    }, [refresh]);
+    }, [refresh, currentOrganization?.id]);
 
     // --- GitHub repo list (on-demand) -------------------------------------------
 
@@ -159,6 +162,7 @@ export function useRepositories(): UseRepositoriesReturn {
                 url: ghRepo.clone_url || ghRepo.url,
                 stars: ghRepo.stars,
                 language: ghRepo.language,
+                org_id: currentOrganization?.id || null, // Associate with current org
             });
 
             // Add to local state immediately
@@ -180,7 +184,7 @@ export function useRepositories(): UseRepositoriesReturn {
 
             return newRepo;
         },
-        [startPolling],
+        [startPolling, currentOrganization?.id],
     );
 
     // --- Delete ------------------------------------------------------------------

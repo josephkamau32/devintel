@@ -1,7 +1,7 @@
 """Pytest configuration and shared fixtures for testing."""
 
 import asyncio
-from typing import AsyncGenerator, Generator
+from typing import AsyncGenerator, Generator, Optional
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -20,6 +20,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from app.core.config import settings
+settings.database_url = "sqlite+aiosqlite:///:memory:"
+
 from app.db.base import Base
 from app.db.session import get_db
 from app.main import app

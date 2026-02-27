@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { User, Key, CreditCard, Moon, Sun, Loader2 } from "lucide-react";
+import { Building2, CreditCard, Key, Loader2, Moon, Sun, User } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
 import { toast } from "sonner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import OrganizationsSettings from "./Settings/Organizations";
 
 export default function SettingsPage() {
   const [darkMode, setDarkMode] = useState(true);
@@ -70,97 +72,110 @@ export default function SettingsPage() {
         <p className="mt-1 text-sm text-muted-foreground">Manage your account and preferences</p>
       </div>
 
-      {/* Profile */}
-      <div className="rounded-xl border border-border bg-card p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <User className="h-4 w-4 text-muted-foreground" />
-          <h2 className="font-semibold text-card-foreground">Profile</h2>
-        </div>
-        <div className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="text-sm font-medium text-foreground">Full name</label>
-              <input
-                type="text"
-                value={userName}
-                onChange={(e) => setUserName(e.target.value)}
-                placeholder="Your name"
-                className="mt-1.5 h-9 w-full rounded-md border border-input bg-accent px-3 text-sm text-foreground outline-none focus:border-primary transition-colors"
-              />
+      <Tabs defaultValue="general" className="w-full">
+        <TabsList className="mb-6 grid w-full grid-cols-2 md:w-[400px]">
+          <TabsTrigger value="general">General</TabsTrigger>
+          <TabsTrigger value="organizations">Organizations</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="general" className="space-y-6 mt-0">
+          {/* Profile */}
+          <div className="rounded-xl border border-border bg-card p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <User className="h-4 w-4 text-muted-foreground" />
+              <h2 className="font-semibold text-card-foreground">Profile</h2>
             </div>
-            <div>
-              <label className="text-sm font-medium text-foreground">Email</label>
-              <input
-                type="email"
-                value={userEmail}
-                onChange={(e) => setUserEmail(e.target.value)}
-                placeholder="your.email@example.com"
-                className="mt-1.5 h-9 w-full rounded-md border border-input bg-accent px-3 text-sm text-foreground outline-none focus:border-primary transition-colors"
-              />
+            <div className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="text-sm font-medium text-foreground">Full name</label>
+                  <input
+                    type="text"
+                    value={userName}
+                    onChange={(e) => setUserName(e.target.value)}
+                    placeholder="Your name"
+                    className="mt-1.5 h-9 w-full rounded-md border border-input bg-accent px-3 text-sm text-foreground outline-none focus:border-primary transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-foreground">Email</label>
+                  <input
+                    type="email"
+                    value={userEmail}
+                    onChange={(e) => setUserEmail(e.target.value)}
+                    placeholder="your.email@example.com"
+                    className="mt-1.5 h-9 w-full rounded-md border border-input bg-accent px-3 text-sm text-foreground outline-none focus:border-primary transition-colors"
+                  />
+                </div>
+              </div>
+              <Button size="sm" onClick={handleSaveProfile} disabled={isLoading}>
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Save Changes
+              </Button>
             </div>
           </div>
-          <Button size="sm" onClick={handleSaveProfile} disabled={isLoading}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Save Changes
-          </Button>
-        </div>
-      </div>
 
-      {/* API Usage */}
-      <div className="rounded-xl border border-border bg-card p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Key className="h-4 w-4 text-muted-foreground" />
-          <h2 className="font-semibold text-card-foreground">API Usage</h2>
-        </div>
-        <div className="space-y-3">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">AI Queries</span>
-            <span className="text-foreground">48 / 50</span>
+          {/* API Usage */}
+          <div className="rounded-xl border border-border bg-card p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Key className="h-4 w-4 text-muted-foreground" />
+              <h2 className="font-semibold text-card-foreground">API Usage</h2>
+            </div>
+            <div className="space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">AI Queries</span>
+                <span className="text-foreground">48 / 50</span>
+              </div>
+              <div className="h-2 rounded-full bg-muted">
+                <div className="h-2 rounded-full bg-primary" style={{ width: "96%" }} />
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Repositories</span>
+                <span className="text-foreground">5 / 3</span>
+              </div>
+              <div className="h-2 rounded-full bg-muted">
+                <div className="h-2 rounded-full bg-warning" style={{ width: "100%" }} />
+              </div>
+            </div>
           </div>
-          <div className="h-2 rounded-full bg-muted">
-            <div className="h-2 rounded-full bg-primary" style={{ width: "96%" }} />
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Repositories</span>
-            <span className="text-foreground">5 / 3</span>
-          </div>
-          <div className="h-2 rounded-full bg-muted">
-            <div className="h-2 rounded-full bg-warning" style={{ width: "100%" }} />
-          </div>
-        </div>
-      </div>
 
-      {/* Billing */}
-      <div className="rounded-xl border border-border bg-card p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <CreditCard className="h-4 w-4 text-muted-foreground" />
-          <h2 className="font-semibold text-card-foreground">Billing</h2>
-        </div>
-        <p className="text-sm text-muted-foreground">You are on the <span className="font-medium text-foreground">Free Plan</span>.</p>
-        <Button className="mt-3" size="sm">Upgrade to Pro — $29/mo</Button>
-      </div>
-
-      {/* Theme */}
-      <div className="rounded-xl border border-border bg-card p-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {darkMode ? <Moon className="h-4 w-4 text-muted-foreground" /> : <Sun className="h-4 w-4 text-muted-foreground" />}
-            <h2 className="font-semibold text-card-foreground">Appearance</h2>
+          {/* Billing */}
+          <div className="rounded-xl border border-border bg-card p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <CreditCard className="h-4 w-4 text-muted-foreground" />
+              <h2 className="font-semibold text-card-foreground">Billing</h2>
+            </div>
+            <p className="text-sm text-muted-foreground">You are on the <span className="font-medium text-foreground">Free Plan</span>.</p>
+            <Button className="mt-3" size="sm">Upgrade to Pro — $29/mo</Button>
           </div>
-          <button
-            onClick={toggleTheme}
-            className="relative h-6 w-11 rounded-full bg-muted transition-colors"
-          >
-            <span
-              className={`absolute top-0.5 h-5 w-5 rounded-full bg-primary transition-transform ${darkMode ? "left-[22px]" : "left-0.5"
-                }`}
-            />
-          </button>
-        </div>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {darkMode ? "Dark mode is enabled" : "Light mode is enabled"}
-        </p>
-      </div>
+
+          {/* Theme */}
+          <div className="rounded-xl border border-border bg-card p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {darkMode ? <Moon className="h-4 w-4 text-muted-foreground" /> : <Sun className="h-4 w-4 text-muted-foreground" />}
+                <h2 className="font-semibold text-card-foreground">Appearance</h2>
+              </div>
+              <button
+                onClick={toggleTheme}
+                className="relative h-6 w-11 rounded-full bg-muted transition-colors"
+              >
+                <span
+                  className={`absolute top-0.5 h-5 w-5 rounded-full bg-primary transition-transform ${darkMode ? "left-[22px]" : "left-0.5"
+                    }`}
+                />
+              </button>
+            </div>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {darkMode ? "Dark mode is enabled" : "Light mode is enabled"}
+            </p>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="organizations" className="mt-0">
+          <OrganizationsSettings />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

@@ -21,15 +21,18 @@ class ChatRepository(BaseRepository[Chat]):
         self,
         user_id: UUID,
         repo_id: UUID,
+        org_id: UUID | None = None,
         skip: int = 0,
         limit: int = 50,
     ) -> List[Chat]:
-        """Get chat history for a user and repository."""
+        """Get chat history for a user (or org) and repository."""
+        stmt = select(Chat).where(Chat.repo_id == repo_id)
+        if org_id:
+            stmt = stmt.where(Chat.org_id == org_id)
+        else:
+            stmt = stmt.where(Chat.user_id == user_id)
+            
         result = await self.db.execute(
-            select(Chat)
-            .where(Chat.user_id == user_id, Chat.repo_id == repo_id)
-            .offset(skip)
-            .limit(limit)
-            .order_by(Chat.created_at.desc())
+            stmt.offset(skip).limit(limit).order_by(Chat.created_at.desc())
         )
         return list(result.scalars().all())

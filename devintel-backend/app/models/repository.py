@@ -13,6 +13,7 @@ from app.db.base import Base, TimestampMixin, UUIDMixin
 if TYPE_CHECKING:
     from app.models.chat import Chat
     from app.models.embedding import Embedding
+    from app.models.organization import Organization
     from app.models.user import User
 
 
@@ -21,11 +22,17 @@ class Repository(Base, UUIDMixin, TimestampMixin):
 
     __tablename__ = "repositories"
 
-    # Foreign key to user
-    user_id: Mapped[UUID] = mapped_column(
+    # Foreign keys
+    user_id: Mapped[Optional[UUID]] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
+        index=True,
+    )
+    org_id: Mapped[Optional[UUID]] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=True,
         index=True,
     )
 
@@ -44,7 +51,8 @@ class Repository(Base, UUIDMixin, TimestampMixin):
     indexing_progress: Mapped[int] = mapped_column(default=0, nullable=False)  # 0-100
 
     # Relationships
-    user: Mapped["User"] = relationship("User", back_populates="repositories")
+    user: Mapped[Optional["User"]] = relationship("User", back_populates="repositories")
+    organization: Mapped[Optional["Organization"]] = relationship("Organization", back_populates="repositories")
     embeddings: Mapped[List["Embedding"]] = relationship(
         "Embedding",
         back_populates="repository",

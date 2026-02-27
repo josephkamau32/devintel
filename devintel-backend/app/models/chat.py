@@ -10,6 +10,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base, TimestampMixin, UUIDMixin
 
 if TYPE_CHECKING:
+    from app.models.organization import Organization
     from app.models.repository import Repository
     from app.models.user import User
 
@@ -32,6 +33,12 @@ class Chat(Base, UUIDMixin, TimestampMixin):
         nullable=False,
         index=True,
     )
+    org_id: Mapped[Optional[UUID]] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
 
     # Chat content
     question: Mapped[str] = mapped_column(Text, nullable=False)
@@ -44,6 +51,7 @@ class Chat(Base, UUIDMixin, TimestampMixin):
     # Relationships
     user: Mapped["User"] = relationship("User", back_populates="chats")
     repository: Mapped["Repository"] = relationship("Repository", back_populates="chats")
+    organization: Mapped[Optional["Organization"]] = relationship("Organization")
 
     def __repr__(self) -> str:
         """String representation."""

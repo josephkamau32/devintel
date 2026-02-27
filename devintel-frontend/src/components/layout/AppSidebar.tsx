@@ -12,8 +12,20 @@ import {
   Zap,
   X,
   Search,
+  Building2,
+  User,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useOrganization } from "@/contexts/OrganizationContext";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  SelectGroup,
+  SelectLabel,
+} from "@/components/ui/select";
 
 const navItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
@@ -33,17 +45,21 @@ interface AppSidebarProps {
 export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+  const { organizations, currentOrganization, setCurrentOrganizationId } = useOrganization();
 
   const sidebarContent = (
     <>
       {/* Logo */}
-      <div className="flex h-14 items-center gap-2 border-b border-border px-4">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary">
-          <Zap className="h-4 w-4 text-primary-foreground" />
+      <div className="flex h-14 items-center justify-between border-b border-border px-4">
+        <div className="flex items-center gap-2">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary">
+            <Zap className="h-4 w-4 text-primary-foreground" />
+          </div>
+          {!collapsed && (
+            <span className="text-sm font-semibold text-foreground">DevIntel AI</span>
+          )}
         </div>
-        {!collapsed && (
-          <span className="text-sm font-semibold text-foreground">DevIntel AI</span>
-        )}
+
         {/* Close on mobile, collapse on desktop */}
         <button
           onClick={() => {
@@ -53,7 +69,7 @@ export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
               setCollapsed(!collapsed);
             }
           }}
-          className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
         >
           <span className="md:hidden"><X className="h-4 w-4" /></span>
           <span className="hidden md:block">
@@ -61,6 +77,51 @@ export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
           </span>
         </button>
       </div>
+
+      {/* Organization Switcher */}
+      {!collapsed && (
+        <div className="p-4 border-b border-border">
+          <Select
+            value={currentOrganization?.id || "personal"}
+            onValueChange={(value) => {
+              setCurrentOrganizationId(value === "personal" ? null : value);
+            }}
+          >
+            <SelectTrigger className="w-full h-9 bg-accent/50 border-0 focus:ring-1 focus:ring-primary/20">
+              <SelectValue placeholder="Select Context" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value="personal">
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <span>Personal</span>
+                  </div>
+                </SelectItem>
+              </SelectGroup>
+
+              {organizations.length > 0 && (
+                <SelectGroup>
+                  <SelectLabel className="text-xs font-medium text-muted-foreground flex items-center gap-2 mt-2 px-2">
+                    <Building2 className="h-3 w-3" /> Organizations
+                  </SelectLabel>
+                  {organizations.map((org) => (
+                    <SelectItem key={org.id} value={org.id}>
+                      <div className="flex items-center gap-2">
+                        <div className="flex h-5 w-5 items-center justify-center rounded bg-primary/10 text-primary text-[10px] font-bold uppercase">
+                          {org.name.substring(0, 2)}
+                        </div>
+                        <span className="truncate">{org.name}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              )}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
 
       {/* Navigation */}
       <nav className="flex-1 space-y-1 p-2">
