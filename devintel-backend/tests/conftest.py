@@ -139,6 +139,37 @@ async def auth_headers(test_user_token: str) -> dict:
 
 
 @pytest_asyncio.fixture
+async def active_user(db_session: AsyncSession) -> User:
+    """Create a second (active) test user in the database."""
+    user = User(
+        github_id="active_github_456",
+        email="active@example.com",
+        name="Active User",
+        username="activeuser",
+        avatar_url="https://avatars.githubusercontent.com/u/456",
+        github_access_token_encrypted="active_token_xyz789",
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    return user
+
+
+@pytest_asyncio.fixture
+async def active_user_token(active_user: User) -> str:
+    """Create a JWT token for the active user."""
+    return create_access_token(
+        data={"sub": str(active_user.id), "email": active_user.email}
+    )
+
+
+@pytest_asyncio.fixture
+async def active_user_auth_headers(active_user_token: str) -> dict:
+    """Create authentication headers for the active (second) test user."""
+    return {"Authorization": f"Bearer {active_user_token}"}
+
+
+@pytest_asyncio.fixture
 async def test_repository(db_session: AsyncSession, test_user: User) -> Repository:
     """Create a test repository in the database."""
     repository = Repository(

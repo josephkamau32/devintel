@@ -56,9 +56,11 @@ class OrganizationService:
         )
         db.add(member)
         await db.commit()
-        await db.refresh(org)
-        
-        return org
+
+        # Re-fetch with joinedload so that `members` relationship is available
+        # (the model uses lazy='raise' which would break serialization)
+        loaded_org = await OrganizationService.get_organization(db, org.id)
+        return loaded_org
 
     @staticmethod
     async def get_organization(db: AsyncSession, org_id: UUID) -> Optional[Organization]:
@@ -131,8 +133,9 @@ class OrganizationService:
             org.name = org_update.name
             
         await db.commit()
-        await db.refresh(org)
-        return org
+        # Re-fetch with joinedload so that `members` relationship is available
+        loaded_org = await OrganizationService.get_organization(db, org_id)
+        return loaded_org
 
     @staticmethod
     async def add_member(
