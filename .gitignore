@@ -171,3 +171,30 @@ brain/
 
 # Gemini artifacts
 .gemini/
+
+# ==========================================
+# PRODUCTION DEPLOYMENT
+# ==========================================
+
+# Production secrets - never commit these
+.env.production
+
+# Nginx SSL certificates
+nginx/ssl/*.pem
+nginx/ssl/*.key
+nginx/ssl/*.crt
+
+# Nginx logs
+nginx/logs/
+
+# Database backup files
+backups/
+
+# Leftover temp test/log files
+devintel-backend/test_output.txt
+devintel-backend/test_result*.log
+devintel-backend/pytest_out.txt
+devintel-backend/verify_*.py
+devintel-frontend/*.log
+devintel-frontend/lint_*.txt
+devintel-frontend/err.*

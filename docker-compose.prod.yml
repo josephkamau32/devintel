@@ -11,21 +11,21 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-devintel_db}
     volumes:
       - postgres_data_prod:/var/lib/postgresql/data
-      - ./backups:/backups # For database backups
-    ports:
-      - "5432:5432"
+      - ./backups:/backups
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-devintel}" ]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - devintel-network
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
 
-  # Redis for caching and queues
+  # Redis for caching and Celery queues
   redis:
     image: redis:7-alpine
     restart: unless-stopped
@@ -33,13 +33,13 @@ services:
       redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru --appendonly yes
     volumes:
       - redis_data_prod:/data
-    ports:
-      - "6379:6379"
     healthcheck:
       test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - devintel-network
     logging:
       driver: "json-file"
       options:
@@ -75,6 +75,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    networks:
+      - devintel-network
     logging:
       driver: "json-file"
       options:
@@ -86,7 +88,7 @@ services:
           cpus: '2'
           memory: 2G
 
-  # Celery Worker
+  # Celery Worker (handles repository indexing tasks)
   worker:
     build:
       context: ./devintel-backend
@@ -109,11 +111,13 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD-SHELL", "celery -A app.tasks.celery inspect ping" ]
+      test: [ "CMD-SHELL", "celery -A app.tasks.celery inspect ping -d celery@$$HOSTNAME" ]
       interval: 60s
-      timeout: 10s
+      timeout: 15s
       retries: 3
       start_period: 60s
+    networks:
+      - devintel-network
     logging:
       driver: "json-file"
       options:
@@ -125,9 +129,11 @@ services:
           cpus: '4'
           memory: 4G
 
-  # Nginx Reverse Proxy
+  # Nginx Reverse Proxy + Frontend serving
+  # Note: Place your SSL certs at ./nginx/ssl/fullchain.pem and ./nginx/ssl/privkey.pem
+  #       Or use Let's Encrypt with certbot. Build the frontend first: cd devintel-frontend && npm run build
   nginx:
-    image: nginx:alpine
+    image: nginx:1.25-alpine
     restart: unless-stopped
     ports:
       - "80:80"
@@ -138,14 +144,17 @@ services:
       - ./nginx/ssl:/etc/nginx/ssl:ro
       - ./nginx/logs:/var/log/nginx
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    networks:
+      - devintel-network
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
 
-  # Prometheus for metrics
+  # Prometheus metrics
   prometheus:
     image: prom/prometheus:latest
     restart: unless-stopped
@@ -158,6 +167,8 @@ services:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
       - '--storage.tsdb.retention.time=30d'
+    networks:
+      - devintel-network
     logging:
       driver: "json-file"
       options:
@@ -168,3 +179,8 @@ volumes:
   postgres_data_prod:
   redis_data_prod:
   prometheus_data:
+
+
+networks:
+  devintel-network:
+    driver: bridge
