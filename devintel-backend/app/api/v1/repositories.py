@@ -25,7 +25,6 @@ from app.schemas.repository import (
     SearchResult,
 )
 from app.schemas.pr_review import PullRequestListResponse, PullRequestResponse
-from app.schemas.pr_review import PullRequestListResponse, PullRequestResponse
 from app.services.encryption import encryption_service
 from app.services.embedding import EmbeddingService
 from app.services.organization_service import OrganizationService
@@ -181,8 +180,18 @@ async def create_repository(
         
     repo_repo = RepositoryRepository(db)
     
-    # Check if repository already exists (can check by full name for the specific user/org)
-    # We'll just try to create for now, DB constraints will handle duplicates if added
+    # Prevent duplicate repositories for the same user/org
+    existing = await repo_repo.get_by_full_name(
+        full_name=repo_data.full_name,
+        user_id=current_user.id if not repo_data.org_id else None,
+        org_id=repo_data.org_id,
+    )
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Repository '{repo_data.full_name}' is already connected to this account.",
+        )
+    
     # Create repository
     repository = await repo_repo.create(
         user_id=current_user.id if not repo_data.org_id else None,
@@ -193,6 +202,7 @@ async def create_repository(
         url=repo_data.url,
         stars=repo_data.stars,
         language=repo_data.language,
+        default_branch=repo_data.default_branch,
     )
     
     return RepositoryResponse.model_validate(repository)

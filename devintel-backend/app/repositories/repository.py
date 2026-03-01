@@ -33,16 +33,20 @@ class RepositoryRepository(BaseRepository[Repository]):
             .order_by(Repository.created_at.desc())
         )
         return list(result.scalars().all())
-        return list(result.scalars().all())
 
-    async def get_by_full_name(self, user_id: UUID, full_name: str) -> Repository | None:
-        """Get repository by full name for a specific user."""
-        result = await self.db.execute(
-            select(Repository).where(
-                Repository.user_id == user_id,
-                Repository.full_name == full_name,
-            )
-        )
+    async def get_by_full_name(
+        self,
+        full_name: str,
+        user_id: UUID | None = None,
+        org_id: UUID | None = None,
+    ) -> Repository | None:
+        """Get repository by full name scoped to user or org (for duplicate detection)."""
+        stmt = select(Repository).where(Repository.full_name == full_name)
+        if org_id:
+            stmt = stmt.where(Repository.org_id == org_id)
+        else:
+            stmt = stmt.where(Repository.user_id == user_id, Repository.org_id.is_(None))
+        result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
     async def count_by_user(self, user_id: UUID, org_id: UUID | None = None) -> int:

@@ -43,6 +43,7 @@ class Repository(Base, UUIDMixin, TimestampMixin):
     url: Mapped[str] = mapped_column(String(500), nullable=False)
     stars: Mapped[int] = mapped_column(default=0, nullable=False)
     language: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    default_branch: Mapped[str] = mapped_column(String(255), default="main", server_default="main", nullable=False)
 
     # Indexing status
     indexed_status: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

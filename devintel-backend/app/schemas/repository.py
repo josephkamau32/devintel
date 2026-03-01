@@ -16,6 +16,7 @@ class RepositoryBase(BaseModel):
     url: str = Field(..., description="Repository URL")
     stars: int = Field(default=0, description="Number of stars")
     language: Optional[str] = None
+    default_branch: str = Field(default="main", description="Default branch name (e.g. main, master)")
 
 
 class RepositoryCreate(RepositoryBase):

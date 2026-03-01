@@ -279,7 +279,7 @@ async def agent_execute(
         result = await agent_service.execute_pr(
             repository=repository,
             draft_payload=draft_dict,
-            default_branch=repository.default_branch if hasattr(repository, "default_branch") else "main"
+            default_branch=repository.default_branch
         )
         return AgentExecuteResponse(**result)
     except Exception as e:

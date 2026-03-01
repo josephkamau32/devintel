@@ -39,12 +39,14 @@ class TestRepositoryEndpoints:
             "repo_name": "newrepo",
             "full_name": "newuser/newrepo",
             "url": "https://github.com/newuser/newrepo.git",
+            "default_branch": "main",
         }
         response = await authenticated_client.post("/api/v1/repos", json=payload)
         assert response.status_code == 200
         data = response.json()
         assert data["full_name"] == payload["full_name"]
         assert data["indexed_status"] is False
+        assert data["default_branch"] == "main"
 
     @pytest.mark.asyncio
     async def test_add_duplicate_repository(
@@ -57,7 +59,22 @@ class TestRepositoryEndpoints:
             "url": test_repository.url,
         }
         response = await authenticated_client.post("/api/v1/repos", json=payload)
+        assert response.status_code == 409  # Conflict
+        data = response.json()
+        assert "already connected" in data["detail"]
+
+    @pytest.mark.asyncio
+    async def test_search_not_indexed_returns_400(
+        self, authenticated_client: AsyncClient, test_repository: Repository
+    ):
+        """Test that search on an un-indexed repository returns 400."""
+        response = await authenticated_client.get(
+            f"/api/v1/repos/{test_repository.id}/search",
+            params={"q": "authentication logic"},
+        )
         assert response.status_code == 400
+        data = response.json()
+        assert "not indexed" in data["detail"].lower()
 
     @pytest.mark.asyncio
     async def test_trigger_indexing(

@@ -164,10 +164,11 @@ async def _index_repository_async(
             from app.services.cache import cache
             await cache.delete_pattern(f"embed:{repo_id}:*")
             
-            # Update analytics counter
-            from app.repositories.analytics import AnalyticsRepository
-            analytics_repo = AnalyticsRepository(db)
-            await analytics_repo.increment_repositories_indexed(repo.user_id)
+            # Update analytics counter (only for personal repos; org repos don't have a direct user_id)
+            if repo.user_id:
+                from app.repositories.analytics import AnalyticsRepository
+                analytics_repo = AnalyticsRepository(db)
+                await analytics_repo.increment_repositories_indexed(repo.user_id)
             
             await db.commit()
             logger.info(f"Successfully indexed repository: {repo_id} ({len(chunks)} chunks)")

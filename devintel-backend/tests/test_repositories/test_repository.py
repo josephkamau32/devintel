@@ -32,8 +32,8 @@ async def test_get_by_full_name(db_session, test_user, test_repository):
     repo_repo = RepositoryRepository(db_session)
     
     repo = await repo_repo.get_by_full_name(
-        test_user.id,
-        test_repository.full_name
+        full_name=test_repository.full_name,
+        user_id=test_user.id,
     )
     
     assert repo is not None
