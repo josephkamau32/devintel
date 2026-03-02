@@ -5,10 +5,10 @@ import { getCurrentUser, getDisplayName, logout, type AuthUser } from "@/lib/aut
 
 interface AppHeaderProps {
   onMenuClick: () => void;
+  onSearchClick: () => void;
 }
 
-export function AppHeader({ onMenuClick }: AppHeaderProps) {
-  const [searchFocused, setSearchFocused] = useState(false);
+export function AppHeader({ onMenuClick, onSearchClick }: AppHeaderProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [user, setUser] = useState<AuthUser | null>(getCurrentUser());
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -48,15 +48,13 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
 
         <div className="relative w-full max-w-md">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Search repositories, files, or ask AI..."
-            className={`h-9 w-full rounded-md border bg-accent pl-9 pr-4 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-colors ${searchFocused ? "border-primary" : "border-border"
-              }`}
-            onFocus={() => setSearchFocused(true)}
-            onBlur={() => setSearchFocused(false)}
-          />
-          <kbd className="absolute right-3 top-1/2 -translate-y-1/2 rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground hidden sm:inline">
+          <button
+            onClick={onSearchClick}
+            className={`h-9 w-full rounded-md border border-border bg-accent pl-9 pr-4 text-sm text-left text-muted-foreground outline-none transition-colors hover:border-primary cursor-text`}
+          >
+            Search pages and actions...
+          </button>
+          <kbd className="absolute right-3 top-1/2 -translate-y-1/2 rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground hidden sm:inline pointer-events-none">
             ⌘K
           </kbd>
         </div>
