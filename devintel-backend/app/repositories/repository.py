@@ -60,3 +60,14 @@ class RepositoryRepository(BaseRepository[Repository]):
             
         result = await self.db.execute(stmt)
         return result.scalar_one()
+
+    async def get_by_full_name_any(self, full_name: str) -> Repository | None:
+        """Get a repository by full_name without user scope.
+
+        Used by the webhook handler which has no authenticated user context —
+        returns the first connected repo matching the GitHub full name.
+        """
+        stmt = select(Repository).where(Repository.full_name == full_name).limit(1)
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+

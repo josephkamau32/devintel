@@ -9,7 +9,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
-from app.api.v1 import analytics, auth, chat, organizations, pr_review, repositories
+from app.api.v1 import analytics, auth, chat, organizations, pr_review, repositories, webhooks
 from app.core.config import settings
 from app.core.exceptions import DevIntelException
 from app.core.logging import get_logger, setup_logging
@@ -123,6 +123,7 @@ app.include_router(
     prefix=f"{settings.api_v1_prefix}/organizations",
     tags=["organizations"],
 )
+app.include_router(webhooks.router, prefix=settings.api_v1_prefix)
 
 
 # Root endpoint

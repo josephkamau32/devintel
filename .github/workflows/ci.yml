@@ -24,25 +24,20 @@ jobs:
           node-version: '18'
       
       - name: Install dependencies
-        working-directory: ./devintel-frontend
         run: npm ci
       
       - name: Lint code
-        working-directory: ./devintel-frontend
         run: npm run lint || echo "Linting issues found"
       
       - name: Setup environment variables
-        working-directory: ./devintel-frontend
         run: |
           echo "VITE_API_URL=http://localhost:8000" > .env
       
       - name: Build Frontend
-        working-directory: ./devintel-frontend
         run: npm run build
       
       - name: Run tests (if any)
-        working-directory: ./devintel-frontend
-        run: npm run test || echo "No tests configured yet"
+        run: npm run test --if-present || echo "No tests configured yet"
 
   # ==========================================
   # Backend Validation
@@ -211,7 +206,6 @@ jobs:
           node-version: '18'
       
       - name: NPM Security Audit
-        working-directory: ./devintel-frontend
         run: |
           npm install
           npm audit --audit-level=moderate || true

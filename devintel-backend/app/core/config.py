@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     github_client_id: str = Field(..., alias="GITHUB_CLIENT_ID")
     github_client_secret: str = Field(..., alias="GITHUB_CLIENT_SECRET")
     github_redirect_uri: str = Field(..., alias="GITHUB_REDIRECT_URI")
+    # Optional: set to a random secret in GitHub webhook settings for HMAC validation
+    github_webhook_secret: str = Field(default="", alias="GITHUB_WEBHOOK_SECRET")
+
 
     # OpenAI
     openai_api_key: str = Field(..., alias="OPENAI_API_KEY")

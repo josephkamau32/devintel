@@ -1,0 +1,133 @@
+name: Deploy to Production
+
+# Trigger on pushes to main after CI passes, or manually via workflow_dispatch
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment target'
+        required: true
+        default: 'production'
+        type: choice
+        options: [production, staging]
+
+# Prevent parallel deploys (wait for any in-progress deploy to finish)
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # ──────────────────────────────────────────────
+  # 1. Build frontend production bundle
+  # ──────────────────────────────────────────────
+  build-frontend:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set production env
+        run: |
+          echo "VITE_API_URL=${{ secrets.VITE_API_URL }}" > .env
+          echo "VITE_APP_ENV=production" >> .env
+
+      - name: Build
+        run: npm run build
+
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: dist/
+          retention-days: 1
+
+  # ──────────────────────────────────────────────
+  # 2. Deploy to VPS via SSH
+  # ──────────────────────────────────────────────
+  deploy:
+    name: Deploy to ${{ github.event.inputs.environment || 'production' }}
+    runs-on: ubuntu-latest
+    needs: build-frontend
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download frontend dist
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: dist/
+
+      # Copy the built frontend to the server
+      - name: Upload frontend dist to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "dist/"
+          target: "/opt/devintel/dist/"
+          strip_components: 1
+
+      # SSH in and do the deploy
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            cd /opt/devintel
+
+            echo "📦 Pulling latest code..."
+            git pull origin main
+
+            echo "🔨 Building and starting services..."
+            docker compose -f docker-compose.prod.yml pull --quiet
+            docker compose -f docker-compose.prod.yml up --build -d --remove-orphans
+
+            echo "⏳ Waiting for backend to be healthy..."
+            for i in $(seq 1 12); do
+              if curl -sf http://localhost:8000/health > /dev/null; then
+                echo "✅ Backend is healthy"
+                break
+              fi
+              if [ $i -eq 12 ]; then
+                echo "❌ Backend health check failed after 60s"
+                docker compose -f docker-compose.prod.yml logs --tail=50 backend
+                exit 1
+              fi
+              sleep 5
+            done
+
+            echo "🧹 Cleaning up old images..."
+            docker image prune -f
+
+            echo "🚀 Deploy complete!"
+
+      - name: Notify success
+        if: success()
+        run: |
+          echo "✅ Deployment to production completed successfully"
+          echo "Commit: ${{ github.sha }}"
+          echo "Triggered by: ${{ github.actor }}"
+
+      - name: Notify failure
+        if: failure()
+        run: |
+          echo "❌ Deployment FAILED"
+          echo "Commit: ${{ github.sha }}"
+          echo "Check logs above for details"

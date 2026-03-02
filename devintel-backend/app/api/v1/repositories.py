@@ -315,6 +315,54 @@ async def list_repository_pulls(
         )
 
 
+@router.get("/{repository_id}/pulls/{pr_number}/diff")
+async def get_pull_request_diff(
+    repository_id: UUID,
+    pr_number: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get the unified diff for a pull request.
+
+    Returns raw patch text so the frontend can render a syntax-highlighted diff.
+    """
+    repo_repo = RepositoryRepository(db)
+    repository = await repo_repo.get_by_id(repository_id)
+
+    if not repository:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Repository not found",
+        )
+
+    if repository.org_id:
+        await OrganizationService.check_user_role(
+            db, repository.org_id, current_user.id,
+            [OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.MEMBER],
+        )
+    elif repository.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access this repository",
+        )
+
+    token = _get_github_token(current_user)
+    github_client = GitHubClient(token)
+
+    try:
+        diff_text = await github_client.get_pull_request_diff(
+            full_name=repository.full_name,
+            pr_number=pr_number,
+        )
+        return {"diff": diff_text, "pr_number": pr_number, "repository": repository.full_name}
+    except Exception as e:
+        logger.error(f"Failed to fetch diff for PR #{pr_number} in {repository.full_name}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Failed to fetch pull request diff from GitHub",
+        )
+
+
 @router.get("/{repository_id}/status", response_model=RepositoryStatusResponse)
 async def get_repository_status(
     repository_id: UUID,
