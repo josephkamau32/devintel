@@ -35,6 +35,17 @@ export interface ChatMessageData {
     role: 'user' | 'assistant';
     content: string;
     timestamp: string;
+    tokenUsage?: number;
+    responseTimeMs?: number;
+}
+
+export interface AnalyticsDashboard {
+    total_queries: number;
+    total_tokens: number;
+    total_repos_indexed: number;
+    usage_trend: { date: string; queries: number }[];
+    top_repositories: { repo_name: string; queries: number }[];
+    last_active_at: string | null;
 }
 
 export interface PullRequest {
