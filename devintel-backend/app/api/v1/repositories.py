@@ -26,6 +26,8 @@ from app.schemas.repository import (
 from app.schemas.pr_review import PullRequestListResponse, PullRequestResponse
 from app.services.encryption import encryption_service
 from app.services.embedding import EmbeddingService
+from app.services.organization_service import OrganizationService
+from app.models.organization import OrganizationRole
 from app.tasks.indexing import index_repository_task
 
 logger = get_logger(__name__)
