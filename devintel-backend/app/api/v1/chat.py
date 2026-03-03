@@ -11,10 +11,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, check_repo_access
 from app.core.logging import get_logger
 from app.db.session import get_db
-from app.models.organization import OrganizationRole
 from app.models.user import User
 from app.repositories.analytics import AnalyticsRepository
 from app.repositories.chat import ChatRepository
@@ -54,16 +53,8 @@ async def get_chat_history(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Repository not found",
         )
-        
-    if repository.org_id:
-        await OrganizationService.check_user_role(
-            db, repository.org_id, current_user.id, [OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.MEMBER]
-        )
-    elif repository.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Repository not found",
-        )
+
+    await check_repo_access(repository, current_user, db)
 
     chat_repo = ChatRepository(db)
     chats = await chat_repo.get_by_user_and_repo(
@@ -112,16 +103,11 @@ async def stream_chat_response(
             if not repository:
                 yield f"data: {json.dumps({'error': 'Repository not found'})}\n\n"
                 return
-            
-            if repository.org_id:
-                try:
-                    await OrganizationService.check_user_role(
-                        db, repository.org_id, current_user.id, [OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.MEMBER]
-                    )
-                except Exception:
-                    yield f"data: {json.dumps({'error': 'Not authorized'})}\n\n"
-                    return
-            elif repository.user_id != current_user.id:
+
+            # Authorization check
+            try:
+                await check_repo_access(repository, current_user, db)
+            except Exception:
                 yield f"data: {json.dumps({'error': 'Not authorized'})}\n\n"
                 return
             
@@ -215,13 +201,8 @@ async def agent_draft(
     
     if not repository:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Repository not found")
-        
-    if repository.org_id:
-        await OrganizationService.check_user_role(
-            db, repository.org_id, current_user.id, [OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.MEMBER]
-        )
-    elif repository.user_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+
+    await check_repo_access(repository, current_user, db)
         
     if not current_user.github_access_token_encrypted:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="GitHub token not found. Please re-authenticate.")
@@ -259,13 +240,8 @@ async def agent_execute(
     
     if not repository:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Repository not found")
-        
-    if repository.org_id:
-        await OrganizationService.check_user_role(
-            db, repository.org_id, current_user.id, [OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.MEMBER]
-        )
-    elif repository.user_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+
+    await check_repo_access(repository, current_user, db)
         
     if not current_user.github_access_token_encrypted:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="GitHub token not found. Please re-authenticate.")

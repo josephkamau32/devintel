@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { toast } from "sonner";
 import {
   Search,
@@ -68,6 +68,16 @@ export default function RepositoriesPage() {
   const [connecting, setConnecting] = useState<string | null>(null); // full_name being connected
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [reindexingId, setReindexingId] = useState<string | null>(null);
+
+  // Close modal on Escape key
+  useEffect(() => {
+    if (!showModal) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowModal(false);
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [showModal]);
 
   const filtered = useMemo(
     () => repos.filter((r) => r.full_name.toLowerCase().includes(search.toLowerCase())),

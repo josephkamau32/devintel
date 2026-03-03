@@ -3,7 +3,8 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
 import {
   GitPullRequest, Plus, Minus, ChevronRight, Check, MessageSquare,
-  Loader2, AlertCircle, ShieldAlert, Zap, Search, LayoutList
+  Loader2, AlertCircle, ShieldAlert, Zap, Search, LayoutList, RefreshCw,
+  ExternalLink
 } from "lucide-react";
 import { useRepositories } from "@/hooks/useRepositories";
 import { usePullRequests } from "@/hooks/usePullRequests";
@@ -15,7 +16,7 @@ const prStatusVariant = (s: string) =>
 export default function PullRequestsPage() {
   const { repos, loading: reposLoading } = useRepositories();
   const [selectedRepoId, setSelectedRepoId] = useState<string | null>(null);
-  const { pulls, loading: pullsLoading, error, fetchPulls, performReview, reviewing } = usePullRequests(selectedRepoId || undefined);
+  const { pulls, loading: pullsLoading, error, fetchPulls, performReview, reviewing, reviewError } = usePullRequests(selectedRepoId || undefined);
 
   const [selectedPr, setSelectedPr] = useState<PullRequest | null>(null);
   const [reviewResults, setReviewResults] = useState<Record<number, PRReviewResponse>>({});
@@ -95,8 +96,8 @@ export default function PullRequestsPage() {
                 key={pr.number}
                 onClick={() => setSelectedPr(pr)}
                 className={`w-full rounded-xl border p-4 text-left transition-colors ${selectedPr?.number === pr.number
-                    ? "border-primary bg-primary/5"
-                    : "border-border bg-card hover:border-primary/30"
+                  ? "border-primary bg-primary/5"
+                  : "border-border bg-card hover:border-primary/30"
                   }`}
               >
                 <div className="flex items-start justify-between">
@@ -129,16 +130,18 @@ export default function PullRequestsPage() {
                 <div>
                   <h2 className="text-lg font-semibold text-card-foreground leading-tight">{selectedPr.title}</h2>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    #{selectedPr.number} • Created {new Date(selectedPr.created_at).toLocaleString()}
+                    #{selectedPr.number} • by {selectedPr.author} • {new Date(selectedPr.created_at).toLocaleString()}
                   </p>
                 </div>
                 <a
                   href={selectedPr.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-2 rounded-lg bg-accent text-accent-foreground hover:bg-accent/80 transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent text-accent-foreground hover:bg-accent/80 transition-colors text-xs font-medium"
+                  title="Open PR on GitHub"
                 >
-                  <Search className="h-4 w-4" />
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  View on GitHub
                 </a>
               </div>
 
@@ -263,10 +266,32 @@ export default function PullRequestsPage() {
                     </div>
                   </div>
 
+                  {reviewError && (
+                    <div className="flex items-center gap-3 p-3 rounded-lg bg-destructive/5 border border-destructive/20 text-destructive text-sm">
+                      <AlertCircle className="h-4 w-4 shrink-0" />
+                      <p>{reviewError}</p>
+                    </div>
+                  )}
+
                   <div className="flex gap-3 pt-4 border-t border-border">
-                    <Button className="gap-2" variant="outline"><Check className="h-4 w-4" /> Approve PR</Button>
-                    <Button variant="ghost" className="text-muted-foreground hover:text-foreground" onClick={() => handleReview(selectedPr)}>
-                      <RefreshCw className="h-4 w-4 mr-2" />
+                    <Button
+                      className="gap-2"
+                      variant="outline"
+                      onClick={() => window.open(selectedPr.url, '_blank', 'noopener,noreferrer')}
+                    >
+                      <Check className="h-4 w-4" /> Approve on GitHub
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="text-muted-foreground hover:text-foreground gap-2"
+                      onClick={() => handleReview(selectedPr)}
+                      disabled={reviewing !== null}
+                    >
+                      {reviewing === selectedPr.number ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4" />
+                      )}
                       Re-run Analysis
                     </Button>
                   </div>
@@ -285,25 +310,4 @@ export default function PullRequestsPage() {
   );
 }
 
-// Helper icons
-function RefreshCw(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-      <path d="M21 3v5h-5" />
-      <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-      <path d="M3 21v-5h5" />
-    </svg>
-  )
-}
+

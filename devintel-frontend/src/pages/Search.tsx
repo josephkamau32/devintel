@@ -128,10 +128,11 @@ export default function SearchPage() {
                                             {Math.round(result.similarity * 100)}% Match
                                         </span>
                                         <a
-                                            href={selectedRepo?.url + '/blob/main/' + result.file_path}
+                                            href={`${selectedRepo?.url}/blob/${selectedRepo?.default_branch ?? 'main'}/${result.file_path}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="text-muted-foreground hover:text-primary transition-colors"
+                                            title="View file on GitHub"
                                         >
                                             <ExternalLink className="h-3.5 w-3.5" />
                                         </a>

@@ -34,6 +34,7 @@ export interface RepoResponse {
     url: string;
     stars: number;
     language: string | null;
+    default_branch: string;
     indexed_status: boolean;
     last_indexed_at: string | null;
     indexing_error: string | null;

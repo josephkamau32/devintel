@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Send, GitBranch, Loader2, Database, AlertCircle, Trash2 } from "lucide-react";
 import { ChatMessage } from "@/components/shared/ChatMessage";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,15 @@ export default function AIChatPage() {
 
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-resize textarea as user types
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.style.height = 'auto';
+    ta.style.height = `${Math.min(ta.scrollHeight, 200)}px`;
+  }, [input]);
 
   // Agent mode state
   const [isAgentMode, setIsAgentMode] = useState(false);
@@ -59,10 +68,14 @@ export default function AIChatPage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streamingContent, loading, agentLoading, agentDraft, agentResult, agentError]);
 
-  const handleSend = async () => {
+  const handleSend = useCallback(async () => {
     if (!input.trim() || loading || agentLoading || isExecuting || !selectedRepoId) return;
     const question = input.trim();
     setInput("");
+    // Reset textarea height after clearing
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+    }
 
     // Clear previous agent results if starting a new request
     setAgentError(null);
@@ -83,7 +96,15 @@ export default function AIChatPage() {
     } else {
       await sendMessage(question);
     }
-  };
+  }, [input, loading, agentLoading, isExecuting, selectedRepoId, isAgentMode, sendMessage]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Send on Enter (without Shift); allow Shift+Enter for newlines
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  }, [handleSend]);
 
   const executeDraft = async () => {
     if (!agentDraft || !selectedRepoId || isExecuting) return;
@@ -215,6 +236,14 @@ export default function AIChatPage() {
           </div>
         )}
 
+        {/* Agent error shown inline in message flow */}
+        {agentError && (
+          <div className="flex items-center gap-3 p-4 rounded-xl bg-destructive/5 border border-destructive/20 text-destructive text-sm animate-in fade-in duration-300">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <p>{agentError}</p>
+          </div>
+        )}
+
         {agentDraft && (
           <div className="flex gap-3">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
@@ -277,25 +306,29 @@ export default function AIChatPage() {
       {/* Input Area */}
       <div className="pt-2">
         <div className="relative group">
-          <input
-            type="text"
+          <textarea
+            ref={textareaRef}
+            rows={1}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSend()}
-            disabled={loading || !selectedRepoId}
-            placeholder={selectedRepoId ? "Ask about your codebase..." : "Select a repository to start chatting"}
-            className="h-12 w-full rounded-xl border border-input bg-card pl-4 pr-12 text-sm text-foreground shadow-sm placeholder:text-muted-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all disabled:opacity-50"
+            onKeyDown={handleKeyDown}
+            disabled={loading || agentLoading || isExecuting || !selectedRepoId}
+            placeholder={selectedRepoId ? (isAgentMode ? "Describe a change to implement..." : "Ask about your codebase...") : "Select a repository to start"}
+            aria-label="Chat input"
+            className="w-full resize-none rounded-xl border border-input bg-card pl-4 pr-12 py-3 text-sm text-foreground shadow-sm placeholder:text-muted-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all disabled:opacity-50 overflow-hidden leading-relaxed"
+            style={{ minHeight: '48px', maxHeight: '200px' }}
           />
           <button
             onClick={handleSend}
-            disabled={!input.trim() || loading || !selectedRepoId}
-            className="absolute right-2 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground disabled:opacity-50 transition-all hover:scale-105 active:scale-95"
+            disabled={!input.trim() || loading || agentLoading || isExecuting || !selectedRepoId}
+            aria-label="Send message"
+            className="absolute right-2 bottom-2 flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground disabled:opacity-50 transition-all hover:scale-105 active:scale-95"
           >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            {(loading || agentLoading) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </button>
         </div>
         <p className="mt-2 text-center text-[10px] text-muted-foreground uppercase tracking-widest font-medium">
-          Powered by DevIntel RAG Engine
+          {isAgentMode ? "Agent Mode · Enter to draft · Shift+Enter for newline" : "Powered by DevIntel RAG Engine · Shift+Enter for newline"}
         </p>
       </div>
     </div>

@@ -6,7 +6,7 @@ import json
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, check_repo_access
 from app.core.logging import get_logger
 from app.db.session import get_db
 from app.integrations.github_client import GitHubClient
@@ -36,18 +36,15 @@ async def review_pull_request(
     # Get repository
     repo_repo = RepositoryRepository(db)
     repository = await repo_repo.get_by_id(request.repository_id)
-    
+
     if not repository:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Repository not found",
         )
-    
-    if repository.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized",
-        )
+
+    # Authorization: use shared helper — handles both org and personal repos
+    await check_repo_access(repository, current_user, db)
     
     # Get diff (either from request or from GitHub)
     diff_content = request.pull_request_diff

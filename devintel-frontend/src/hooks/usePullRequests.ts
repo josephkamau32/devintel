@@ -5,7 +5,8 @@ export function usePullRequests(repositoryId?: string) {
     const [pulls, setPulls] = useState<PullRequest[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [reviewing, setReviewing] = useState<number | null>(null); // PR number being reviewed
+    const [reviewing, setReviewing] = useState<number | null>(null);
+    const [reviewError, setReviewError] = useState<string | null>(null);
 
     const fetchPulls = useCallback(async (id?: string) => {
         const targetId = id || repositoryId;
@@ -28,6 +29,7 @@ export function usePullRequests(repositoryId?: string) {
         if (!repositoryId) throw new Error("No repository selected");
 
         setReviewing(pr.number);
+        setReviewError(null);
         try {
             const result = await reviewPullRequest({
                 repository_id: repositoryId,
@@ -35,6 +37,10 @@ export function usePullRequests(repositoryId?: string) {
                 pr_title: pr.title,
             });
             return result;
+        } catch (e: any) {
+            const msg = e?.response?.data?.detail || e?.message || 'AI review failed. Please try again.';
+            setReviewError(msg);
+            throw e;
         } finally {
             setReviewing(null);
         }
@@ -45,7 +51,9 @@ export function usePullRequests(repositoryId?: string) {
         loading,
         error,
         reviewing,
+        reviewError,
         fetchPulls,
         performReview,
     };
 }
+

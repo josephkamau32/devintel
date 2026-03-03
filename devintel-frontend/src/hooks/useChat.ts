@@ -67,8 +67,9 @@ export function useChat(repositoryId?: string) {
 
             const decoder = new TextDecoder();
             let accumulatedResponse = '';
+            let streamError: string | null = null;
 
-            while (true) {
+            outer: while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
 
@@ -76,35 +77,52 @@ export function useChat(repositoryId?: string) {
                 const lines = chunk.split('\n');
 
                 for (const line of lines) {
-                    if (line.startsWith('data: ')) {
-                        try {
-                            const data = JSON.parse(line.slice(6));
-                            if (data.error) {
-                                throw new Error(data.error);
-                            }
-                            if (data.content) {
-                                accumulatedResponse += data.content;
-                                setStreamingContent(accumulatedResponse);
-                            }
-                            if (data.done) {
-                                // Add assistant message to history on completion
-                                setMessages(prev => [
-                                    ...prev,
-                                    { role: 'assistant', content: accumulatedResponse, timestamp: new Date().toISOString() }
-                                ]);
-                                setStreamingContent('');
-                            }
-                        } catch (e) {
-                            if (line.trim() !== 'data: [DONE]') {
-                                console.error('Error parsing SSE chunk:', e);
-                            }
-                        }
+                    if (!line.startsWith('data: ')) continue;
+
+                    const payload = line.slice(6).trim();
+                    if (payload === '[DONE]') break outer;
+
+                    let data: Record<string, unknown>;
+                    try {
+                        data = JSON.parse(payload);
+                    } catch {
+                        // Malformed chunk — skip silently
+                        continue;
+                    }
+
+                    // Backend sent an explicit error — surface it immediately
+                    if (data.error) {
+                        streamError = String(data.error);
+                        break outer;
+                    }
+
+                    if (data.content) {
+                        accumulatedResponse += String(data.content);
+                        setStreamingContent(accumulatedResponse);
+                    }
+
+                    if (data.done) {
+                        // Stream finished — persist assistant message
+                        setMessages(prev => [
+                            ...prev,
+                            { role: 'assistant', content: accumulatedResponse, timestamp: new Date().toISOString() }
+                        ]);
+                        setStreamingContent('');
                     }
                 }
             }
+
+            if (streamError) {
+                // Remove the optimistic user message so the UI is clean
+                setMessages(prev => prev.slice(0, -1));
+                setError(streamError);
+            }
+
         } catch (e: any) {
             if (e.name === 'AbortError') return;
-            const msg = e.message || 'Something went wrong';
+            // Remove the optimistic user message on hard failures too
+            setMessages(prev => prev.slice(0, -1));
+            const msg = e.message || 'Something went wrong. Please try again.';
             setError(msg);
         } finally {
             setLoading(false);

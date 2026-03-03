@@ -129,7 +129,7 @@ export function useRepositories(): UseRepositoriesReturn {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [currentOrganization?.id]);
 
     useEffect(() => {
         refresh();

@@ -93,7 +93,7 @@ export default function AnalyticsPage() {
               <Cpu className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Tok Usage</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Token Usage</p>
               <h3 className="text-2xl font-bold tabular-nums">{(data?.total_tokens || 0).toLocaleString()}</h3>
             </div>
           </div>

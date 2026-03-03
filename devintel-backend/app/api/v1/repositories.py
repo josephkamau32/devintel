@@ -6,11 +6,10 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, check_repo_access
 from app.core.logging import get_logger
 from app.db.session import get_db
 from app.integrations.github_client import GitHubClient
-from app.models.organization import OrganizationRole
 from app.models.user import User
 from app.repositories.embedding import EmbeddingRepository
 from app.repositories.repository import RepositoryRepository
@@ -27,7 +26,6 @@ from app.schemas.repository import (
 from app.schemas.pr_review import PullRequestListResponse, PullRequestResponse
 from app.services.encryption import encryption_service
 from app.services.embedding import EmbeddingService
-from app.services.organization_service import OrganizationService
 from app.tasks.indexing import index_repository_task
 
 logger = get_logger(__name__)
@@ -51,16 +49,8 @@ async def search_repository(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Repository not found",
         )
-        
-    if repository.org_id:
-        await OrganizationService.check_user_role(
-            db, repository.org_id, current_user.id, [OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.MEMBER]
-        )
-    elif repository.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Repository not found",
-        )
+
+    await check_repo_access(repository, current_user, db)
 
     if not repository.indexed_status:
         raise HTTPException(
@@ -225,16 +215,8 @@ async def index_repository(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Repository not found",
         )
-    
-    if repository.org_id:
-        await OrganizationService.check_user_role(
-            db, repository.org_id, current_user.id, [OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.MEMBER]
-        )
-    elif repository.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to index this repository",
-        )
+
+    await check_repo_access(repository, current_user, db)
     
     # Indexing mutex: prevent concurrent indexing of the same repo
     if 0 < repository.indexing_progress < 100:
@@ -282,16 +264,8 @@ async def list_repository_pulls(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Repository not found",
         )
-        
-    if repository.org_id:
-        await OrganizationService.check_user_role(
-            db, repository.org_id, current_user.id, [OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.MEMBER]
-        )
-    elif repository.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to access this repository",
-        )
+
+    await check_repo_access(repository, current_user, db)
     
     token = _get_github_token(current_user)
     github_client = GitHubClient(token)
@@ -335,16 +309,7 @@ async def get_pull_request_diff(
             detail="Repository not found",
         )
 
-    if repository.org_id:
-        await OrganizationService.check_user_role(
-            db, repository.org_id, current_user.id,
-            [OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.MEMBER],
-        )
-    elif repository.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to access this repository",
-        )
+    await check_repo_access(repository, current_user, db)
 
     token = _get_github_token(current_user)
     github_client = GitHubClient(token)
@@ -379,16 +344,8 @@ async def get_repository_status(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Repository not found",
         )
-        
-    if repository.org_id:
-        await OrganizationService.check_user_role(
-            db, repository.org_id, current_user.id, [OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.MEMBER]
-        )
-    elif repository.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to access this repository",
-        )
+
+    await check_repo_access(repository, current_user, db)
     
     return RepositoryStatusResponse(
         id=repository.id,
@@ -445,16 +402,9 @@ async def delete_repository(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Repository not found",
         )
-    
-    if repository.org_id:
-        await OrganizationService.check_user_role(
-            db, repository.org_id, current_user.id, [OrganizationRole.OWNER, OrganizationRole.ADMIN]
-        )
-    elif repository.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to delete this repository",
-        )
+
+    # Only owners/admins can delete org repos; personal repos require ownership
+    await check_repo_access(repository, current_user, db, write_access=True)
     
     # Delete repository (embeddings will cascade)
     await repo_repo.delete(repository_id)
