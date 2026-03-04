@@ -52,11 +52,24 @@ export async function signInWithEmail(email: string, password: string): Promise<
 /**
  * Exchange the OAuth code for tokens and store auth data.
  * Called from the AuthCallback page after GitHub redirects back.
+ *
+ * Uses raw fetch — NOT apiClient — so the 401 interceptor does not
+ * fire on this intentionally unauthenticated request.
  */
 export async function handleAuthCallback(code: string): Promise<AuthUser> {
-    const data = await apiClient.get<TokenResponse>(
-        `/api/v1/auth/github/callback?code=${encodeURIComponent(code)}`
+    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+    const response = await fetch(
+        `${API_BASE_URL}/api/v1/auth/github/callback?code=${encodeURIComponent(code)}`,
+        { method: 'GET', headers: { 'Content-Type': 'application/json' } }
     );
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Authentication failed (${response.status})`);
+    }
+
+    const data: TokenResponse = await response.json();
 
     // Store auth data in localStorage
     localStorage.setItem('access_token', data.access_token);

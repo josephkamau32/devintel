@@ -268,6 +268,8 @@ async def exchange_code_for_token(code: str) -> str:
                 "client_id": settings.github_client_id,
                 "client_secret": settings.github_client_secret,
                 "code": code,
+                # Must match the redirect_uri used in the authorization URL
+                "redirect_uri": settings.github_redirect_uri,
             },
         )
         

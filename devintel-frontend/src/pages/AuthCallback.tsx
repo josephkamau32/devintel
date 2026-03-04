@@ -1,8 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { apiClient } from "@/lib/api-client";
+import axios from "axios";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 interface TokenResponse {
     access_token: string;
@@ -20,8 +22,13 @@ export default function AuthCallback() {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const code = searchParams.get("code");
+    // Guard against double-invocation (React strict mode / fast-refresh)
+    const hasFetched = useRef(false);
 
     useEffect(() => {
+        if (hasFetched.current) return;
+        hasFetched.current = true;
+
         const exchangeCodeForToken = async () => {
             if (!code) {
                 navigate("/login");
@@ -29,26 +36,34 @@ export default function AuthCallback() {
             }
 
             try {
-                // Exchange code for token
-                // accurate path based on auth.py: @router.get("/github/callback") 
-                // We use apiClient.get which appends the base URL
-                const response = await apiClient.get<TokenResponse>(`/api/v1/auth/github/callback?code=${code}`);
+                // Use raw axios — NOT apiClient — so the 401 interceptor does
+                // not fire on this intentionally unauthenticated request.
+                const { data } = await axios.get<TokenResponse>(
+                    `${API_BASE_URL}/api/v1/auth/github/callback?code=${code}`
+                );
 
-                const { access_token, refresh_token, user } = response;
+                const { access_token, refresh_token, user } = data;
 
                 // Store auth data
                 localStorage.setItem("access_token", access_token);
                 localStorage.setItem("refresh_token", refresh_token);
                 localStorage.setItem("user", JSON.stringify(user));
 
-                // Dispatch event to update UI
+                // Notify the rest of the app
                 window.dispatchEvent(new CustomEvent("user-updated", { detail: user }));
 
                 toast.success(`Welcome back, ${user.name || "Developer"}!`);
                 navigate("/dashboard");
-            } catch (error) {
+            } catch (error: unknown) {
                 console.error("Auth callback error:", error);
-                toast.error("Authentication failed. Please try again.");
+
+                // Show a meaningful error if the backend gave one
+                const detail =
+                    axios.isAxiosError(error) && error.response?.data?.detail
+                        ? String(error.response.data.detail)
+                        : "Authentication failed. Please try again.";
+
+                toast.error(detail);
                 navigate("/login");
             }
         };

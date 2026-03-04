@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { handleAuthCallback } from "@/lib/auth";
 import { Zap, Loader2, AlertCircle } from "lucide-react";
@@ -10,8 +10,13 @@ export default function AuthCallback() {
     const error = searchParams.get("error");
     const [status, setStatus] = useState<"loading" | "error">("loading");
     const [errorMessage, setErrorMessage] = useState("");
+    // Guard: GitHub OAuth codes are one-time use — ensure we only exchange once
+    const hasFetched = useRef(false);
 
     useEffect(() => {
+        if (hasFetched.current) return;
+        hasFetched.current = true;
+
         const exchangeCode = async () => {
             // GitHub returned an error (e.g. user denied access)
             if (error) {

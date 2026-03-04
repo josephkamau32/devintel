@@ -113,7 +113,8 @@ class APIClient {
                 headers: this.getHeaders(),
             });
             if (response.ok) return response.json() as Promise<T>;
-            if (response.status === 401) return this.handleTokenRefresh<T>(doRequest);
+            // Skip token refresh for auth endpoints — they are intentionally unauthenticated
+            if (response.status === 401 && !url.includes('/auth/')) return this.handleTokenRefresh<T>(doRequest);
             const errorData = await response.json().catch(() => ({}));
             throw new Error(errorData.detail || errorData.message || `GET ${url} failed (${response.status})`);
         };

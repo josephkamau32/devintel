@@ -62,6 +62,11 @@ class APIClient {
                 };
 
                 // If 401 and not already retrying, attempt token refresh
+                // Skip auth endpoints — they are intentionally unauthenticated
+                if (originalRequest.url?.includes('/auth/')) {
+                    return Promise.reject(error);
+                }
+
                 if (error.response?.status === 401 && !originalRequest._retry) {
                     if (this.isRefreshing) {
                         // Queue this request while refresh is in progress

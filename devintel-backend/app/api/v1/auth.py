@@ -82,11 +82,16 @@ async def github_callback(
             user=UserResponse.model_validate(user),
         )
         
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"GitHub OAuth callback error: {e}")
+        # Log the full error so we can diagnose GitHub OAuth issues
+        logger.error(f"GitHub OAuth callback error: {type(e).__name__}: {e}")
+        # Surface the real reason to the caller (visible in browser console)
+        detail = str(e) if str(e) else "Authentication failed"
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication failed",
+            detail=detail,
         )
 
 
