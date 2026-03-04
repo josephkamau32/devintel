@@ -261,30 +261,47 @@ class GitHubClient:
 async def exchange_code_for_token(code: str) -> str:
     """Exchange OAuth code for access token."""
     async with httpx.AsyncClient() as client:
+        payload = {
+            "client_id": settings.github_client_id,
+            "client_secret": settings.github_client_secret,
+            "code": code,
+            # Must match the redirect_uri used in the authorization URL (step 1)
+            "redirect_uri": settings.github_redirect_uri,
+        }
+
+        # ── Diagnostic: print request params (redact secret) ──────────────────
+        safe_payload = {**payload, "client_secret": "***REDACTED***"}
+        print(f"\n[OAuth DEBUG] Exchanging code with GitHub:")
+        print(f"  Request payload: {safe_payload}")
+        # ──────────────────────────────────────────────────────────────────────
+
         response = await client.post(
             "https://github.com/login/oauth/access_token",
             headers={"Accept": "application/json"},
-            data={
-                "client_id": settings.github_client_id,
-                "client_secret": settings.github_client_secret,
-                "code": code,
-                # Must match the redirect_uri used in the authorization URL
-                "redirect_uri": settings.github_redirect_uri,
-            },
+            data=payload,
         )
-        
+
+        # ── Diagnostic: print raw GitHub response ──────────────────────────────
+        print(f"  GitHub response status: {response.status_code}")
+        print(f"  GitHub response body:   {response.text}")
+        # ──────────────────────────────────────────────────────────────────────
+
         if response.status_code != 200:
             raise ExternalServiceError(
-                message="Failed to exchange GitHub OAuth code",
-                details={"status_code": response.status_code},
+                message=f"GitHub token exchange failed (HTTP {response.status_code}): {response.text}",
+                details={"status_code": response.status_code, "body": response.text},
             )
-        
+
         data = response.json()
-        
+
         if "access_token" not in data:
+            # GitHub returned an error object, e.g. {"error": "bad_verification_code", ...}
+            github_error = data.get("error", "unknown_error")
+            github_desc  = data.get("error_description", "No description provided")
             raise ExternalServiceError(
-                message="No access token in GitHub response",
+                message=f"GitHub OAuth error: {github_error} — {github_desc}",
                 details=data,
             )
-        
+
         return data["access_token"]
+
