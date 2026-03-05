@@ -20,6 +20,7 @@ export default function AIChatPage() {
   const [selectedRepo, setSelectedRepo] = useState<Repository | null>(null);
   const [loadingRepos, setLoadingRepos] = useState(true);
   const [repoDropdownOpen, setRepoDropdownOpen] = useState(false);
+  const [sessionCost, setSessionCost] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -101,6 +102,9 @@ export default function AIChatPage() {
       const decoder = new TextDecoder();
       let fullContent = '';
       let finalTokenUsage: number | undefined;
+      let finalInputTokens: number | undefined;
+      let finalOutputTokens: number | undefined;
+      let finalCostUsd: number | undefined;
       let finalResponseTimeMs: number | undefined;
 
       const assistantMsgId = (Date.now() + 1).toString();
@@ -136,9 +140,11 @@ export default function AIChatPage() {
                   });
                 }
 
-                // Capture final stats from the done=true event
                 if (data.done && data.token_usage !== undefined) {
                   finalTokenUsage = data.token_usage;
+                  finalInputTokens = data.input_tokens;
+                  finalOutputTokens = data.output_tokens;
+                  finalCostUsd = data.cost_usd;
                   finalResponseTimeMs = data.response_time_ms;
                 }
               } catch (e) {
@@ -149,15 +155,25 @@ export default function AIChatPage() {
         }
       }
 
-      // Attach token/time stats to the final message
+      // Attach token/time/cost stats to the final message
       if (finalTokenUsage !== undefined) {
         setMessages((prev) =>
-          prev.map(m =>
+          prev.map((m) =>
             m.id === assistantMsgId
-              ? { ...m, tokenUsage: finalTokenUsage, responseTimeMs: finalResponseTimeMs }
+              ? {
+                ...m,
+                tokenUsage: finalTokenUsage,
+                inputTokens: finalInputTokens,
+                outputTokens: finalOutputTokens,
+                costUsd: finalCostUsd,
+                responseTimeMs: finalResponseTimeMs,
+              }
               : m
           )
         );
+        if (finalCostUsd) {
+          setSessionCost((prev) => prev + finalCostUsd!);
+        }
       }
 
       if (!fullContent) {
@@ -263,10 +279,18 @@ export default function AIChatPage() {
         {/* Spacer */}
         <div className="flex-1" />
 
+        {/* Session cost */}
+        {sessionCost > 0 && (
+          <span className="flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs text-muted-foreground">
+            <span className="text-emerald-400 font-medium">~${sessionCost.toFixed(5)}</span>
+            <span>this session</span>
+          </span>
+        )}
+
         {/* Clear conversation */}
         {messages.length > 0 && (
           <button
-            onClick={() => setMessages([])}
+            onClick={() => { setMessages([]); setSessionCost(0); }}
             title="Clear conversation"
             className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
           >

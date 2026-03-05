@@ -1,0 +1,91 @@
+{
+    "name": "devintel-vscode",
+    "displayName": "DevIntel AI",
+    "description": "AI-powered code intelligence directly in VS Code — RAG-based chat, code review, and search powered by your indexed repositories.",
+    "version": "1.0.0",
+    "publisher": "devintel",
+    "icon": "resources/icon.png",
+    "engines": {
+        "vscode": "^1.85.0"
+    },
+    "categories": [
+        "AI",
+        "Other"
+    ],
+    "keywords": [
+        "AI",
+        "code review",
+        "RAG",
+        "chat",
+        "GitHub"
+    ],
+    "activationEvents": [
+        "onStartupFinished"
+    ],
+    "main": "./dist/extension.js",
+    "contributes": {
+        "commands": [
+            {
+                "command": "devintel.ask",
+                "title": "DevIntel: Ask AI",
+                "icon": "$(sparkle)"
+            },
+            {
+                "command": "devintel.reviewFile",
+                "title": "DevIntel: Review Current File",
+                "icon": "$(eye)"
+            },
+            {
+                "command": "devintel.setApiToken",
+                "title": "DevIntel: Set API Token"
+            },
+            {
+                "command": "devintel.setApiUrl",
+                "title": "DevIntel: Set API Base URL"
+            }
+        ],
+        "viewsContainers": {
+            "activitybar": [
+                {
+                    "id": "devintel",
+                    "title": "DevIntel AI",
+                    "icon": "resources/sidebar-icon.svg"
+                }
+            ]
+        },
+        "views": {
+            "devintel": [
+                {
+                    "type": "webview",
+                    "id": "devintel.sidebar",
+                    "name": "DevIntel AI Chat"
+                }
+            ]
+        },
+        "menus": {
+            "editor/context": [
+                {
+                    "command": "devintel.reviewFile",
+                    "group": "devintel",
+                    "when": "editorHasSelection || editorTextFocus"
+                }
+            ]
+        }
+    },
+    "scripts": {
+        "compile": "webpack --mode development",
+        "watch": "webpack --mode development --watch",
+        "package": "webpack --mode production && vsce package",
+        "vscode:prepublish": "npm run package"
+    },
+    "dependencies": {},
+    "devDependencies": {
+        "@types/node": "^18.0.0",
+        "@types/vscode": "^1.85.0",
+        "@vscode/vsce": "^2.22.0",
+        "ts-loader": "^9.4.4",
+        "typescript": "^5.2.2",
+        "webpack": "^5.88.2",
+        "webpack-cli": "^5.1.4"
+    }
+}

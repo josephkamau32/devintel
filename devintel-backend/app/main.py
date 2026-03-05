@@ -9,7 +9,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
-from app.api.v1 import analytics, auth, chat, organizations, pr_review, repositories, webhooks
+from app.api.v1 import analytics, auth, chat, health_score, organizations, pr_review, repositories, webhooks, ws
 from app.core.config import settings
 from app.core.exceptions import DevIntelException
 from app.core.logging import get_logger, setup_logging
@@ -124,6 +124,8 @@ app.include_router(
     tags=["organizations"],
 )
 app.include_router(webhooks.router, prefix=settings.api_v1_prefix)
+app.include_router(health_score.router, prefix=settings.api_v1_prefix)
+app.include_router(ws.router)  # WebSocket routes don't use the /api/v1 prefix
 
 
 # Root endpoint

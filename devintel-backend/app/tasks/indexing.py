@@ -1,6 +1,7 @@
 """Background tasks for repository indexing."""
 
 import asyncio
+import json
 from datetime import datetime
 from uuid import UUID
 
@@ -17,6 +18,20 @@ from app.services.indexing import IndexingService
 from app.tasks.celery import celery
 
 logger = get_logger(__name__)
+
+
+async def _publish_progress(repo_id: str, progress: int, status: str) -> None:
+    """Publish indexing progress to Redis pub/sub channel for WebSocket clients."""
+    try:
+        import redis.asyncio as aioredis
+        from app.core.config import settings
+        r = aioredis.from_url(settings.redis_url, encoding="utf-8", decode_responses=True)
+        payload = json.dumps({"progress": progress, "status": status})
+        await r.publish(f"indexing:{repo_id}", payload)
+        await r.close()
+    except Exception as e:
+        # Progress publishing is best-effort — never fail indexing over it
+        logger.debug(f"Progress publish failed (non-critical): {e}")
 
 
 @celery.task(bind=True, max_retries=3)
@@ -79,6 +94,7 @@ async def _index_repository_async(
             # Update progress: Finished cloning
             await repo_repo.update(UUID(repo_id), indexing_progress=15)
             await db.commit()
+            await _publish_progress(repo_id, 15, "cloning")
             
             # Parse and chunk files
             logger.info(f"Parsing and chunking repository")
@@ -98,6 +114,7 @@ async def _index_repository_async(
             # Update progress: Finished parsing
             await repo_repo.update(UUID(repo_id), indexing_progress=30)
             await db.commit()
+            await _publish_progress(repo_id, 30, "parsing")
             
             # Delete old embeddings before re-indexing (prevents duplicates)
             deleted_count = await embedding_repo.delete_by_repo(UUID(repo_id))
@@ -108,6 +125,7 @@ async def _index_repository_async(
             # Update progress: Starting embedding
             await repo_repo.update(UUID(repo_id), indexing_progress=40)
             await db.commit()
+            await _publish_progress(repo_id, 40, "embedding")
 
             # Generate embeddings
             logger.info(f"Generating embeddings for {len(chunks)} chunks")
@@ -120,6 +138,7 @@ async def _index_repository_async(
                 progress = 40 + int((current / total) * 40)
                 await repo_repo.update(UUID(repo_id), indexing_progress=progress)
                 await db.commit()
+                await _publish_progress(repo_id, progress, "embedding")
 
             # 30 minute timeout for large embedding jobs
             embeddings = await asyncio.wait_for(
@@ -172,6 +191,13 @@ async def _index_repository_async(
             
             await db.commit()
             logger.info(f"Successfully indexed repository: {repo_id} ({len(chunks)} chunks)")
+
+            # Enqueue code health analysis (runs after indexing commit is flushed)
+            from app.tasks.code_health import compute_code_health_task
+            compute_code_health_task.apply_async(
+                args=[repo_id],
+                countdown=5,  # Brief delay to ensure DB commit is visible to the new task
+            )
             
         except asyncio.TimeoutError:
             error_msg = "Indexing timed out during processing (cloning or embedding)"

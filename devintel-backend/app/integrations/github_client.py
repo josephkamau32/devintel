@@ -143,6 +143,58 @@ class GitHubClient:
                 details={"error": str(e)},
             )
 
+    async def post_pull_request_comment(
+        self,
+        full_name: str,
+        pr_number: int,
+        body: str,
+    ) -> Dict[str, Any]:
+        """Post a comment on a pull request."""
+        try:
+            def _do_post_comment():
+                repo = self.client.get_repo(full_name)
+                pr = repo.get_pull(pr_number)
+                comment = pr.create_issue_comment(body)
+                return {"id": comment.id, "url": comment.html_url}
+
+            return await asyncio.to_thread(_do_post_comment)
+        except GithubException as e:
+            logger.error(f"Failed to post comment on PR #{pr_number} in {full_name}: {e}")
+            raise ExternalServiceError(
+                message="Failed to post PR comment to GitHub",
+                details={"error": str(e)},
+            )
+
+    async def get_pull_request_files(
+        self,
+        full_name: str,
+        pr_number: int,
+    ) -> List[Dict[str, Any]]:
+        """Get the list of files changed in a pull request with their patches."""
+        try:
+            def _do_get_files():
+                repo = self.client.get_repo(full_name)
+                pr = repo.get_pull(pr_number)
+                files = pr.get_files()
+                return [
+                    {
+                        "filename": f.filename,
+                        "status": f.status,  # added/modified/removed/renamed
+                        "additions": f.additions,
+                        "deletions": f.deletions,
+                        "patch": f.patch or "",  # unified diff patch (may be None for binary)
+                    }
+                    for f in files
+                ]
+
+            return await asyncio.to_thread(_do_get_files)
+        except GithubException as e:
+            logger.error(f"Failed to get files for PR #{pr_number} in {full_name}: {e}")
+            raise ExternalServiceError(
+                message="Failed to fetch PR files from GitHub",
+                details={"error": str(e)},
+            )
+
     def close(self) -> None:
         """Close client connections."""
         pass

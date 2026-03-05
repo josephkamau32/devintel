@@ -8,6 +8,7 @@ import {
   MessageSquare,
   GitPullRequest,
   BarChart3,
+  Shield,
   Settings,
   ChevronLeft,
   Zap,
@@ -20,6 +21,7 @@ const navItems = [
   { title: "My Repositories", url: "/repositories", icon: GitBranch },
   { title: "AI Chat", url: "/chat", icon: MessageSquare },
   { title: "Pull Requests", url: "/pull-requests", icon: GitPullRequest },
+  { title: "Code Health", url: "/code-health", icon: Shield },
   { title: "Analytics", url: "/analytics", icon: BarChart3 },
   { title: "Settings", url: "/settings", icon: Settings },
 ];

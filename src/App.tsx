@@ -15,6 +15,7 @@ import AIChat from "./pages/AIChat";
 import PullRequests from "./pages/PullRequests";
 import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
+import CodeHealth from "./pages/CodeHealth";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/chat" element={<AIChat />} />
             <Route path="/pull-requests" element={<PullRequests />} />
             <Route path="/analytics" element={<Analytics />} />
+            <Route path="/code-health" element={<CodeHealth />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
           <Route path="*" element={<NotFound />} />

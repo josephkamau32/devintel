@@ -3,7 +3,7 @@
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
-from sqlalchemy import ForeignKey, Integer, Text
+from sqlalchemy import ForeignKey, Integer, Numeric, Text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -47,6 +47,12 @@ class Chat(Base, UUIDMixin, TimestampMixin):
     # Analytics
     token_usage: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     response_time_ms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    # Cost tracking (GPT-4o pricing: $2.50/1M input, $10.00/1M output)
+    input_tokens: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    output_tokens: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    cost_usd: Mapped[Optional[float]] = mapped_column(
+        Numeric(precision=10, scale=8), nullable=True
+    )
 
     # Relationships
     user: Mapped["User"] = relationship("User", back_populates="chats")

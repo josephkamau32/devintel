@@ -144,10 +144,13 @@ async def stream_chat_response(
         
         # Calculate real token usage
         response_time_ms = int((time.time() - start_time) * 1000)
-        prompt_tokens = chat_service.count_tokens(chat_request.question)
-        response_tokens = chat_service.count_tokens(full_response)
-        total_tokens = prompt_tokens + response_tokens
-        
+        input_tokens = chat_service.count_tokens(chat_request.question)
+        output_tokens = chat_service.count_tokens(full_response)
+        total_tokens = input_tokens + output_tokens
+
+        # Calculate cost (GPT-4o pricing: $2.50/1M input tokens, $10.00/1M output tokens)
+        cost_usd = (input_tokens * 2.50 / 1_000_000) + (output_tokens * 10.00 / 1_000_000)
+
         # Save chat history in another short-lived session
         async with AsyncSessionLocal() as db:
             chat_repo = ChatRepository(db)
@@ -159,18 +162,21 @@ async def stream_chat_response(
                 response=full_response,
                 token_usage=total_tokens,
                 response_time_ms=response_time_ms,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                cost_usd=cost_usd,
             )
-            
+
             # Update analytics with real token count
             analytics_repo = AnalyticsRepository(db)
             await analytics_repo.increment_query_count(current_user.id, tokens=total_tokens)
-            
+
             await db.commit()
             chat_id_str = str(chat.id)
             # db session closes here
-        
-        # Send final chunk with token info
-        yield f"data: {json.dumps({'content': '', 'done': True, 'chat_id': chat_id_str, 'token_usage': total_tokens, 'response_time_ms': response_time_ms})}\n\n"
+
+        # Send final chunk with token info and cost
+        yield f"data: {json.dumps({'content': '', 'done': True, 'chat_id': chat_id_str, 'token_usage': total_tokens, 'input_tokens': input_tokens, 'output_tokens': output_tokens, 'cost_usd': round(cost_usd, 8), 'response_time_ms': response_time_ms})}\n\n"
         
     except Exception as e:
         logger.error(f"Chat streaming error: {e}", exc_info=True)
