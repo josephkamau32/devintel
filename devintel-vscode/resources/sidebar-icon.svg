@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none">
+  <!-- Background circle -->
+  <circle cx="12" cy="12" r="11" fill="#0d1117"/>
+  <!-- Lightning bolt — filled path -->
+  <path
+    d="M13.5 2.5 L7 13.5 L11.5 13.5 L10.5 21.5 L17 10.5 L12.5 10.5 Z"
+    fill="#3b82f6"
+    opacity="0.95"
+  />
+  <!-- Subtle inner glow -->
+  <path
+    d="M13.5 2.5 L7 13.5 L11.5 13.5 L10.5 21.5 L17 10.5 L12.5 10.5 Z"
+    fill="url(#bolt_glow)"
+    opacity="0.4"
+  />
+  <defs>
+    <radialGradient id="bolt_glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#818cf8" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#3b82f6" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+</svg>

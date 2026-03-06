@@ -50,6 +50,7 @@ export interface AnalyticsDashboard {
     usage_trend: { date: string; queries: number }[];
     top_repositories: { repo_name: string; queries: number }[];
     last_active_at: string | null;
+    monthly_cost?: { date: string; cost_usd: number }[];
 }
 
 export interface PullRequest {

@@ -1,0 +1,58 @@
+============================= test session starts =============================
+platform win32 -- Python 3.13.6, pytest-8.0.0, pluggy-1.6.0 -- C:\Program Files\Python313\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\HP\Documents\Projects\devintel\devintel-backend
+configfile: pyproject.toml
+plugins: anyio-4.10.0, Faker-22.6.0, langsmith-0.4.42, asyncio-0.23.5, cov-4.1.0, mock-3.12.0
+asyncio: mode=Mode.AUTO
+collecting ... collected 8 items
+
+tests/test_api/test_websocket.py::TestWebSocketAuth::test_rejects_missing_token FAILED [ 12%]
+tests/test_api/test_websocket.py::TestWebSocketAuth::test_rejects_invalid_token PASSED [ 25%]
+tests/test_api/test_websocket.py::TestWebSocketAuth::test_rejects_empty_string_token PASSED [ 37%]
+tests/test_api/test_websocket.py::TestWebSocketRouting::test_unknown_repo_sends_error_and_closes PASSED [ 50%]
+tests/test_api/test_websocket.py::TestWebSocketRouting::test_already_indexed_repo_sends_done_immediately PASSED [ 62%]
+tests/test_api/test_websocket.py::TestWebSocketRouting::test_unauthorized_user_gets_error PASSED [ 75%]
+tests/test_api/test_websocket.py::TestWebSocketRouting::test_valid_connection_sends_bootstrap_progress PASSED [ 87%]
+tests/test_api/test_websocket.py::TestWebSocketIntegration::test_receives_progress_event_from_redis_publish SKIPPED [100%]
+
+================================== FAILURES ===================================
+________________ TestWebSocketAuth.test_rejects_missing_token _________________
+tests\test_api\test_websocket.py:45: in test_rejects_missing_token
+    with client.websocket_connect(_ws_url(repo_id)) as ws:  # type: ignore[attr-defined]
+C:\Users\HP\AppData\Roaming\Python\Python313\site-packages\starlette\testclient.py:104: in __enter__
+    self._raise_on_close(message)
+C:\Users\HP\AppData\Roaming\Python\Python313\site-packages\starlette\testclient.py:161: in _raise_on_close
+    raise WebSocketDisconnect(
+E   starlette.websockets.WebSocketDisconnect: (1008, '')
+============================== warnings summary ===============================
+..\..\..\..\AppData\Roaming\Python\Python313\site-packages\starlette\formparsers.py:12
+  C:\Users\HP\AppData\Roaming\Python\Python313\site-packages\starlette\formparsers.py:12: PendingDeprecationWarning: Please use `import python_multipart` instead.
+    import multipart
+
+..\..\..\..\AppData\Roaming\Python\Python313\site-packages\pydantic\_internal\_config.py:295
+..\..\..\..\AppData\Roaming\Python\Python313\site-packages\pydantic\_internal\_config.py:295
+..\..\..\..\AppData\Roaming\Python\Python313\site-packages\pydantic\_internal\_config.py:295
+  C:\Users\HP\AppData\Roaming\Python\Python313\site-packages\pydantic\_internal\_config.py:295: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.10/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+app\api\v1\repositories.py:254
+  C:\Users\HP\Documents\Projects\devintel\devintel-backend\app\api\v1\repositories.py:254: DeprecationWarning: `regex` has been deprecated, please use `pattern` instead
+    state: str = Query("open", regex="^(open|closed|all)$"),
+
+tests/test_api/test_websocket.py::TestWebSocketAuth::test_rejects_missing_token
+  C:\Users\HP\AppData\Roaming\Python\Python313\site-packages\pytest_asyncio\plugin.py:769: DeprecationWarning: The event_loop fixture provided by pytest-asyncio has been redefined in
+  C:\Users\HP\Documents\Projects\devintel\devintel-backend\tests\conftest.py:50
+  Replacing the event_loop fixture with a custom implementation is deprecated
+  and will lead to errors in the future.
+  If you want to request an asyncio event loop with a scope other than function
+  scope, use the "scope" argument to the asyncio mark when marking the tests.
+  If you want to return different types of event loops, use the event_loop_policy
+  fixture.
+  
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_api/test_websocket.py::TestWebSocketAuth::test_rejects_missing_token
+============= 1 failed, 6 passed, 1 skipped, 6 warnings in 1.28s ==============

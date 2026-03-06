@@ -1,9 +1,16 @@
 """WebSocket endpoint for real-time repository indexing progress."""
 
 import json
+from uuid import UUID
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
+import redis.asyncio as aioredis
+from jose import JWTError, jwt
+
+from app.core.config import settings
 from app.core.logging import get_logger
+from app.db.session import AsyncSessionLocal
+from app.repositories.repository import RepositoryRepository
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["WebSocket"])
@@ -29,13 +36,6 @@ async def repo_indexing_progress(
     Message format (JSON):
         { "progress": 0-100, "status": "cloning" | "parsing" | "embedding" | "completing" | "done" | "error" }
     """
-    import redis.asyncio as aioredis
-    from jose import JWTError, jwt
-    from app.core.config import settings
-    from app.db.session import AsyncSessionLocal
-    from app.repositories.repository import RepositoryRepository
-    from app.api.deps import get_current_user_from_token
-
     # 1. Authenticate via query param token
     token = websocket.query_params.get("token", "")
     if not token:
