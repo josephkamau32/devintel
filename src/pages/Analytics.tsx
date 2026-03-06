@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { BarChart3, Loader2, MessageSquare, Coins, TrendingUp } from "lucide-react";
+import { BarChart3, Loader2, MessageSquare, Coins, TrendingUp, DollarSign } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
 import type { Repository, AnalyticsDashboard } from "@/lib/types";
 import {
@@ -80,6 +80,13 @@ export default function AnalyticsPage() {
     date: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
   }));
 
+  const monthlyCostData = ((analytics as any)?.monthly_cost || []).map(
+    (d: { date: string; cost_usd: number }) => ({
+      date: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      cost: d.cost_usd,
+    })
+  );
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -131,8 +138,15 @@ export default function AnalyticsPage() {
               <p className="text-3xl font-bold text-green-500">{indexedCount}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-5">
-              <p className="text-sm text-muted-foreground mb-2">Total Repos</p>
-              <p className="text-3xl font-bold text-foreground">{repos.length}</p>
+              <div className="flex items-center gap-2 mb-2">
+                <DollarSign className="h-4 w-4 text-emerald-400" />
+                <p className="text-sm text-muted-foreground">Total Spend</p>
+              </div>
+              <p className="text-3xl font-bold text-emerald-400">
+                {analytics?.total_cost_usd != null
+                  ? `$${analytics.total_cost_usd.toFixed(4)}`
+                  : '—'}
+              </p>
             </div>
           </div>
 
@@ -218,6 +232,40 @@ export default function AnalyticsPage() {
               </div>
             ) : null}
           </div>
+
+          {/* Cost Over Time chart */}
+          {monthlyCostData.length > 0 && (
+            <div className="rounded-xl border border-border bg-card p-5">
+              <h2 className="font-semibold text-card-foreground">Cost Over Time</h2>
+              <p className="mt-1 text-xs text-muted-foreground">Daily AI spend — last 30 days (USD)</p>
+              <div className="mt-4 h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={monthlyCostData}>
+                    <defs>
+                      <linearGradient id="costGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+                    <XAxis dataKey="date" tick={axisTickStyle} />
+                    <YAxis tick={axisTickStyle} tickFormatter={(v: number) => `$${v.toFixed(4)}`} />
+                    <Tooltip
+                      contentStyle={tooltipStyle}
+                      formatter={(v: number) => [`$${v.toFixed(5)}`, "Cost (USD)"]}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="cost"
+                      stroke="hsl(142, 71%, 45%)"
+                      strokeWidth={2}
+                      fill="url(#costGradient)"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
 
           {/* Second charts row */}
           <div className="grid gap-6 lg:grid-cols-2">

@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { Plus, Search, RefreshCw, Eye, Trash2, Github, Loader2, AlertCircle, Check } from "lucide-react";
+import { Plus, Search, RefreshCw, Trash2, Github, Loader2, AlertCircle, Check, Wifi } from "lucide-react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { apiClient } from "@/lib/api-client";
 import { toast } from "sonner";
 import type { Repository, GitHubRepo } from "@/lib/types";
+import { useIndexingProgress } from "@/hooks/useIndexingProgress";
 
 const statusVariant = (repo: Repository) => {
   if (repo.indexing_error) return "error";
@@ -13,13 +14,65 @@ const statusVariant = (repo: Repository) => {
   return "default";
 };
 
-const statusLabel = (repo: Repository) => {
+const statusLabel = (repo: Repository, liveProgress?: number) => {
   if (repo.indexing_error) return "Failed";
   if (repo.indexed_status) return "Indexed";
-  if (repo.indexing_progress > 0 && repo.indexing_progress < 100)
-    return `Indexing ${repo.indexing_progress}%`;
+  const p = liveProgress ?? repo.indexing_progress;
+  if (p > 0 && p < 100) return `Indexing ${p}%`;
   return "Not Indexed";
 };
+
+/** Sub-component: shows live WS progress for a repo being indexed */
+function RepoProgressRow({
+  repo,
+  onComplete,
+}: {
+  repo: Repository;
+  onComplete: () => void;
+}) {
+  const isIndexing =
+    !repo.indexed_status &&
+    repo.indexing_progress > 0 &&
+    repo.indexing_progress < 100;
+
+  const { progress, connected } = useIndexingProgress({
+    repoId: repo.id,
+    enabled: isIndexing,
+    onComplete,
+  });
+
+  const liveProgress = isIndexing && progress > 0 ? progress : repo.indexing_progress;
+  const displayVariant = repo.indexing_error
+    ? "error"
+    : repo.indexed_status
+      ? "success"
+      : liveProgress > 0 && liveProgress < 100
+        ? "warning"
+        : "default";
+
+  return (
+    <div className="flex items-center gap-2">
+      <StatusBadge
+        status={statusLabel(repo, isIndexing ? liveProgress : undefined)}
+        variant={displayVariant}
+      />
+      {isIndexing && connected && (
+        <Wifi
+          className="h-3 w-3 text-emerald-400 animate-pulse"
+          aria-label="Live WebSocket progress"
+        />
+      )}
+      {repo.indexing_error && (
+        <div className="group relative">
+          <AlertCircle className="h-4 w-4 text-destructive cursor-help" />
+          <div className="absolute bottom-full left-1/2 mb-2 hidden -translate-x-1/2 rounded bg-destructive px-2 py-1 text-[10px] text-destructive-foreground group-hover:block whitespace-nowrap z-50">
+            {repo.indexing_error}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function RepositoriesPage() {
   const [repos, setRepos] = useState<Repository[]>([]);
@@ -197,17 +250,7 @@ export default function RepositoriesPage() {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <StatusBadge status={statusLabel(repo)} variant={statusVariant(repo)} />
-                      {repo.indexing_error && (
-                        <div className="group relative">
-                          <AlertCircle className="h-4 w-4 text-destructive cursor-help" />
-                          <div className="absolute bottom-full left-1/2 mb-2 hidden -translate-x-1/2 rounded bg-destructive px-2 py-1 text-[10px] text-destructive-foreground group-hover:block whitespace-nowrap z-50">
-                            {repo.indexing_error}
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                    <RepoProgressRow repo={repo} onComplete={fetchRepos} />
                   </td>
                   <td className="hidden px-4 py-3 text-muted-foreground sm:table-cell">{repo.language || '—'}</td>
                   <td className="px-4 py-3">
