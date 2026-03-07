@@ -81,3 +81,11 @@ class EmbeddingError(DevIntelException):
     def __init__(self, message: str = "Embedding generation failed", details: Optional[Dict[str, Any]] = None) -> None:
         """Initialize exception."""
         super().__init__(message, status_code=500, details=details)
+
+
+class APIError(DevIntelException):
+    """Generic API error."""
+
+    def __init__(self, message: str = "API error", status_code: int = 500, details: Optional[Dict[str, Any]] = None) -> None:
+        """Initialize exception."""
+        super().__init__(message, status_code=status_code, details=details)

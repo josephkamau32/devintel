@@ -111,3 +111,51 @@ async def refresh_code_health(
         "task_id": task.id,
         "message": "Code health analysis has been queued. Results will be available shortly.",
     }
+
+
+from app.schemas.health_score import AutoFixRequest, AutoFixResponse
+from app.services.auto_fix_service import AutoFixService
+
+@router.post("/{repository_id}/auto-fix", response_model=AutoFixResponse, status_code=status.HTTP_200_OK)
+async def auto_fix_code_health_issue(
+    repository_id: UUID,
+    request: AutoFixRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Automatically generate and propose a fix for a specific code health issue."""
+    repo_repo = RepositoryRepository(db)
+    repository = await repo_repo.get_by_id(repository_id)
+
+    if not repository:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Repository not found",
+        )
+
+    await check_repo_access(repository, current_user, db)
+
+    if not repository.indexed_status:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Repository must be indexed before running auto-fix.",
+        )
+
+    embedding_repo = EmbeddingRepository(db)
+    auto_fix_svc = AutoFixService()
+    
+    try:
+        result = await auto_fix_svc.generate_and_apply_fix(
+            repository=repository,
+            issue_description=request.issue_description,
+            user=current_user,
+            embedding_repo=embedding_repo
+        )
+        return AutoFixResponse(**result)
+    except Exception as e:
+        logger.error(f"Auto-fix failed: {str(e)}")
+        # In production this would distinguish between 4xx and 5xx via a custom APIError
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )

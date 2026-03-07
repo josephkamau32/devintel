@@ -12,9 +12,12 @@ import {
     Lightbulb,
     ChevronDown,
     Check,
+    Wand2,
+    CheckCircle2,
+    XCircle
 } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
-import type { CodeHealthReport, Repository } from "@/lib/types";
+import type { CodeHealthReport, Repository, AutoFixResponse } from "@/lib/types";
 
 /** Colour coding for scores */
 function scoreColor(score: number) {
@@ -108,6 +111,10 @@ export default function CodeHealthPage() {
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [dropdownOpen, setDropdownOpen] = useState(false);
+    
+    // Auto-Fix states
+    const [fixingIssueIndex, setFixingIssueIndex] = useState<number | null>(null);
+    const [fixedIssues, setFixedIssues] = useState<Record<number, { success: boolean, url?: string, message?: string }>>({});
 
     // Load repos
     useEffect(() => {
@@ -173,6 +180,37 @@ export default function CodeHealthPage() {
     }
 
     const indexedRepos = repos.filter((r) => r.indexed_status);
+
+    async function handleAutoFix(issueIndex: number, issueDescription: string) {
+        if (!selectedRepo) return;
+        setFixingIssueIndex(issueIndex);
+        try {
+            const res = await apiClient.post<AutoFixResponse>(
+                `/api/v1/repos/${selectedRepo.id}/auto-fix`,
+                { issue_description: issueDescription }
+            );
+            
+            setFixedIssues(prev => ({
+                ...prev,
+                [issueIndex]: {
+                    success: res.status === 'success',
+                    url: res.pr_url,
+                    message: res.message
+                }
+            }));
+            
+        } catch (e: any) {
+            setFixedIssues(prev => ({
+                ...prev,
+                [issueIndex]: {
+                    success: false,
+                    message: e?.response?.data?.detail || e?.message || "Failed to generate fix"
+                }
+            }));
+        } finally {
+            setFixingIssueIndex(null);
+        }
+    }
 
     return (
         <div className="space-y-6">
@@ -314,13 +352,51 @@ export default function CodeHealthPage() {
                                     <AlertTriangle className="h-4 w-4 text-amber-400" />
                                     Top Issues
                                 </h2>
-                                <ul className="space-y-2">
-                                    {health.top_issues.map((issue, i) => (
-                                        <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-                                            <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />
-                                            {issue}
-                                        </li>
-                                    ))}
+                                <ul className="space-y-3">
+                                    {health.top_issues.map((issue, i) => {
+                                        const isFixing = fixingIssueIndex === i;
+                                        const fixState = fixedIssues[i];
+                                        
+                                        return (
+                                            <li key={i} className="flex flex-col gap-2 p-3 rounded-lg border border-border bg-muted/30 transition-colors hover:bg-muted/50">
+                                                <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                                                    <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />
+                                                    <span className="flex-1">{issue}</span>
+                                                    
+                                                    {!fixState?.success && (
+                                                        <button 
+                                                            onClick={() => handleAutoFix(i, issue)}
+                                                            disabled={isFixing}
+                                                            className="flex items-center gap-1.5 shrink-0 ml-4 px-2.5 py-1 text-xs font-medium rounded-md border border-primary/30 text-primary bg-primary/10 hover:bg-primary/20 transition-colors disabled:opacity-50"
+                                                        >
+                                                            {isFixing ? (
+                                                                <Loader2 className="h-3 w-3 animate-spin"/>
+                                                            ) : (
+                                                                <Wand2 className="h-3 w-3"/>
+                                                            )}
+                                                            {isFixing ? "Fixing..." : "Auto-Fix"}
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                
+                                                {fixState && (
+                                                    <div className={`flex items-start gap-2 mt-1 text-xs rounded-md px-2 py-1.5 ${fixState.success ? 'bg-green-500/10 text-green-500 w-fit' : 'bg-red-500/10 text-red-500'}`}>
+                                                        {fixState.success ? (
+                                                            <>
+                                                                <CheckCircle2 className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                                                                <span>Fix generated! <a href={fixState.url!} target="_blank" rel="noreferrer" className="underline hover:text-green-400 font-medium">View PR #{fixState.url!.split('/').pop()}</a></span>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <XCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                                                                <span>{fixState.message || "Failed to generate fix"}</span>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </li>
+                                        );
+                                    })}
                                 </ul>
                             </div>
                         )}

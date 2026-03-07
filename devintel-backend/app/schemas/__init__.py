@@ -12,6 +12,7 @@ from app.schemas.organization import (
     OrganizationUpdate,
     OrganizationWithRole,
 )
+from app.schemas.health_score import AutoFixRequest, AutoFixResponse
 from app.schemas.pr_review import PRReviewRequest, PRReviewResponse
 from app.schemas.repository import (
     RepositoryCreate,
@@ -42,4 +43,6 @@ __all__ = [
     "OrganizationMemberCreate",
     "OrganizationMemberRead",
     "OrganizationMemberUpdate",
+    "AutoFixRequest",
+    "AutoFixResponse",
 ]

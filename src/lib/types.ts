@@ -106,3 +106,11 @@ export interface IndexingProgress {
     progress: number;
     status: 'connecting' | 'cloning' | 'parsing' | 'embedding' | 'completing' | 'done' | 'error';
 }
+
+export interface AutoFixResponse {
+    status: string;
+    pr_url?: string;
+    pr_number?: number;
+    branch_name?: string;
+    message?: string;
+}
