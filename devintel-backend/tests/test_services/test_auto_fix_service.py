@@ -80,12 +80,9 @@ async def test_generate_and_apply_fix_success(
     
     # Make the asyncio.to_thread mock return valid branch and content
     with patch("app.services.auto_fix_service.asyncio.to_thread", new_callable=AsyncMock) as mock_thread:
-        # We call to_thread 2 times in the good path in auto_fix_service:
-        # 1. get_repo_details -> {'default_branch': 'main'}
-        # 2. get_file_content -> 'print("hello")'
         mock_thread.side_effect = [
             {"default_branch": "main"},
-            'print("hello")'
+            'def old_function():\n    pass'
         ]
         
         # Mock LLM Parse Result
@@ -97,20 +94,20 @@ async def test_generate_and_apply_fix_success(
                 "modified_files": [
                     {
                         "file_path": "src/main.py",
-                        "new_content": "print('hello world!')"
+                        "new_content": "def old_function():\n    return True"
                     }
                 ]
             }
 
-            result = await service.generate_and_apply_fix(
-                repository=mock_repository,
-                issue_description="Make it say hello world",
-                user=mock_user,
-                embedding_repo=mock_embedding_repo,
-            )
-            
-            assert result["status"] == "success"
-            assert result["pr_url"] == "https://github.com/pr/1"
-            assert mock_github.create_branch.called
-            assert mock_github.create_commit.called
-            assert mock_github.create_pull_request.called
+        result = await service.generate_and_apply_fix(
+            repository=mock_repository,
+            issue_description="Make it say hello world",
+            user=mock_user,
+            embedding_repo=mock_embedding_repo,
+        )
+        
+        assert result["status"] == "success"
+        assert result["pr_url"] == "https://github.com/pr/1"
+        assert mock_github.create_branch.called
+        assert mock_github.create_commit.called
+        assert mock_github.create_pull_request.called

@@ -12,9 +12,12 @@
 
 ## ✨ Key Features
 
-- 🤖 **Autonomous AI Agent** - End-to-end AI coding assistant with "Human-in-the-Loop" Pull Request execution.
+- 🤖 **Agentic "Auto-Fix" Workflows (V2)** - An elite, autonomous AI coding agent tightly integrated into the dashboard. Click "Auto-Fix" on any repository issue, and the agent will:
+  - Utilize **Low-Latency RAG** (via pgvector) to semantically locate the exact vulnerable files in milliseconds without scanning the entire repo.
+  - Dynamically write a **Unified Diff Patch** directly targeting the flawed functions, heavily preserving token context limits.
+  - Employ a **Self-Correction Loop** using an AST/Syntax Linter in memory to automatically fix its own hallucinations and syntax errors before committing.
+  - Execute a **One-Click PR Generation**, securely opening a new branch and Pull Request on GitHub using the low-level Git Data API, ensuring zero-risk to `main`.
 - 💬 **Context-Aware RAG Chat** - Intelligent conversations about your architecture with semantic vector search.
-- 🚀 **One-Click PR Generation** - Agent drafts multi-file code modifications and pushes branches/PRs safely via the GitHub Git Data API.
 - 🔐 **Secure Authentication** - GitHub OAuth with encrypted token management and JWT sessions.
 - 📂 **Smart Code Indexing** - AST-aware Treesitter chunking of repositories powered by PostgreSQL `pgvector`.
 - 📊 **Real-Time Analytics** - Track usage, API performance, and token consumption metrics.

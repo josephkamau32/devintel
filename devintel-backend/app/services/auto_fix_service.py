@@ -156,8 +156,10 @@ class AutoFixService:
         }
 
     async def _generate_fix(self, repo_name: str, issue: str, file_contents: Dict[str, str]) -> Dict[str, Any]:
-        """Call LLM to propose fixed code."""
-        
+        """Call LLM to propose fixed code using Search/Replace blocks with a retry loop."""
+        from app.utils.linter import check_syntax
+        import re
+
         files_context = ""
         for path, content in file_contents.items():
             files_context += f"\n--- {path} ---\n{content}\n"
@@ -170,7 +172,8 @@ Here are the contents of the relevant files:
 {files_context}
 
 Your task is to fix the issue by modifying the necessary files. 
-You must return the COMPLETE NEW CONTENT for any file you modify. DO NOT use placeholders like "// rest of the code".
+Instead of returning the entire file, you MUST return a Search and Replace block.
+
 Respond ONLY with a valid JSON object matching this schema:
 {{
   "pr_title": "<A concise, descriptive PR title>",
@@ -178,35 +181,89 @@ Respond ONLY with a valid JSON object matching this schema:
   "modified_files": [
     {{
       "file_path": "<The exact path of the file you modified>",
-      "new_content": "<The complete new source code for this file>"
+      "search_block": "<The exact existing lines of code to replace>",
+      "replace_block": "<The new lines of code to insert>"
     }}
   ]
 }}
+
+CRITICAL REQUIREMENTS FOR SEARCH BLOCKS:
+1. The `search_block` MUST EXACTLY match a sequence of lines in the original file, including all whitespace and indentation.
+2. The `search_block` must be unique within the file.
+3. Include enough surrounding context lines in the `search_block` to ensure uniqueness.
 """
 
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": f"Generate the fix for: {issue}"},
         ]
-
-        try:
-            response = await self.openai_client.chat_completion(
-                messages=messages,
-                temperature=0.1,
-                max_tokens=4000, 
-            )
-            raw = response.content if hasattr(response, "content") else str(response)
-            
-            # Extract JSON block
-            content = raw.strip()
-            if content.startswith("```"):
-                content = content.split("\n", 1)[-1]
-                if content.endswith("```"):
-                    content = content.rsplit("```", 1)[0]
-            if content.startswith("json"):
-                content = content[4:].strip()
+        
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                response = await self.openai_client.chat_completion(
+                    messages=messages,
+                    temperature=0.1,
+                    max_tokens=2500, 
+                )
+                raw = response.content if hasattr(response, "content") else str(response)
                 
-            return json.loads(content)
-        except Exception as e:
-            logger.error(f"Failed to generate fix via LLM: {e}")
-            return {}
+                content = raw.strip()
+                if content.startswith("```"):
+                    content = content.split("\n", 1)[-1]
+                    if content.endswith("```"):
+                        content = content.rsplit("```", 1)[0]
+                if content.startswith("json"):
+                    content = content[4:].strip()
+                
+                fix_plan = json.loads(content)
+                
+                # Verify and apply the diff locally
+                has_errors = False
+                error_feedback = "Your previous attempt failed with the following errors:\n"
+                
+                for mod_file in fix_plan.get("modified_files", []):
+                    path = mod_file["file_path"]
+                    search = mod_file.get("search_block", "")
+                    replace = mod_file.get("replace_block", "")
+                    
+                    if path not in file_contents:
+                        has_errors = True
+                        error_feedback += f"- File {path} was not in the provided context.\n"
+                        continue
+                        
+                    orig_content = file_contents[path]
+                    
+                    if search not in orig_content:
+                        # Try a more lenient search for whitespace issues
+                        lenient_search = "\n".join([line.rstrip() for line in search.split('\n')])
+                        if lenient_search not in "\n".join([line.rstrip() for line in orig_content.split('\n')]):
+                            has_errors = True
+                            error_feedback += f"- The search_block for {path} could not be found EXACTLY in the original file. Be extremely careful with indentation.\n"
+                            continue
+                    
+                    # Apply diff in memory
+                    mod_file["new_content"] = orig_content.replace(search, replace)
+                    
+                    # Run Linter
+                    syntax_errors = check_syntax(path, mod_file["new_content"])
+                    if syntax_errors:
+                        has_errors = True
+                        error_feedback += f"- Syntax errors in {path} after applying your fix:\n" + "\n".join(syntax_errors) + "\n"
+                
+                if not has_errors:
+                    return fix_plan
+                    
+                logger.warning(f"Auto-Fix attempt {attempt+1} failed validation. Retrying...")
+                messages.append({"role": "assistant", "content": raw})
+                messages.append({"role": "user", "content": error_feedback + "\nPlease generate a new JSON fix plan that resolves these errors."})
+                
+            except json.JSONDecodeError as e:
+                logger.warning(f"JSON decode failed on attempt {attempt+1}: {e}")
+                messages.append({"role": "assistant", "content": raw})
+                messages.append({"role": "user", "content": "Your response was not valid JSON. Please return ONLY a valid JSON object."})
+            except Exception as e:
+                logger.error(f"Failed to generate fix via LLM on attempt {attempt+1}: {e}")
+                break
+
+        return {}
