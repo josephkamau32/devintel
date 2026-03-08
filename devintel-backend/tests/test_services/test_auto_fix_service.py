@@ -18,7 +18,7 @@ def mock_user():
         email="test@example.com",
         name="Test User",
         github_id="12345",
-        github_access_token="fake-token",
+        github_access_token_encrypted="fake-token",
     )
 
 
@@ -37,7 +37,7 @@ def mock_repository(mock_user):
 @pytest.mark.asyncio
 async def test_generate_and_apply_fix_no_token(mock_repository, mock_user):
     """Test auto-fix fails if user has no GitHub token."""
-    mock_user.github_access_token = None
+    mock_user.github_access_token_encrypted = None
     service = AutoFixService()
     
     with pytest.raises(APIError, match="GitHub access token required"):
@@ -53,7 +53,9 @@ async def test_generate_and_apply_fix_no_token(mock_repository, mock_user):
 @patch("app.services.auto_fix_service.GitHubClient")
 @patch("app.services.auto_fix_service.OpenAIClient")
 @patch("app.services.auto_fix_service.EmbeddingService")
+@patch("app.services.auto_fix_service.encryption_service")
 async def test_generate_and_apply_fix_success(
+    mock_encryption,
     mock_embedding_cls, 
     mock_openai_cls, 
     mock_github_cls, 
@@ -61,6 +63,7 @@ async def test_generate_and_apply_fix_success(
     mock_user
 ):
     """Test the full happy path for Auto-Fix."""
+    mock_encryption.decrypt.return_value = "decrypted-token"
     # Setup Mocks
     mock_embedding_svc = AsyncMock()
     mock_embedding_cls.return_value = mock_embedding_svc
@@ -99,15 +102,15 @@ async def test_generate_and_apply_fix_success(
                 ]
             }
 
-        result = await service.generate_and_apply_fix(
-            repository=mock_repository,
-            issue_description="Make it say hello world",
-            user=mock_user,
-            embedding_repo=mock_embedding_repo,
-        )
-        
-        assert result["status"] == "success"
-        assert result["pr_url"] == "https://github.com/pr/1"
-        assert mock_github.create_branch.called
-        assert mock_github.create_commit.called
-        assert mock_github.create_pull_request.called
+            result = await service.generate_and_apply_fix(
+                repository=mock_repository,
+                issue_description="Make it say hello world",
+                user=mock_user,
+                embedding_repo=mock_embedding_repo,
+            )
+            
+            assert result["status"] == "success"
+            assert result["pr_url"] == "https://github.com/pr/1"
+            assert mock_github.create_branch.called
+            assert mock_github.create_commit.called
+            assert mock_github.create_pull_request.called

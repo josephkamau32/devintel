@@ -108,8 +108,9 @@ export default function RepositoriesPage() {
       await connectAndIndex(ghRepo);
       toast.success(`Connected ${ghRepo.full_name} — indexing started`);
       setShowModal(false);
-    } catch (e: any) {
-      const msg = e?.response?.data?.detail || "Failed to connect repository";
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { detail?: string } } };
+      const msg = err?.response?.data?.detail || "Failed to connect repository";
       toast.error(msg);
     } finally {
       setConnecting(null);

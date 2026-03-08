@@ -2,10 +2,12 @@
 
 import json
 import uuid
+import asyncio
 from typing import Any, Dict, List
 
 from app.core.exceptions import APIError
 from app.core.logging import get_logger
+from app.services.encryption import encryption_service
 from app.integrations.github_client import GitHubClient
 from app.integrations.openai_client import OpenAIClient
 from app.models.repository import Repository
@@ -40,10 +42,11 @@ class AutoFixService:
         logger.info(f"Starting auto-fix for {repository.full_name}: {issue_description}")
 
         # Ensure we have a GitHub token for the user
-        if not user.github_access_token:
+        if not user.github_access_token_encrypted:
             raise APIError("GitHub access token required for auto-fix.", status_code=400)
 
-        github_client = GitHubClient(user.github_access_token)
+        token = encryption_service.decrypt(user.github_access_token_encrypted)
+        github_client = GitHubClient(token)
 
         # 1. Search for relevant files using embeddings
         query_embedding = await self.embedding_service.generate_embedding(issue_description)
@@ -71,7 +74,6 @@ class AutoFixService:
         # The PyGithub integration doesn't explicitly return default_branch in our wrapper,
         # so we'll fetch default branch dynamically or assume 'main'/'master'.
         # For safety, let's just use the PyGithub client directly to get the default branch.
-        import asyncio
         from github import GithubException
         
         def _get_repo_details():
@@ -87,7 +89,7 @@ class AutoFixService:
 
         for file_path in relevant_files:
             try:
-                def _get_file_content(path=filepath):
+                def _get_file_content(path=file_path):
                     repo = github_client.client.get_repo(repository.full_name)
                     contents = repo.get_contents(path, ref=base_branch)
                     return contents.decoded_content.decode("utf-8")

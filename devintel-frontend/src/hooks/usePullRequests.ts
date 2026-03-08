@@ -17,8 +17,9 @@ export function usePullRequests(repositoryId?: string) {
         try {
             const data = await getRepositoryPulls(targetId);
             setPulls(data.pulls);
-        } catch (e: any) {
-            const msg = e?.response?.data?.detail || e?.message || 'Failed to fetch pull requests';
+        } catch (e: unknown) {
+            const err = e as { response?: { data?: { detail?: string } }, message?: string };
+            const msg = err?.response?.data?.detail || err?.message || 'Failed to fetch pull requests';
             setError(msg);
         } finally {
             setLoading(false);
@@ -37,10 +38,11 @@ export function usePullRequests(repositoryId?: string) {
                 pr_title: pr.title,
             });
             return result;
-        } catch (e: any) {
-            const msg = e?.response?.data?.detail || e?.message || 'AI review failed. Please try again.';
+        } catch (e: unknown) {
+            const err = e as { response?: { data?: { detail?: string } }, message?: string };
+            const msg = err?.response?.data?.detail || err?.message || 'AI review failed. Please try again.';
             setReviewError(msg);
-            throw e;
+            throw err;
         } finally {
             setReviewing(null);
         }

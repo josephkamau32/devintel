@@ -73,8 +73,9 @@ export function OrganizationMembers({
             toast.success(`Invited ${inviteEmail} successfully`);
             setInviteEmail("");
             fetchMembers();
-        } catch (error: any) {
-            toast.error(error.response?.data?.detail || "Failed to invite user");
+        } catch (error: unknown) {
+            const err = error as { response?: { data?: { detail?: string } } };
+            toast.error(err.response?.data?.detail || "Failed to invite user");
         } finally {
             setInviting(false);
         }
@@ -86,8 +87,9 @@ export function OrganizationMembers({
             toast.success("Role updated successfully");
             fetchMembers();
             refreshOrganizations(); // In case the current user's role changed
-        } catch (error: any) {
-            toast.error(error.response?.data?.detail || "Failed to update role");
+        } catch (error: unknown) {
+            const err = error as { response?: { data?: { detail?: string } } };
+            toast.error(err.response?.data?.detail || "Failed to update role");
         }
     };
 
@@ -98,8 +100,9 @@ export function OrganizationMembers({
             await organizationsApi.removeMember(organizationId, userId);
             toast.success("Member removed successfully");
             fetchMembers();
-        } catch (error: any) {
-            toast.error(error.response?.data?.detail || "Failed to remove member");
+        } catch (error: unknown) {
+            const err = error as { response?: { data?: { detail?: string } } };
+            toast.error(err.response?.data?.detail || "Failed to remove member");
         }
     };
 
@@ -135,7 +138,7 @@ export function OrganizationMembers({
                                 </div>
                                 <div className="w-32 space-y-1.5">
                                     <Label className="text-xs">Role</Label>
-                                    <Select value={inviteRole} onValueChange={(v: any) => setInviteRole(v)}>
+                                    <Select value={inviteRole} onValueChange={(v: 'admin'|'member') => setInviteRole(v)}>
                                         <SelectTrigger className="h-9">
                                             <SelectValue />
                                         </SelectTrigger>
@@ -182,7 +185,7 @@ export function OrganizationMembers({
                                             {canManageMembers && member.role !== 'owner' ? (
                                                 <Select
                                                     value={member.role}
-                                                    onValueChange={(v: any) => handleUpdateRole(member.user_id, v)}
+                                                    onValueChange={(v: 'owner'|'admin'|'member') => handleUpdateRole(member.user_id, v)}
                                                 >
                                                     <SelectTrigger className="h-8 w-[100px] text-xs">
                                                         <SelectValue />

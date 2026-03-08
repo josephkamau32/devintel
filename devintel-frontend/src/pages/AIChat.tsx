@@ -86,10 +86,12 @@ export default function AIChatPage() {
       setAgentLoading(true);
       try {
         const { apiClient } = await import('@/lib/api-client');
-        const response: any = await apiClient.draftAgentAction(selectedRepoId, question);
-        setAgentDraft(response.draft);
-      } catch (err: any) {
-        setAgentError(err.response?.data?.detail || "Failed to generate PR draft. Check server logs.");
+        type DraftResponse = { draft: typeof agentDraft };
+        const response = await apiClient.draftAgentAction(selectedRepoId, question) as DraftResponse;
+        setAgentDraft(response.draft ?? null);
+      } catch (err: unknown) {
+        const _err = err as { response?: { data?: { detail?: string } } };
+        setAgentError(_err.response?.data?.detail || "Failed to generate PR draft. Check server logs.");
       } finally {
         setAgentLoading(false);
       }
@@ -113,14 +115,16 @@ export default function AIChatPage() {
     setAgentError(null);
     try {
       const { apiClient } = await import('@/lib/api-client');
-      const response: any = await apiClient.executeAgentAction(selectedRepoId, agentDraft);
+      type ExecuteResponse = { pr_url: string; branch_name: string };
+      const response = await apiClient.executeAgentAction(selectedRepoId, agentDraft) as ExecuteResponse;
       setAgentResult({
         pr_url: response.pr_url,
         branch_name: response.branch_name,
       });
       setAgentDraft(null); // Clear draft after success
-    } catch (err: any) {
-      setAgentError(err.response?.data?.detail || "Failed to execute PR on GitHub.");
+    } catch (err: unknown) {
+      const _err = err as { response?: { data?: { detail?: string } } };
+      setAgentError(_err.response?.data?.detail || "Failed to execute PR on GitHub.");
     } finally {
       setIsExecuting(false);
     }

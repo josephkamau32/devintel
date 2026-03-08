@@ -1,0 +1,41 @@
+.....................................................s.................. [ 54%]
+...........................................................              [100%]
+============================== warnings summary ===============================
+..\.venv\Lib\site-packages\starlette\formparsers.py:12
+  C:\Users\HP\Documents\Projects\devintel\.venv\Lib\site-packages\starlette\formparsers.py:12: PendingDeprecationWarning: Please use `import python_multipart` instead.
+    import multipart
+
+app\schemas\chat.py:29
+  C:\Users\HP\Documents\Projects\devintel\devintel-backend\app\schemas\chat.py:29: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ChatResponse(BaseModel):
+
+app\schemas\repository.py:44
+  C:\Users\HP\Documents\Projects\devintel\devintel-backend\app\schemas\repository.py:44: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class RepositoryResponse(RepositoryBase):
+
+app\schemas\user.py:26
+  C:\Users\HP\Documents\Projects\devintel\devintel-backend\app\schemas\user.py:26: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class UserResponse(UserBase):
+
+app\api\v1\repositories.py:254
+  C:\Users\HP\Documents\Projects\devintel\devintel-backend\app\api\v1\repositories.py:254: DeprecationWarning: `regex` has been deprecated, please use `pattern` instead
+    state: str = Query("open", regex="^(open|closed|all)$"),
+
+tests/test_api/test_analytics.py::TestAnalyticsEndpoints::test_dashboard_unauthenticated
+  C:\Users\HP\Documents\Projects\devintel\.venv\Lib\site-packages\pytest_asyncio\plugin.py:769: DeprecationWarning: The event_loop fixture provided by pytest-asyncio has been redefined in
+  C:\Users\HP\Documents\Projects\devintel\devintel-backend\tests\conftest.py:50
+  Replacing the event_loop fixture with a custom implementation is deprecated
+  and will lead to errors in the future.
+  If you want to request an asyncio event loop with a scope other than function
+  scope, use the "scope" argument to the asyncio mark when marking the tests.
+  If you want to return different types of event loops, use the event_loop_policy
+  fixture.
+  
+    warnings.warn(
+
+tests/test_api/test_organizations.py: 20 warnings
+  C:\Users\HP\Documents\Projects\devintel\.venv\Lib\site-packages\sqlalchemy\sql\schema.py:3624: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    return util.wrap_callable(lambda ctx: fn(), fn)  # type: ignore
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+130 passed, 1 skipped, 26 warnings in 23.17s

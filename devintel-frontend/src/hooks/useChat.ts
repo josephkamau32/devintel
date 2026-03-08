@@ -15,8 +15,9 @@ export function useChat(repositoryId?: string) {
         try {
             const data = await getChatHistory(repoId);
             setMessages(data.messages);
-        } catch (e: any) {
-            const msg = e?.response?.data?.detail || e?.message || 'Failed to load chat history';
+        } catch (e: unknown) {
+            const err = e as { response?: { data?: { detail?: string } }, message?: string };
+            const msg = err?.response?.data?.detail || err?.message || 'Failed to load chat history';
             setError(msg);
         } finally {
             setLoading(false);
@@ -118,11 +119,12 @@ export function useChat(repositoryId?: string) {
                 setError(streamError);
             }
 
-        } catch (e: any) {
-            if (e.name === 'AbortError') return;
+        } catch (e: unknown) {
+            const err = e as { name?: string, message?: string };
+            if (err.name === 'AbortError') return;
             // Remove the optimistic user message on hard failures too
             setMessages(prev => prev.slice(0, -1));
-            const msg = e.message || 'Something went wrong. Please try again.';
+            const msg = err.message || 'Something went wrong. Please try again.';
             setError(msg);
         } finally {
             setLoading(false);

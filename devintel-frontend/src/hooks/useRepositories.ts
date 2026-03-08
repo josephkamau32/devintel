@@ -99,9 +99,10 @@ export function useRepositories(): UseRepositoriesReturn {
 
     // Cleanup all polls on unmount
     useEffect(() => {
+        const polls = pollingRef.current;
         return () => {
-            pollingRef.current.forEach((interval) => clearInterval(interval));
-            pollingRef.current.clear();
+            polls.forEach((interval) => clearInterval(interval));
+            polls.clear();
         };
     }, []);
 
@@ -123,8 +124,9 @@ export function useRepositories(): UseRepositoriesReturn {
         try {
             const data = await getRepositories(currentOrganization?.id);
             setRepos(data.repositories);
-        } catch (e: any) {
-            const msg = e?.response?.data?.detail || e?.message || 'Failed to load repositories';
+        } catch (e: unknown) {
+            const err = e as { response?: { data?: { detail?: string } }, message?: string };
+            const msg = err?.response?.data?.detail || err?.message || 'Failed to load repositories';
             setError(msg);
         } finally {
             setLoading(false);
@@ -143,8 +145,9 @@ export function useRepositories(): UseRepositoriesReturn {
         try {
             const data = await getGithubRepos();
             setGithubRepos(data.repositories);
-        } catch (e: any) {
-            const msg = e?.response?.data?.detail || e?.message || 'Failed to fetch GitHub repos';
+        } catch (e: unknown) {
+            const err = e as { response?: { data?: { detail?: string } }, message?: string };
+            const msg = err?.response?.data?.detail || err?.message || 'Failed to fetch GitHub repos';
             setGithubError(msg);
         } finally {
             setGithubLoading(false);

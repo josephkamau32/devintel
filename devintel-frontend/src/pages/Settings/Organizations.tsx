@@ -36,7 +36,8 @@ export default function OrganizationsSettings() {
             await refreshOrganizations();
             // Auto-switch to the new org
             setCurrentOrganizationId(newOrg.id);
-        } catch (error: any) {
+        } catch (e: unknown) {
+            const error = e as { response?: { data?: { detail?: string } } };
             toast.error(error.response?.data?.detail || "Failed to create organization");
         } finally {
             setIsCreating(false);
@@ -56,7 +57,8 @@ export default function OrganizationsSettings() {
             }
 
             refreshOrganizations();
-        } catch (error: any) {
+        } catch (e: unknown) {
+            const error = e as { response?: { data?: { detail?: string } } };
             toast.error(error.response?.data?.detail || "Failed to leave organization");
         }
     };

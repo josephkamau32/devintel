@@ -47,7 +47,7 @@ export interface OrganizationWithRole extends Organization {
 
 export interface OrganizationDetail extends Organization {
     members: OrganizationMember[];
-    repositories: any[]; // Replace with specific interface when available
+    repositories: unknown[]; // Replace with specific interface when available
 }
 
 export const organizationsApi = {

@@ -14,8 +14,9 @@ export function useSearch(repositoryId?: string) {
         try {
             const data = await searchRepository(repositoryId, query);
             setResults(data.results);
-        } catch (e: any) {
-            const msg = e?.response?.data?.detail || e?.message || 'Failed to perform search';
+        } catch (e: unknown) {
+            const err = e as { response?: { data?: { detail?: string } }, message?: string };
+            const msg = err?.response?.data?.detail || err?.message || 'Failed to perform search';
             setError(msg);
         } finally {
             setLoading(false);

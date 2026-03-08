@@ -13,7 +13,7 @@ interface OrganizationContextType {
 const OrganizationContext = createContext<OrganizationContextType | undefined>(undefined);
 
 export const OrganizationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [user, setUser] = useState<any>(null);
+    const [user, setUser] = useState<unknown>(null);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
 
     const [organizations, setOrganizations] = useState<OrganizationWithRole[]>([]);
@@ -36,15 +36,16 @@ export const OrganizationProvider: React.FC<{ children: ReactNode }> = ({ childr
         };
 
         checkAuth();
-        window.addEventListener('user-updated', (e: any) => {
-            if (e.detail) {
-                setUser(e.detail);
+        window.addEventListener('user-updated', ((e: Event) => {
+            const evt = e as CustomEvent;
+            if (evt.detail) {
+                setUser(evt.detail);
                 setIsAuthenticated(true);
             } else {
                 setUser(null);
                 setIsAuthenticated(false);
             }
-        });
+        }) as EventListener);
 
     }, []);
 
@@ -64,7 +65,7 @@ export const OrganizationProvider: React.FC<{ children: ReactNode }> = ({ childr
             if (currentOrgId && !orgs.find((org) => org.id === currentOrgId)) {
                 setCurrentOrganizationId(null);
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Failed to fetch organizations:', err);
             setError('Failed to load organizations. Please try again.');
         } finally {
@@ -74,7 +75,7 @@ export const OrganizationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
     useEffect(() => {
         refreshOrganizations();
-    }, [user, isAuthenticated]);
+    }, [user, isAuthenticated, refreshOrganizations]);
 
     const setCurrentOrganizationId = (orgId: string | null) => {
         setCurrentOrgId(orgId);
@@ -106,6 +107,7 @@ export const OrganizationProvider: React.FC<{ children: ReactNode }> = ({ childr
     );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useOrganization = () => {
     const context = useContext(OrganizationContext);
     if (context === undefined) {

@@ -12,8 +12,9 @@ export function useAnalytics() {
         try {
             const result = await getAnalyticsDashboard();
             setData(result);
-        } catch (e: any) {
-            const msg = e?.response?.data?.detail || e?.message || 'Failed to load analytics';
+        } catch (e: unknown) {
+            const err = e as { response?: { data?: { detail?: string } }, message?: string };
+            const msg = err?.response?.data?.detail || err?.message || 'Failed to load analytics';
             setError(msg);
         } finally {
             setLoading(false);
