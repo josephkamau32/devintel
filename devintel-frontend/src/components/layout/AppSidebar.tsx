@@ -50,13 +50,13 @@ export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
   const sidebarContent = (
     <>
       {/* Logo */}
-      <div className="flex h-14 items-center justify-between border-b border-border px-4">
+      <div className="flex h-14 items-center justify-between border-b border-border/30 px-4">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary">
-            <Zap className="h-4 w-4 text-primary-foreground" />
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/20 border border-primary/30 shadow-[0_0_15px_-3px_hsl(var(--primary)/0.3)]">
+            <Zap className="h-4 w-4 text-primary animate-pulse-slow" />
           </div>
           {!collapsed && (
-            <span className="text-sm font-semibold text-foreground">DevIntel AI</span>
+            <span className="text-sm font-bold tracking-wide text-foreground gradient-text">DevIntel AI</span>
           )}
         </div>
 
@@ -124,17 +124,17 @@ export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
 
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-1 p-2">
+      <nav className="flex-1 space-y-1.5 p-3">
         {navItems.map((item) => (
           <NavLink
             key={item.url}
             to={item.url}
             end
-            className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            activeClassName="bg-accent text-foreground font-medium"
+            className="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground transition-all duration-300 hover:bg-white/5 hover:text-foreground hover:translate-x-1"
+            activeClassName="bg-gradient-to-r from-primary/20 to-transparent text-primary font-medium border-l-2 border-primary relative shadow-[inset_0_0_20px_-5px_hsl(var(--primary)/0.15)]"
             onClick={onMobileClose}
           >
-            <item.icon className="h-4 w-4 shrink-0" />
+            <item.icon className="h-4 w-4 shrink-0 transition-transform duration-300 group-hover:scale-110 group-active:scale-95" />
             {(!collapsed || mobileOpen) && <span>{item.title}</span>}
           </NavLink>
         ))}
@@ -173,7 +173,7 @@ export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
 
       {/* Mobile drawer */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-60 flex-col border-r border-border bg-sidebar transition-transform duration-200 md:hidden ${mobileOpen ? "translate-x-0" : "-translate-x-full"
+        className={`fixed inset-y-0 left-0 z-50 flex w-60 flex-col border-r border-border/30 bg-background/60 backdrop-blur-2xl transition-transform duration-300 md:hidden ${mobileOpen ? "translate-x-0" : "-translate-x-full"
           }`}
       >
         {sidebarContent}
@@ -181,7 +181,7 @@ export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
 
       {/* Desktop sidebar */}
       <aside
-        className={`hidden md:flex flex-col border-r border-border bg-sidebar transition-all duration-200 ${collapsed ? "w-16" : "w-60"
+        className={`hidden md:flex flex-col border-r border-border/30 bg-background/40 backdrop-blur-xl transition-all duration-300 ${collapsed ? "w-16" : "w-60"
           }`}
       >
         {sidebarContent}

@@ -45,11 +45,11 @@ export default function PullRequestsPage() {
   const currentReview = selectedPr ? reviewResults[selectedPr.number] : null;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-8 animate-fade-in">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-semibold">Pull Requests</h1>
-          <p className="mt-1 text-sm text-muted-foreground">AI-powered code reviews for your connected repositories</p>
+          <h1 className="text-3xl font-bold tracking-tight gradient-text">Pull Requests</h1>
+          <p className="mt-1 text-sm text-muted-foreground/80">AI-powered code reviews for your connected repositories</p>
         </div>
 
         {/* Repo Selector */}
@@ -95,9 +95,9 @@ export default function PullRequestsPage() {
               <button
                 key={pr.number}
                 onClick={() => setSelectedPr(pr)}
-                className={`w-full rounded-xl border p-4 text-left transition-colors ${selectedPr?.number === pr.number
-                  ? "border-primary bg-primary/5"
-                  : "border-border bg-card hover:border-primary/30"
+                className={`w-full rounded-xl border p-4 text-left transition-all duration-300 relative overflow-hidden group ${selectedPr?.number === pr.number
+                  ? "border-primary bg-primary/10 shadow-[0_0_15px_-3px_hsl(var(--primary)/0.2)]"
+                  : "border-border/50 bg-card/40 hover:border-primary/40 hover:bg-card/60 hover:-translate-y-0.5"
                   }`}
               >
                 <div className="flex items-start justify-between">
@@ -125,7 +125,7 @@ export default function PullRequestsPage() {
         {/* PR Detail */}
         <div className="lg:col-span-3">
           {selectedPr ? (
-            <div className="rounded-xl border border-border bg-card p-6 space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+            <div className="glass-card rounded-xl p-6 space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <h2 className="text-lg font-semibold text-card-foreground leading-tight">{selectedPr.title}</h2>
@@ -299,8 +299,8 @@ export default function PullRequestsPage() {
               )}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center h-full min-h-[400px] rounded-xl border border-dashed border-border bg-card/30">
-              <GitPullRequest className="h-12 w-12 text-muted-foreground/20 mb-4" />
+            <div className="flex flex-col items-center justify-center h-full min-h-[400px] rounded-xl border border-dashed border-border/50 bg-card/10 glass-panel animate-pulse-slow">
+              <GitPullRequest className="h-12 w-12 text-muted-foreground/30 mb-4" />
               <p className="text-sm text-muted-foreground">Select a pull request to view details</p>
             </div>
           )}

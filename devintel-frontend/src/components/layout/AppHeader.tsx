@@ -113,7 +113,7 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
   }, []);
 
   return (
-    <header className="flex h-14 items-center justify-between border-b border-border bg-background px-4 sm:px-6">
+    <header className="flex h-14 items-center justify-between border-b border-border/30 bg-background/40 backdrop-blur-xl px-4 sm:px-6 sticky top-0 z-40">
       {/* Left: hamburger + search */}
       <div className="flex items-center gap-3 flex-1">
         <button
@@ -123,12 +123,12 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
           <Menu className="h-5 w-5" />
         </button>
 
-        <div className="relative w-full max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <div className="relative w-full max-w-md group">
+          <Search className={`absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transition-colors duration-300 ${searchFocused ? "text-primary" : "text-muted-foreground"}`} />
           <input
             type="text"
             placeholder="Search repositories, files, or ask AI..."
-            className={`h-9 w-full rounded-md border bg-accent pl-9 pr-4 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-colors ${searchFocused ? "border-primary" : "border-border"
+            className={`h-9 w-full rounded-full border bg-background/50 backdrop-blur-sm pl-9 pr-4 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-all duration-300 ${searchFocused ? "border-primary shadow-[0_0_15px_-3px_hsl(var(--primary)/0.4)]" : "border-border/50 hover:border-primary/50"
               }`}
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setSearchFocused(false)}
@@ -201,8 +201,8 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
         {/* User Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <button className="flex items-center gap-2 rounded-full px-2 py-1.5 text-sm text-muted-foreground hover:bg-white/5 hover:text-foreground transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary/50">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/20 text-primary border border-primary/30 shadow-[0_0_10px_-2px_hsl(var(--primary)/0.3)]">
                 <User className="h-4 w-4" />
               </div>
               <span className="hidden sm:inline font-medium max-w-[100px] truncate">{userName}</span>

@@ -191,13 +191,13 @@ export default function AIChatPage() {
       {/* Messages Area */}
       <div className="flex-1 overflow-auto px-1 py-2 space-y-6">
         {messages.length === 0 && !loading && !streamingContent && (
-          <div className="flex flex-col items-center justify-center h-full text-center space-y-4 opacity-50">
-            <div className="p-4 rounded-full bg-primary/5">
-              <GitBranch className="h-12 w-12 text-primary/40" />
+          <div className="flex flex-col items-center justify-center h-full text-center space-y-4 opacity-70 animate-pulse-slow">
+            <div className="p-4 rounded-full bg-primary/10 border border-primary/20 shadow-[0_0_30px_-5px_hsl(var(--primary)/0.3)]">
+              <GitBranch className="h-12 w-12 text-primary" />
             </div>
             <div>
-              <p className="text-lg font-medium">Chat with your code</p>
-              <p className="text-sm text-card-foreground">Ask questions about architecture, logic, or dependencies.</p>
+              <p className="text-xl font-medium gradient-text">Chat with your code</p>
+              <p className="text-sm text-foreground/70">Ask questions about architecture, logic, or dependencies.</p>
             </div>
           </div>
         )}
@@ -319,14 +319,14 @@ export default function AIChatPage() {
             disabled={loading || agentLoading || isExecuting || !selectedRepoId}
             placeholder={selectedRepoId ? (isAgentMode ? "Describe a change to implement..." : "Ask about your codebase...") : "Select a repository to start"}
             aria-label="Chat input"
-            className="w-full resize-none rounded-xl border border-input bg-card pl-4 pr-12 py-3 text-sm text-foreground shadow-sm placeholder:text-muted-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all disabled:opacity-50 overflow-hidden leading-relaxed"
+            className="w-full resize-none rounded-xl border border-input bg-card/50 backdrop-blur-md pl-4 pr-12 py-3 text-sm text-foreground shadow-sm placeholder:text-muted-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary focus:shadow-[0_0_15px_-3px_hsl(var(--primary)/0.3)] transition-all disabled:opacity-50 overflow-hidden leading-relaxed"
             style={{ minHeight: '48px', maxHeight: '200px' }}
           />
           <button
             onClick={handleSend}
             disabled={!input.trim() || loading || agentLoading || isExecuting || !selectedRepoId}
             aria-label="Send message"
-            className="absolute right-2 bottom-2 flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground disabled:opacity-50 transition-all hover:scale-105 active:scale-95"
+            className="absolute right-2 bottom-2 flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground disabled:opacity-50 transition-all hover:scale-105 active:scale-95 shadow-[0_0_10px_-2px_hsl(var(--primary)/0.4)] disabled:shadow-none"
           >
             {(loading || agentLoading) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </button>

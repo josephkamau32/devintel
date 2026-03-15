@@ -34,20 +34,20 @@ export function ChatMessage({ message }: ChatMessageProps) {
   return (
     <div className={`flex gap-3 animate-slide-up ${isUser ? "flex-row-reverse" : ""}`}>
       <div
-        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border shadow-sm ${
           isUser
-            ? "bg-primary/10 text-primary"
-            : "bg-accent text-foreground"
+            ? "bg-primary/20 text-primary border-primary/40 shadow-[0_0_10px_-2px_hsl(var(--primary)/0.3)]"
+            : "bg-secondary/20 text-secondary border-secondary/40 shadow-[0_0_10px_-2px_hsl(var(--secondary)/0.3)]"
         }`}
       >
-        {isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
+        {isUser ? <User className="h-4 w-4 drop-shadow-[0_0_3px_currentColor]" /> : <Bot className="h-4 w-4 drop-shadow-[0_0_3px_currentColor]" />}
       </div>
 
       <div
-        className={`max-w-[80%] rounded-xl px-4 py-3 text-sm leading-relaxed ${
+        className={`max-w-[80%] rounded-2xl px-5 py-3.5 text-sm leading-relaxed backdrop-blur-md shadow-sm border ${
           isUser
-            ? "bg-primary text-primary-foreground"
-            : "bg-card border border-border text-card-foreground"
+            ? "bg-primary/10 border-primary/20 text-foreground shadow-[inset_0_0_15px_-5px_hsl(var(--primary)/0.15)]"
+            : "bg-card/40 border-border/50 text-card-foreground hover:bg-card/60 transition-colors"
         }`}
       >
         {parts.map((part, i) =>
