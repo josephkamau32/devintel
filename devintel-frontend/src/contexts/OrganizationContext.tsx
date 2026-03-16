@@ -49,7 +49,7 @@ export const OrganizationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
     }, []);
 
-    const refreshOrganizations = async () => {
+    const refreshOrganizations = React.useCallback(async () => {
         if (!isAuthenticated) {
             setOrganizations([]);
             return;
@@ -71,7 +71,7 @@ export const OrganizationProvider: React.FC<{ children: ReactNode }> = ({ childr
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [isAuthenticated, currentOrgId]);
 
     useEffect(() => {
         refreshOrganizations();
