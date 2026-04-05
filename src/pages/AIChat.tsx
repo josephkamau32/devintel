@@ -184,11 +184,11 @@ export default function AIChatPage() {
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         }]);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setMessages((prev) => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: `Error: ${err.message || 'Something went wrong. Please try again.'}`,
+        content: `Error: ${err instanceof Error ? err.message : 'Something went wrong. Please try again.'}`,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       }]);
     } finally {

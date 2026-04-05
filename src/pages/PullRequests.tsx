@@ -99,7 +99,7 @@ export default function PullRequestsPage() {
     if (activeTab === 'diff' && selected && selectedRepo && diff === null && !loadingDiff) {
       fetchDiff(selected, selectedRepo);
     }
-  }, [activeTab, selected, selectedRepo]);
+  }, [activeTab, selected, selectedRepo, diff, loadingDiff]);
 
   const fetchPRsForRepo = async (repo: Repository, state: string) => {
     setLoadingPRs(true);
@@ -125,8 +125,8 @@ export default function PullRequestsPage() {
         html_url: pr.html_url,
       }));
       setPullRequests(prs);
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to fetch pull requests');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to fetch pull requests');
     } finally {
       setLoadingPRs(false);
     }
@@ -180,8 +180,8 @@ export default function PullRequestsPage() {
       setPullRequests(prev => prev.map(p => p.id === pr.id ? updatedPR : p));
       setSelected(updatedPR);
       toast.success('AI review complete');
-    } catch (err: any) {
-      toast.error(err.message || 'AI review failed');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'AI review failed');
     } finally {
       setReviewing(false);
     }

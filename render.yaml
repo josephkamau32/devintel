@@ -1,0 +1,68 @@
+services:
+  - type: web
+    name: devintel-api
+    env: docker
+    rootDir: devintel-backend
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: devintel-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: devintel-redis
+          property: connectionString
+      - key: ENVIRONMENT
+        value: production
+      - key: CORS_ORIGINS
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+
+  - type: worker
+    name: devintel-worker
+    env: docker
+    rootDir: devintel-backend
+    plan: starter
+    dockerCommand: "celery -A app.core.celery_app worker --loglevel=info"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: devintel-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: devintel-redis
+          property: connectionString
+      - key: ENVIRONMENT
+        value: production
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+
+  - type: redis
+    name: devintel-redis
+    plan: free
+
+databases:
+  - name: devintel-db
+    databaseName: devintel
+    user: devintel
+    plan: free

@@ -173,8 +173,9 @@ export default function CodeHealthPage() {
                     setRefreshing(false);
                 }
             }, 3000);
-        } catch (e: any) {
-            setError(e?.response?.data?.detail || "Failed to trigger refresh");
+        } catch (e: unknown) {
+            const err = e as { response?: { data?: { detail?: string } } };
+            setError(err?.response?.data?.detail || "Failed to trigger refresh");
             setRefreshing(false);
         }
     }
@@ -199,12 +200,13 @@ export default function CodeHealthPage() {
                 }
             }));
             
-        } catch (e: any) {
+        } catch (e: unknown) {
+            const err = e as { response?: { data?: { detail?: string } }, message?: string };
             setFixedIssues(prev => ({
                 ...prev,
                 [issueIndex]: {
                     success: false,
-                    message: e?.response?.data?.detail || e?.message || "Failed to generate fix"
+                    message: err?.response?.data?.detail || err?.message || "Failed to generate fix"
                 }
             }));
         } finally {

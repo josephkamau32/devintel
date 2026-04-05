@@ -109,8 +109,8 @@ export class DevIntelSidebarProvider implements vscode.WebviewViewProvider {
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
             const data = (await resp.json()) as { repositories: { id: string; full_name: string; indexed_status: boolean }[] };
             webview.postMessage({ type: "repos", repositories: data.repositories || [] });
-        } catch (e: any) {
-            webview.postMessage({ type: "repos", repositories: [], error: e.message });
+        } catch (e: unknown) {
+            webview.postMessage({ type: "repos", repositories: [], error: e instanceof Error ? e.message : String(e) });
         }
     }
 
@@ -170,8 +170,8 @@ export class DevIntelSidebarProvider implements vscode.WebviewViewProvider {
                     }
                 }
             }
-        } catch (e: any) {
-            webview.postMessage({ type: "chatError", message: e.message });
+        } catch (e: unknown) {
+            webview.postMessage({ type: "chatError", message: e instanceof Error ? e.message : String(e) });
         }
     }
 

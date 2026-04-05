@@ -24,9 +24,10 @@ export default function LoginPage() {
     try {
       await signInWithEmail(email, password);
       navigate("/dashboard");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Login failed:", err);
-      setError(err.response?.data?.detail || "Invalid email or password. Please try again.");
+      const e = err as { response?: { data?: { detail?: string } } };
+      setError(e.response?.data?.detail || "Invalid email or password. Please try again.");
     } finally {
       setIsLoading(false);
     }

@@ -133,8 +133,8 @@ export default function RepositoriesPage() {
       setShowModal(false);
       setRepoUrl("");
       await fetchRepos();
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to connect repository');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to connect repository');
     } finally {
       setConnecting(false);
     }
@@ -168,8 +168,8 @@ export default function RepositoriesPage() {
       await apiClient.delete(`/api/v1/repos/${id}`);
       toast.success(`Deleted ${name}`);
       setRepos(prev => prev.filter(r => r.id !== id));
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to delete repository');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete repository');
     } finally {
       setDeletingId(null);
     }
@@ -181,8 +181,8 @@ export default function RepositoriesPage() {
       await apiClient.post('/api/v1/repos/index', { repository_id: id });
       toast.success('Indexing started');
       await fetchRepos();
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to start indexing');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to start indexing');
     } finally {
       setIndexingId(null);
     }

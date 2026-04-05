@@ -63,7 +63,7 @@ export function useIndexingProgress({
                         const data: IndexingProgress = JSON.parse(event.data);
 
                         if ("error" in data) {
-                            setError((data as any).error);
+                            setError((data as Record<string, string>).error);
                             setConnected(false);
                             ws.close();
                             return;

@@ -46,7 +46,7 @@ export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
   // Close sidebar on route change (mobile)
   useEffect(() => {
     onMobileClose();
-  }, [location.pathname]);
+  }, [location.pathname, onMobileClose]);
 
   const SidebarContent = () => (
     <>

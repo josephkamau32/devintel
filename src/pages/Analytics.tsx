@@ -80,7 +80,7 @@ export default function AnalyticsPage() {
     date: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
   }));
 
-  const monthlyCostData = ((analytics as any)?.monthly_cost || []).map(
+  const monthlyCostData = (((analytics as unknown as Record<string, unknown>)?.monthly_cost as { date: string; cost_usd: number }[]) || []).map(
     (d: { date: string; cost_usd: number }) => ({
       date: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       cost: d.cost_usd,
