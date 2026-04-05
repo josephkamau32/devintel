@@ -1,7 +1,7 @@
 services:
   - type: web
     name: devintel-api
-    env: docker
+    runtime: docker
     rootDir: devintel-backend
     plan: starter
     healthCheckPath: /health
@@ -32,7 +32,7 @@ services:
 
   - type: worker
     name: devintel-worker
-    env: docker
+    runtime: docker
     rootDir: devintel-backend
     plan: starter
     dockerCommand: "celery -A app.core.celery_app worker --loglevel=info"
@@ -60,9 +60,11 @@ services:
   - type: redis
     name: devintel-redis
     plan: free
+    ipAllowList: []
 
 databases:
   - name: devintel-db
     databaseName: devintel
     user: devintel
     plan: free
+    ipAllowList: []
