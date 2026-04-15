@@ -286,17 +286,14 @@ async def disable_csrf():
 
 @pytest.fixture(autouse=True)
 async def mock_redis():
-    """Mock Redis connection."""
-    mock_redis_client = AsyncMock()
-    mock_redis_client.get.return_value = None
-    mock_redis_client.set.return_value = True
-    mock_redis_client.setex.return_value = True
-    mock_redis_client.delete.return_value = True
-    mock_redis_client.close.return_value = None
-    
-    with patch("app.services.cache.cache.redis", mock_redis_client):
-        with patch("redis.asyncio.from_url", return_value=mock_redis_client):
-            yield mock_redis_client
+    """Mock Redis / ensure cache uses in-memory backend for tests."""
+    from app.services.cache import cache
+    # Force in-memory mode for tests (no Redis needed)
+    if cache._mem is None:
+        from app.services.cache import _InMemoryCache
+        cache._redis = None
+        cache._mem = _InMemoryCache()
+    yield cache
 
 
 @pytest.fixture

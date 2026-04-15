@@ -27,14 +27,14 @@ class Settings(BaseSettings):
     database_pool_size: int = Field(default=50, alias="DATABASE_POOL_SIZE")
     database_max_overflow: int = Field(default=10, alias="DATABASE_MAX_OVERFLOW")
 
-    # Redis and Cache
-    redis_url: str = Field(default="redis://localhost:6379/0", alias="REDIS_URL")
+    # Redis and Cache (optional — if empty, falls back to in-memory cache)
+    redis_url: str = Field(default="", alias="REDIS_URL")
     redis_cache_ttl: int = Field(default=3600, alias="REDIS_CACHE_TTL")
     redis_pool_size: int = Field(default=10, alias="REDIS_POOL_SIZE")
 
-    # Celery
-    celery_broker_url: str = Field(..., alias="CELERY_BROKER_URL")
-    celery_result_backend: str = Field(..., alias="CELERY_RESULT_BACKEND")
+    # Celery (optional — if empty, background tasks run in-process via asyncio)
+    celery_broker_url: str = Field(default="", alias="CELERY_BROKER_URL")
+    celery_result_backend: str = Field(default="", alias="CELERY_RESULT_BACKEND")
 
     # GitHub OAuth
     github_client_id: str = Field(..., alias="GITHUB_CLIENT_ID")
@@ -115,7 +115,7 @@ class Settings(BaseSettings):
     enable_metrics: bool = Field(default=True, alias="ENABLE_METRICS")
     metrics_port: int = Field(default=9090, alias="METRICS_PORT")
 
-    # Redis Connection Pool
+    # Redis Connection Pool (only used when redis_url is set)
     redis_pool_min_size: int = Field(default=10, alias="REDIS_POOL_MIN_SIZE")
     redis_pool_max_size: int = Field(default=50, alias="REDIS_POOL_MAX_SIZE")
 

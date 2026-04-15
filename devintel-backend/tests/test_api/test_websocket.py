@@ -1,15 +1,14 @@
 """
 Tests for the WebSocket endpoint: GET /ws/repos/{repo_id}/progress
 
-These tests cover the authentication and routing layer without requiring a live
-Redis connection. Tests that exercise the Redis pub/sub path are marked as
-@pytest.mark.integration and are skipped in the standard unit test run.
+These tests cover the authentication and routing layer without requiring
+external services. The progress bus is mocked in-process.
 
 Approach:
   - FastAPI's WebSocketTestSession (via TestClient) allows synchronous WS tests.
   - JWT tokens are created with the project's own create_access_token utility
     so they pass the endpoint's jose.jwt.decode() check.
-  - All Redis and DB calls are mocked at the module level.
+  - The progress bus and DB calls are mocked at the module level.
 """
 
 import json
@@ -182,25 +181,17 @@ class TestWebSocketRouting:
         mock_db.__aenter__ = AsyncMock(return_value=mock_db)
         mock_db.__aexit__ = AsyncMock(return_value=False)
 
-        # Mock Redis to prevent actual connection: pubsub blocks indefinitely
-        mock_pubsub = MagicMock()
-        mock_pubsub.subscribe = AsyncMock()
-        mock_pubsub.unsubscribe = AsyncMock()
-        # Make listen() yield nothing (so the loop ends cleanly)
-        async def _empty_listen():
+        # Mock progress_bus to prevent blocking: subscribe yields nothing
+        async def _empty_subscribe(channel):
             return
             yield  # make it an async generator
-        mock_pubsub.listen = _empty_listen
-
-        mock_aioredis = MagicMock()
-        mock_aioredis.pubsub = MagicMock(return_value=mock_pubsub)
-        mock_aioredis.close = AsyncMock()
 
         with (
             patch("app.api.v1.ws.AsyncSessionLocal", return_value=mock_db),
             patch("app.api.v1.ws.RepositoryRepository", return_value=mock_repo_repo),
-            patch("redis.asyncio.from_url", return_value=mock_aioredis),
+            patch("app.api.v1.ws.progress_bus") as mock_bus,
         ):
+            mock_bus.subscribe = _empty_subscribe
             client = TestClient(app, raise_server_exceptions=False)
             try:
                 with client.websocket_connect(_ws_url(repo_id, token)) as ws:
@@ -209,7 +200,7 @@ class TestWebSocketRouting:
                     assert msg.get("progress") == 42
                     assert msg.get("status") == "connecting"
             except Exception:
-                pass  # Redis mock may cause unclean close — that's acceptable here
+                pass  # Mock may cause unclean close — that's acceptable here
 
 
 # ─── Integration tests (require live Redis) ──────────────────────────────────
@@ -217,18 +208,16 @@ class TestWebSocketRouting:
 @pytest.mark.integration
 class TestWebSocketIntegration:
     """
-    These tests require a live Redis instance at the configured REDIS_URL.
+    Integration tests for WebSocket progress streaming.
     Run with:  pytest -m integration tests/test_api/test_websocket.py
     """
 
     @pytest.mark.asyncio
-    async def test_receives_progress_event_from_redis_publish(self, db_session):
+    async def test_receives_progress_event_from_bus(self, db_session):
         """
-        Simulates the full WS → Redis pub/sub → WS flow:
+        Simulates the full WS → progress bus → WS flow:
         1. Client connects to WS endpoint
-        2. A progress event is published to Redis
+        2. A progress event is published via progress_bus
         3. Client receives the forwarded event
-
-        Skipped unless REDIS_URL points to a running Redis.
         """
-        pytest.skip("Integration test — requires live Redis; run with -m integration")
+        pytest.skip("Integration test — requires running server; run with -m integration")

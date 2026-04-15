@@ -1,26 +1,24 @@
-"""Background task for autonomous AI pull request review."""
+"""Background task for autonomous AI pull request review.
+
+Runs as an asyncio task in-process — no Celery or Redis required.
+"""
 
 import asyncio
 from uuid import UUID
 
-from asgiref.sync import async_to_sync
-
 from app.core.logging import get_logger
-from app.tasks.celery import celery
 
 logger = get_logger(__name__)
 
 
-@celery.task(bind=True, max_retries=2, name="app.tasks.pr_review.review_pull_request_task")
-def review_pull_request_task(
-    self,
+async def review_pull_request_task(
     repo_id: str,
     pr_number: int,
     pr_title: str,
     access_token: str,
-):
+) -> dict:
     """
-    Celery task: generate an AI code review for a GitHub pull request and
+    Background task: generate an AI code review for a GitHub pull request and
     post it as a comment on the PR.
 
     Args:
@@ -30,12 +28,11 @@ def review_pull_request_task(
         access_token: Decrypted GitHub access token with write access
     """
     try:
-        async_to_sync(_review_pull_request_async)(
+        await _review_pull_request_async(
             repo_id, pr_number, pr_title, access_token
         )
     except Exception as e:
-        logger.error(f"PR review task wrapper failed: {e}", exc_info=True)
-        raise
+        logger.error(f"PR review task failed for {repo_id}#{pr_number}: {e}", exc_info=True)
     return {"status": "completed", "repo_id": repo_id, "pr_number": pr_number}
 
 
@@ -130,8 +127,6 @@ async def _get_pr_comments(
     pr_number: int,
 ) -> list[str]:
     """Return list of existing comment bodies on a PR."""
-    import asyncio
-
     try:
         def _fetch_comments():
             repo = github_client.client.get_repo(full_name)

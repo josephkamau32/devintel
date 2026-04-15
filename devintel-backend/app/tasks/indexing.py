@@ -1,55 +1,50 @@
-"""Background tasks for repository indexing."""
+"""Background task for repository indexing.
+
+Runs as an asyncio task in-process — no Celery or Redis required.
+"""
 
 import asyncio
 import json
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy.ext.asyncio import AsyncSession
-from asgiref.sync import async_to_sync
-
 from app.core.logging import get_logger
-from app.db.session import AsyncSessionLocal, engine
+from app.db.session import AsyncSessionLocal
 from app.models.repository import Repository
 from app.repositories.embedding import EmbeddingRepository
 from app.repositories.repository import RepositoryRepository
 from app.services.embedding import EmbeddingService
 from app.services.indexing import IndexingService
-from app.tasks.celery import celery
+from app.services.progress_bus import progress_bus
 
 logger = get_logger(__name__)
 
 
 async def _publish_progress(repo_id: str, progress: int, status: str) -> None:
-    """Publish indexing progress to Redis pub/sub channel for WebSocket clients."""
+    """Publish indexing progress via the in-process event bus."""
     try:
-        import redis.asyncio as aioredis
-        from app.core.config import settings
-        r = aioredis.from_url(settings.redis_url, encoding="utf-8", decode_responses=True)
-        payload = json.dumps({"progress": progress, "status": status})
-        await r.publish(f"indexing:{repo_id}", payload)
-        await r.close()
+        payload = {"progress": progress, "status": status}
+        await progress_bus.publish(f"indexing:{repo_id}", payload)
     except Exception as e:
         # Progress publishing is best-effort — never fail indexing over it
         logger.debug(f"Progress publish failed (non-critical): {e}")
 
 
-@celery.task(bind=True, max_retries=3)
-def index_repository_task(self, repo_id: str, clone_url: str, access_token: str = ""):
+async def index_repository_task(repo_id: str, clone_url: str, access_token: str = "") -> dict:
     """
     Background task to index a repository.
-    
+
+    Runs as a fire-and-forget asyncio task via asyncio.create_task().
+
     Args:
         repo_id: Repository UUID
         clone_url: Git clone URL
         access_token: GitHub access token for private repos
     """
-    # Use async_to_sync for more robust event loop management in Celery threads/processes
     try:
-        async_to_sync(_index_repository_async)(repo_id, clone_url, access_token, self)
+        await _index_repository_async(repo_id, clone_url, access_token)
     except Exception as e:
-        logger.error(f"Celery task wrapper failed: {e}")
-        raise
+        logger.error(f"Indexing task failed for {repo_id}: {e}", exc_info=True)
     return {"status": "completed", "repo_id": repo_id}
 
 
@@ -57,10 +52,10 @@ async def _index_repository_async(
     repo_id: str,
     clone_url: str,
     access_token: str,
-    task: any,
 ) -> None:
     """Async implementation of repository indexing."""
     repo_path = None
+    indexing_service = IndexingService()
     
     async with AsyncSessionLocal() as db:
         try:
@@ -84,7 +79,6 @@ async def _index_repository_async(
             
             # Clone repository
             logger.info(f"Cloning repository: {clone_url}")
-            indexing_service = IndexingService()
             # 10 minute timeout for cloning
             repo_path = await asyncio.wait_for(
                 indexing_service.clone_repository(clone_url, access_token),
@@ -192,12 +186,9 @@ async def _index_repository_async(
             await db.commit()
             logger.info(f"Successfully indexed repository: {repo_id} ({len(chunks)} chunks)")
 
-            # Enqueue code health analysis (runs after indexing commit is flushed)
+            # Fire code health analysis as a follow-up background task
             from app.tasks.code_health import compute_code_health_task
-            compute_code_health_task.apply_async(
-                args=[repo_id],
-                countdown=5,  # Brief delay to ensure DB commit is visible to the new task
-            )
+            asyncio.create_task(compute_code_health_task(repo_id))
             
         except asyncio.TimeoutError:
             error_msg = "Indexing timed out during processing (cloning or embedding)"
@@ -207,8 +198,6 @@ async def _index_repository_async(
             error_msg = f"Unexpected error: {str(e)}"
             logger.error(f"Failed to index repository {repo_id}: {e}", exc_info=True)
             await _handle_indexing_failure(repo_repo, db, repo_id, error_msg)
-            # Only retry on unexpected exceptions, not timeouts or specific business logic failures
-            raise task.retry(exc=e, countdown=60)
         
         finally:
             # Cleanup

@@ -103,12 +103,15 @@ async def refresh_code_health(
             detail="Repository must be indexed before running health analysis.",
         )
 
+    import asyncio
+    import uuid
     from app.tasks.code_health import compute_code_health_task
-    task = compute_code_health_task.delay(str(repository_id))
+    task_id = str(uuid.uuid4())
+    asyncio.create_task(compute_code_health_task(str(repository_id)))
 
     return {
         "status": "queued",
-        "task_id": task.id,
+        "task_id": task_id,
         "message": "Code health analysis has been queued. Results will be available shortly.",
     }
 

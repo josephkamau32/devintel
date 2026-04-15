@@ -1,5 +1,7 @@
 """Repository management routes."""
 
+import asyncio
+import uuid
 from typing import List, Optional
 from uuid import UUID
 
@@ -235,14 +237,17 @@ async def index_repository(
             access_token = decrypted
     
     # Trigger background task
-    task = index_repository_task.delay(
-        repo_id=str(request.repository_id),
-        clone_url=repository.url,
-        access_token=access_token,
+    task_id = str(uuid.uuid4())
+    asyncio.create_task(
+        index_repository_task(
+            repo_id=str(request.repository_id),
+            clone_url=repository.url,
+            access_token=access_token,
+        )
     )
     
     return RepositoryIndexResponse(
-        task_id=task.id,
+        task_id=task_id,
         message="Indexing started",
         repository_id=request.repository_id,
     )

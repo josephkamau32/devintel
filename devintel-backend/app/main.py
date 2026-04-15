@@ -37,12 +37,12 @@ async def lifespan(app: FastAPI):
     yield
     logger.info("Shutting down DevIntel AI backend")
     
-    # Graceful shutdown: Close Redis
+    # Graceful shutdown: Close cache (Redis or in-memory)
     from app.services.cache import cache
     try:
         await cache.close()
     except Exception as e:
-        logger.error(f"Error closing Redis connection: {e}")
+        logger.error(f"Error closing cache: {e}")
         
     # Graceful shutdown: Dispose SQLAlchemy engine
     from app.db.session import engine

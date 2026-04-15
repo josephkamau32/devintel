@@ -76,7 +76,7 @@ class RepositoryIndexRequest(BaseModel):
 class RepositoryIndexResponse(BaseModel):
     """Repository indexing response schema."""
 
-    task_id: str = Field(..., description="Celery task ID")
+    task_id: str = Field(..., description="Background task ID")
     message: str
     repository_id: UUID
 

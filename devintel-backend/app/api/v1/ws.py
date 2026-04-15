@@ -1,16 +1,19 @@
-"""WebSocket endpoint for real-time repository indexing progress."""
+"""WebSocket endpoint for real-time repository indexing progress.
+
+Uses the in-process ProgressBus instead of Redis pub/sub.
+"""
 
 import json
 from uuid import UUID
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
-import redis.asyncio as aioredis
 from jose import JWTError, jwt
 
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.db.session import AsyncSessionLocal
 from app.repositories.repository import RepositoryRepository
+from app.services.progress_bus import progress_bus
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["WebSocket"])
@@ -29,7 +32,7 @@ async def repo_indexing_progress(
 
     The server:
     1. Validates the JWT and checks repo access
-    2. Subscribes to Redis pub/sub channel `indexing:{repo_id}`
+    2. Subscribes to the in-process progress bus channel `indexing:{repo_id}`
     3. Forwards every progress message to the WebSocket client
     4. Disconnects when progress reaches 100 or on error
 
@@ -56,7 +59,6 @@ async def repo_indexing_progress(
 
     # 3. Verify repo access
     try:
-        from uuid import UUID
         repo_uuid = UUID(repo_id)
         async with AsyncSessionLocal() as db:
             repo_repo = RepositoryRepository(db)
@@ -88,25 +90,14 @@ async def repo_indexing_progress(
     # 4. Send current progress immediately so the UI can bootstrap
     await websocket.send_json({"progress": current_progress, "status": "connecting"})
 
-    # 5. Subscribe to Redis pub/sub and stream events
-    pubsub_client = aioredis.from_url(
-        settings.redis_url,
-        encoding="utf-8",
-        decode_responses=True,
-    )
-    pubsub = pubsub_client.pubsub()
+    # 5. Subscribe to in-process progress bus and stream events
     channel = f"indexing:{repo_id}"
 
     try:
-        await pubsub.subscribe(channel)
         logger.info(f"WebSocket client subscribed to {channel}")
 
-        async for message in pubsub.listen():
-            if message["type"] != "message":
-                continue
-
+        async for data in progress_bus.subscribe(channel):
             try:
-                data = json.loads(message["data"])
                 await websocket.send_json(data)
 
                 # Close once indexing is terminal
@@ -126,11 +117,6 @@ async def repo_indexing_progress(
     except Exception as e:
         logger.error(f"WebSocket error for {channel}: {e}")
     finally:
-        try:
-            await pubsub.unsubscribe(channel)
-            await pubsub_client.close()
-        except Exception:
-            pass
         try:
             await websocket.close()
         except Exception:

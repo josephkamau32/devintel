@@ -1,20 +1,18 @@
-"""Celery task for computing code health scores after repository indexing."""
+"""Background task for computing code health scores after repository indexing.
 
-import asyncio
+Runs as an asyncio task in-process — no Celery or Redis required.
+"""
+
 from uuid import UUID
 
-from asgiref.sync import async_to_sync
-
 from app.core.logging import get_logger
-from app.tasks.celery import celery
 
 logger = get_logger(__name__)
 
 
-@celery.task(bind=True, max_retries=1, name="app.tasks.code_health.compute_code_health_task")
-def compute_code_health_task(self, repo_id: str):
+async def compute_code_health_task(repo_id: str) -> dict:
     """
-    Celery task: analyze repo code quality and persist the result.
+    Background task: analyze repo code quality and persist the result.
 
     Triggered automatically after a repository is successfully indexed.
 
@@ -22,10 +20,9 @@ def compute_code_health_task(self, repo_id: str):
         repo_id: Repository UUID string
     """
     try:
-        async_to_sync(_compute_code_health_async)(repo_id)
+        await _compute_code_health_async(repo_id)
     except Exception as e:
         logger.error(f"Code health task failed for {repo_id}: {e}", exc_info=True)
-        raise
     return {"status": "completed", "repo_id": repo_id}
 
 

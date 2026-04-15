@@ -81,25 +81,21 @@ class TestRepositoryEndpoints:
         self, authenticated_client: AsyncClient, test_repository: Repository
     ):
         """Test triggering repository indexing."""
-        with patch("app.tasks.indexing.index_repository_task.delay") as mock_task:
-            mock_task.return_value = AsyncMock(id="test_task_123")
-
+        with patch("app.api.v1.repositories.asyncio.create_task") as mock_create_task:
             response = await authenticated_client.post(
                 "/api/v1/repos/index", json={"repository_id": str(test_repository.id)}
             )
             assert response.status_code == 200
             data = response.json()
             assert "task_id" in data
-            mock_task.assert_called_once()
+            mock_create_task.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_trigger_indexing_already_indexed(
         self, authenticated_client: AsyncClient, indexed_repository: Repository
     ):
         """Test triggering indexing on already indexed repository."""
-        with patch("app.tasks.indexing.index_repository_task.delay") as mock_task:
-            mock_task.return_value = AsyncMock(id="test_task_123")
-            
+        with patch("app.api.v1.repositories.asyncio.create_task") as mock_create_task:
             response = await authenticated_client.post(
                 "/api/v1/repos/index",
                 json={"repository_id": str(indexed_repository.id)},

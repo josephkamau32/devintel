@@ -1,25 +1,36 @@
-"""Redis connection pool management."""
+"""Redis connection pool management.
+
+This module is only active when the `redis` package is installed
+and REDIS_URL is configured. In free-tier deployments without Redis,
+the module safely no-ops.
+"""
 
 from typing import Optional
-
-import redis.asyncio as aioredis
-from redis.asyncio.connection import ConnectionPool
 
 from app.core.config import settings
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
+try:
+    import redis.asyncio as aioredis
+    from redis.asyncio.connection import ConnectionPool
+    _REDIS_AVAILABLE = True
+except ImportError:
+    _REDIS_AVAILABLE = False
+
 
 class RedisPool:
     """Redis connection pool manager."""
     
-    _pool: Optional[ConnectionPool] = None
-    _client: Optional[aioredis.Redis] = None
+    _pool = None
+    _client = None
     
     @classmethod
-    async def get_pool(cls) -> ConnectionPool:
+    async def get_pool(cls):
         """Get or create Redis connection pool."""
+        if not _REDIS_AVAILABLE or not settings.redis_url:
+            return None
         if cls._pool is None:
             cls._pool = ConnectionPool.from_url(
                 settings.redis_url,
@@ -38,8 +49,10 @@ class RedisPool:
         return cls._pool
     
     @classmethod
-    async def get_client(cls) -> aioredis.Redis:
+    async def get_client(cls):
         """Get Redis client from pool."""
+        if not _REDIS_AVAILABLE or not settings.redis_url:
+            return None
         if cls._client is None:
             pool = await cls.get_pool()
             cls._client = aioredis.Redis(connection_pool=pool)
@@ -60,6 +73,8 @@ class RedisPool:
     @classmethod
     async def health_check(cls) -> bool:
         """Check Redis connection health."""
+        if not _REDIS_AVAILABLE or not settings.redis_url:
+            return False
         try:
             client = await cls.get_client()
             await client.ping()

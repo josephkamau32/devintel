@@ -1,7 +1,9 @@
 """GitHub Webhook handler — auto re-indexes repositories on push events."""
 
+import asyncio
 import hashlib
 import hmac
+import uuid
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -122,20 +124,23 @@ async def github_webhook(
             return {"status": "skipped", "reason": "Repository is already being indexed."}
 
         # Enqueue indexing task (fire-and-forget)
-        task = index_repository_task.delay(
-            repo_id=str(repository.id),
-            clone_url=repository.url,
-            access_token="",  # Public repos or tokens already stored
+        task_id = str(uuid.uuid4())
+        asyncio.create_task(
+            index_repository_task(
+                repo_id=str(repository.id),
+                clone_url=repository.url,
+                access_token="",  # Public repos or tokens already stored
+            )
         )
 
         logger.info(
             f"Webhook triggered re-index for {repo_full_name} "
-            f"(repo_id={repository.id}, task_id={task.id})"
+            f"(repo_id={repository.id}, task_id={task_id})"
         )
         return {
             "status": "queued",
             "repository": repo_full_name,
-            "task_id": task.id,
+            "task_id": task_id,
         }
 
     # --- Pull Request event: trigger AI code review ---
@@ -175,21 +180,24 @@ async def github_webhook(
 
         # Enqueue PR review task
         from app.tasks.pr_review import review_pull_request_task
-        task = review_pull_request_task.delay(
-            repo_id=str(repository.id),
-            pr_number=pr_number,
-            pr_title=pr_title,
-            access_token=access_token,
+        task_id = str(uuid.uuid4())
+        asyncio.create_task(
+            review_pull_request_task(
+                repo_id=str(repository.id),
+                pr_number=pr_number,
+                pr_title=pr_title,
+                access_token=access_token,
+            )
         )
 
         logger.info(
-            f"Queued PR review for {repo_full_name}#{pr_number} (task_id={task.id})"
+            f"Queued PR review for {repo_full_name}#{pr_number} (task_id={task_id})"
         )
         return {
             "status": "queued",
             "repository": repo_full_name,
             "pr_number": pr_number,
-            "task_id": task.id,
+            "task_id": task_id,
         }
 
     # All other events acknowledged but not acted upon
