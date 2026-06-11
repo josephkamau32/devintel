@@ -67,7 +67,12 @@ class Settings(BaseSettings):
 
     # CORS
     cors_origins: list[str] | str = Field(
-        default=["http://localhost:3000", "http://localhost:5173", "http://localhost:8080"],
+        default=[
+            "http://localhost:3000",
+            "http://localhost:5173",
+            "http://localhost:8080",
+            "https://devintel.vercel.app",
+        ],
         alias="CORS_ORIGINS"
     )
     cors_allow_credentials: bool = Field(default=True, alias="CORS_ALLOW_CREDENTIALS")

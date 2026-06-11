@@ -20,15 +20,22 @@ export default function LoginPage() {
 
     setIsLoading(true);
     try {
-      const response = await apiClient.post<{ access_token: string }>("/api/v1/auth/login", {
+      const response = await apiClient.post<{ access_token: string; refresh_token: string; user: any }>("/api/v1/auth/login", {
         email,
         password,
       });
-      localStorage.setItem("devintel_token", response.access_token);
+      localStorage.setItem("access_token", response.access_token);
+      if (response.refresh_token) {
+        localStorage.setItem("refresh_token", response.refresh_token);
+      }
+      if (response.user) {
+        localStorage.setItem("user", JSON.stringify(response.user));
+        window.dispatchEvent(new CustomEvent("user-updated", { detail: response.user }));
+      }
       toast.success("Welcome back!");
       navigate("/dashboard");
     } catch (error: any) {
-      const message = error.response?.data?.detail || "Login failed. Please check your credentials.";
+      const message = error.response?.data?.detail || error.response?.data?.message || "Login failed. Please check your credentials.";
       toast.error(message);
       console.error(error);
     } finally {

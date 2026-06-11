@@ -25,16 +25,23 @@ export default function SignupPage() {
 
     setIsLoading(true);
     try {
-      const response = await apiClient.post<{ access_token: string }>("/api/v1/auth/signup", {
+      const response = await apiClient.post<{ access_token: string; refresh_token: string; user: any }>("/api/v1/auth/signup", {
         email,
         password,
         name,
       });
-      localStorage.setItem("devintel_token", response.access_token);
+      localStorage.setItem("access_token", response.access_token);
+      if (response.refresh_token) {
+        localStorage.setItem("refresh_token", response.refresh_token);
+      }
+      if (response.user) {
+        localStorage.setItem("user", JSON.stringify(response.user));
+        window.dispatchEvent(new CustomEvent("user-updated", { detail: response.user }));
+      }
       toast.success("Account created successfully!");
       navigate("/dashboard");
     } catch (error: any) {
-      const message = error.response?.data?.detail || "Signup failed. Please try again.";
+      const message = error.response?.data?.detail || error.response?.data?.message || "Signup failed. Please try again.";
       toast.error(message);
       console.error(error);
     } finally {

@@ -1,5 +1,6 @@
 """Alembic environment configuration."""
 
+import os
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool
@@ -12,6 +13,14 @@ from app.db.base import Base
 
 # this is the Alembic Config object
 config = context.config
+
+# Override sqlalchemy.url from DATABASE_URL env var if available.
+# This is critical for production (Render) where the DB URL differs from alembic.ini.
+# Convert asyncpg:// to postgresql:// since Alembic uses a sync driver.
+database_url = os.environ.get("DATABASE_URL")
+if database_url:
+    sync_url = database_url.replace("postgresql+asyncpg://", "postgresql://")
+    config.set_main_option("sqlalchemy.url", sync_url)
 
 # Interpret the config file for Python logging
 if config.config_file_name is not None:

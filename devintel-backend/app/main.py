@@ -44,21 +44,6 @@ limiter = Limiter(key_func=get_remote_address)
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
     logger.info("Starting DevIntel AI backend")
-    
-    # Automatically run database migrations on startup
-    import subprocess
-    try:
-        logger.info("Running database migrations...")
-        result = subprocess.run(
-            ["alembic", "upgrade", "head"], 
-            check=True, 
-            capture_output=True, 
-            text=True
-        )
-        logger.info(f"Migrations successful: {result.stdout}")
-    except subprocess.CalledProcessError as e:
-        logger.error(f"Migration failed: {e.stderr}")
-        
     yield
     logger.info("Shutting down DevIntel AI backend")
 
@@ -125,11 +110,17 @@ async def devintel_exception_handler(request: Request, exc: DevIntelException):
 
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
-    """Handle general exceptions."""
+    """Handle general exceptions with CORS headers so the browser can read the error."""
     logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    origin = request.headers.get("origin", "")
+    headers = {}
+    if origin and origin in settings.cors_origins:
+        headers["Access-Control-Allow-Origin"] = origin
+        headers["Access-Control-Allow-Credentials"] = "true"
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={"message": "Internal server error"},
+        content={"message": "Internal server error", "detail": str(exc)},
+        headers=headers,
     )
 
 
