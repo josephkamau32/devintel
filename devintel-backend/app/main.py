@@ -44,6 +44,21 @@ limiter = Limiter(key_func=get_remote_address)
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
     logger.info("Starting DevIntel AI backend")
+    
+    # Automatically run database migrations on startup
+    import subprocess
+    try:
+        logger.info("Running database migrations...")
+        result = subprocess.run(
+            ["alembic", "upgrade", "head"], 
+            check=True, 
+            capture_output=True, 
+            text=True
+        )
+        logger.info(f"Migrations successful: {result.stdout}")
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Migration failed: {e.stderr}")
+        
     yield
     logger.info("Shutting down DevIntel AI backend")
 
