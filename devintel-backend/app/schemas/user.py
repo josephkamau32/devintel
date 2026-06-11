@@ -11,9 +11,21 @@ class UserBase(BaseModel):
     """Base user schema."""
 
     email: Optional[EmailStr] = None
-    email: Optional[EmailStr] = None
     name: Optional[str] = None
     avatar_url: Optional[str] = None
+
+
+class UserCreate(BaseModel):
+    """Schema for creating a new user with password."""
+    email: EmailStr
+    password: str = Field(..., min_length=8)
+    name: Optional[str] = None
+
+
+class UserLogin(BaseModel):
+    """Schema for login with email/password."""
+    email: EmailStr
+    password: str
 
 
 class UserUpdate(BaseModel):
@@ -27,7 +39,7 @@ class UserResponse(UserBase):
     """User response schema."""
 
     id: UUID
-    github_id: str
+    github_id: Optional[str] = None
     created_at: datetime
 
     class Config:

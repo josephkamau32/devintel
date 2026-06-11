@@ -19,8 +19,11 @@ from app.db.session import get_db
 from app.integrations.github_client import GitHubClient, exchange_code_for_token
 from app.models.user import User
 from app.repositories.user import UserRepository
-from app.schemas.user import RefreshTokenRequest, TokenResponse, UserResponse, UserUpdate
+from app.schemas.user import RefreshTokenRequest, TokenResponse, UserResponse, UserUpdate, UserCreate, UserLogin
 from app.services.encryption import encryption_service
+from passlib.context import CryptContext
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -161,6 +164,81 @@ async def refresh_access_token(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token refresh failed",
         )
+
+
+@router.post("/signup", response_model=TokenResponse)
+@limiter.limit(AUTH_RATE_LIMIT)
+async def signup(
+    request: Request,
+    user_in: UserCreate,
+    db: AsyncSession = Depends(get_db),
+):
+    """Register a new user with email and password."""
+    user_repo = UserRepository(db)
+    existing_user = await user_repo.get_by_email(user_in.email)
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="Email already registered"
+        )
+        
+    hashed_password = pwd_context.hash(user_in.password)
+    user = await user_repo.create_with_password(
+        email=user_in.email,
+        hashed_password=hashed_password,
+        name=user_in.name
+    )
+    
+    # Create JWT tokens
+    jwt_access_token = create_access_token({"sub": str(user.id)})
+    jwt_refresh_token = create_refresh_token({"sub": str(user.id)})
+    
+    user.refresh_token = hash_token(jwt_refresh_token)
+    await db.commit()
+    
+    return TokenResponse(
+        access_token=jwt_access_token,
+        refresh_token=jwt_refresh_token,
+        token_type="bearer",
+        user=UserResponse.model_validate(user),
+    )
+
+
+@router.post("/login", response_model=TokenResponse)
+@limiter.limit(AUTH_RATE_LIMIT)
+async def login(
+    request: Request,
+    user_in: UserLogin,
+    db: AsyncSession = Depends(get_db),
+):
+    """Authenticate user with email and password."""
+    user_repo = UserRepository(db)
+    user = await user_repo.get_by_email(user_in.email)
+    if not user or not user.hashed_password:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, 
+            detail="Invalid email or password"
+        )
+        
+    if not pwd_context.verify(user_in.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, 
+            detail="Invalid email or password"
+        )
+        
+    # Create JWT tokens
+    jwt_access_token = create_access_token({"sub": str(user.id)})
+    jwt_refresh_token = create_refresh_token({"sub": str(user.id)})
+    
+    user.refresh_token = hash_token(jwt_refresh_token)
+    await db.commit()
+    
+    return TokenResponse(
+        access_token=jwt_access_token,
+        refresh_token=jwt_refresh_token,
+        token_type="bearer",
+        user=UserResponse.model_validate(user),
+    )
 
 
 @router.get("/me", response_model=UserResponse)

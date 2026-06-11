@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Building2, CreditCard, Key, Loader2, Moon, Sun, User } from "lucide-react";
+import { Building2, CreditCard, Key, Loader2, Moon, Sun, User, Github } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -65,6 +65,19 @@ export default function SettingsPage() {
     }
   };
 
+  const handleGitHubConnect = async () => {
+    setIsLoading(true);
+    try {
+      const response = await apiClient.get<{ url: string }>("/api/v1/auth/github");
+      window.location.href = response.url;
+    } catch (error) {
+      toast.error("Failed to connect to GitHub. Please try again.");
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="max-w-2xl space-y-6">
       <div>
@@ -112,6 +125,29 @@ export default function SettingsPage() {
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Save Changes
               </Button>
+            </div>
+          </div>
+
+          {/* Linked Accounts */}
+          <div className="rounded-xl border border-border bg-card p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Github className="h-4 w-4 text-muted-foreground" />
+              <h2 className="font-semibold text-card-foreground">Linked Accounts</h2>
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-foreground">GitHub</p>
+                <p className="text-sm text-muted-foreground">
+                  {JSON.parse(localStorage.getItem('user') || '{}')?.github_id 
+                    ? "Your GitHub account is connected." 
+                    : "Connect GitHub to access repository analysis features."}
+                </p>
+              </div>
+              {!JSON.parse(localStorage.getItem('user') || '{}')?.github_id && (
+                <Button variant="outline" size="sm" onClick={handleGitHubConnect}>
+                  Connect
+                </Button>
+              )}
             </div>
           </div>
 

@@ -26,6 +26,23 @@ class UserRepository:
         result = await self.db.execute(select(User).where(User.github_id == github_id))
         return result.scalars().first()
 
+    async def get_by_email(self, email: str) -> Optional[User]:
+        """Get user by email."""
+        result = await self.db.execute(select(User).where(User.email == email))
+        return result.scalars().first()
+
+    async def create_with_password(self, email: str, hashed_password: str, name: Optional[str] = None) -> User:
+        """Create a new user with email and password."""
+        user = User(
+            email=email,
+            hashed_password=hashed_password,
+            name=name
+        )
+        self.db.add(user)
+        await self.db.commit()
+        await self.db.refresh(user)
+        return user
+
     async def create_or_update_from_github(
         self,
         github_id: str,
@@ -37,6 +54,10 @@ class UserRepository:
     ) -> User:
         """Create or update user from GitHub OAuth data."""
         user = await self.get_by_github_id(github_id)
+        
+        if not user and email:
+            # Try to link by email if an account was created via password
+            user = await self.get_by_email(email)
 
         if user:
             # Update existing user
@@ -55,6 +76,9 @@ class UserRepository:
                 user.username = username
             if github_token_encrypted:
                 user.github_access_token_encrypted = github_token_encrypted
+            # Link GitHub ID if it was an email account
+            if not user.github_id:
+                user.github_id = github_id
         else:
             # Create new user
             user = User(

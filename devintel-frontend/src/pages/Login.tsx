@@ -20,16 +20,16 @@ export default function LoginPage() {
 
     setIsLoading(true);
     try {
-      // In a real app, this would be the actual login endpoint
-      // For now, we'll simulate the GitHub OAuth flow since that's the primary auth method
-      // Or we can implement a mock login for testing if backend doesn't support password auth yet
-
-      // Checking backend... auth.py mainly supports GitHub OAuth
-      // Let's implement GitHub OAuth button functionality properly
-
-      toast.info("Please use 'Continue with GitHub' for now");
-    } catch (error) {
-      toast.error("Login failed. Please try again.");
+      const response = await apiClient.post<{ access_token: string }>("/api/v1/auth/login", {
+        email,
+        password,
+      });
+      localStorage.setItem("devintel_token", response.access_token);
+      toast.success("Welcome back!");
+      navigate("/dashboard");
+    } catch (error: any) {
+      const message = error.response?.data?.detail || "Login failed. Please check your credentials.";
+      toast.error(message);
       console.error(error);
     } finally {
       setIsLoading(false);

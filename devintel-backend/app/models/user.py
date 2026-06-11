@@ -19,10 +19,13 @@ class User(Base, UUIDMixin, TimestampMixin):
 
     __tablename__ = "users"
 
-    # GitHub OAuth fields
-    github_id: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    # Authentication fields
+    github_id: Mapped[Optional[str]] = mapped_column(String(255), unique=True, index=True, nullable=True)
     github_access_token_encrypted: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)
-    email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    email: Mapped[Optional[str]] = mapped_column(String(255), unique=True, index=True, nullable=True)
+    hashed_password: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    
+    # Profile fields
     name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     username: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     avatar_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
