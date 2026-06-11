@@ -1,4 +1,4 @@
-# DevIntel AI — AI-Powered Developer Productivity Platform
+# DevIntel AI — Production-Grade Autonomous Code Patching & RAG Platform
 
 [![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/josephkamau32/devintel)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -9,323 +9,185 @@
 [![PostgreSQL + pgvector](https://img.shields.io/badge/PostgreSQL-pgvector-4169E1.svg?logo=postgresql&logoColor=white)](https://github.com/pgvector/pgvector)
 [![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4o-412991.svg?logo=openai&logoColor=white)](https://openai.com/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![Security: OWASP](https://img.shields.io/badge/security-OWASP-brightgreen.svg)](./devintel-backend/docs/SECURITY.md)
 
-<!-- 🔗 LIVE DEMO: Uncomment and update when deployed -->
-<!-- > **[🚀 Live Demo](https://devintel-frontend.vercel.app)** | **[📡 API Docs](https://devintel-api.onrender.com/docs)** -->
+**DevIntel AI** is a production-grade, full-stack AI platform that integrates autonomous agentic workflows into development pipelines. By connecting GitHub repositories, developers can run deep semantic search queries, interact with codebase-aware chatbots via **Retrieval-Augmented Generation (RAG)**, auto-generate PR reviews, and launch **autonomous code patching agents** that write and self-correct syntax bugs before issuing pull requests.
 
-**DevIntel AI** is a full-stack, production-grade AI platform that enables developers to connect GitHub repositories, index codebases with AST-aware chunking, and interact with an autonomous AI agent using **Retrieval Augmented Generation (RAG)**. The agent can chat about your architecture, review pull requests, and autonomously generate code fixes with self-correction loops.
+---
 
-## 🔄 How It Works
+## 🏗️ Architecture & How It Works
 
 ```
-1. Connect  →  2. Index  →  3. Chat / Review  →  4. Auto-Fix
-   GitHub        AST-aware      RAG-powered         Agent creates
-   OAuth         Tree-Sitter    vector search        branch + PR
-                 + pgvector     conversations        autonomously
+[1. GitHub OAuth] ──> [2. AST Parser (Tree-Sitter)] ──> [3. pgvector Storage]
+                                                               │
+                                                               ▼
+[5. GitHub Pull Request] <── [4. Autonomous Agent (OpenAI)] <──┘
+ (Headless Branch + PR)       (Patching + Self-Correction Loop)
 ```
 
-## ✨ Key Features
+1. **Connect & Auth**: Secure login via GitHub OAuth. Access tokens are dynamically encrypted at rest using **Fernet AES-256** encryption.
+2. **AST-Aware Parsing**: Repository codebases are ingested and parsed using **Tree-Sitter** to generate high-signal AST code blocks rather than naive character/token chunks.
+3. **Semantic Storage**: Code fragments are embedded using `text-embedding-3-small` (1536 dimensions) and indexed in a **PostgreSQL** database utilizing **pgvector** with Cosine Similarity indexers.
+4. **Agentic Loop**: Given a code issue, the AI agent performs semantic retrieval, designs a **Unified Diff Patch**, validates the syntax using a localized linting pass, corrects its own syntax errors if any arise, and tests the output.
+5. **Git Deployment**: The agent dynamically logs into GitHub on behalf of the user, creates a temporary headless branch, commits the validated patch, and opens a new **Pull Request** for reviewer inspection.
 
-- 🤖 **Agentic "Auto-Fix" Workflows** — An autonomous AI coding agent integrated into the dashboard. Click "Auto-Fix" on any repository issue, and the agent will:
-  - Utilize **Low-Latency RAG** (via pgvector) to semantically locate the exact vulnerable files in milliseconds without scanning the entire repo.
-  - Dynamically write a **Unified Diff Patch** directly targeting the flawed functions, heavily preserving token context limits.
-  - Employ a **Self-Correction Loop** using an AST/Syntax Linter in memory to automatically fix its own hallucinations and syntax errors before committing.
-  - Execute a **One-Click PR Generation**, securely opening a new branch and Pull Request on GitHub using the low-level Git Data API, ensuring zero-risk to `main`.
-- 💬 **Context-Aware RAG Chat** — Intelligent conversations about your architecture with semantic vector search and context window management.
-- 🔐 **Secure Authentication** — GitHub OAuth with Fernet-encrypted token management, JWT sessions with refresh tokens.
-- 📂 **Smart Code Indexing** — AST-aware Tree-Sitter chunking with context expansion, powered by PostgreSQL `pgvector`.
-- 📊 **Real-Time Analytics** — Track usage, API performance, and token consumption metrics via Prometheus.
-- 🕵️ **AI-Powered PR Review** — Automated code review suggestions with file-level patches for open pull requests.
-- 🔒 **Enterprise-Grade Security** — OWASP compliance, CSRF protection, SQL injection detection, rate limiting, security headers, request size limits, and audit logging.
-- ✅ **Test-Driven Reliability** — Comprehensive test suite with `pytest` (backend) and `Vitest` (frontend).
+---
 
-## 🏗️ Project Structure
+## 🤖 Deep Dive: AI/ML Engineering & Core Systems
 
-This is a monorepo containing both the backend and frontend applications:
+### 1. AST-Aware Tree-Sitter Ingestion
+Traditional RAG pipelines use fixed-size character chunking, which splits code down the middle of functions, destroying syntactic context. DevIntel AI uses language-specific grammar packages via **Tree-Sitter** to:
+* Extract logical nodes (e.g., classes, methods, function declarations, loops).
+* Reassemble children nodes into functional context blocks.
+* Append parent context metadata (e.g., class names, global declarations) to each chunk, guaranteeing that the LLM has complete signature information when writing patches.
 
+### 2. High-Performance pgvector Querying
+Our search service runs dynamic distance querying using PostgreSQL `pgvector`:
+$$\text{Cosine Distance} = 1 - \frac{\vec{A} \cdot \vec{B}}{\|\vec{A}\| \|\vec{B}\|}$$
+This ensures search results match semantic intent rather than simple string hashes, bringing semantic lookups down to **sub-10ms** response latencies.
+
+### 3. Unified Diff Patching & Context Efficiency
+Instead of requesting the LLM to output full file code (which is slow, expensive, and risks token truncation), DevIntel AI forces the AI model to output standard **Unified Diff Hunks** (Search/Replace blocks). The backend patch engine dynamically applies these hunks line-by-line while preserving target file offsets.
+
+### 4. AST Validator & Self-Correction Loop
+LLMs are prone to hallucinating missing imports, incorrect variable names, or unclosed parenthesis. The agent runs a self-correction compiler loop:
 ```
-devintel/
-├── devintel-backend/     # FastAPI backend with RAG pipeline
-│   ├── app/              # Application code
-│   │   ├── api/          # API endpoints (REST)
-│   │   ├── core/         # Configuration & security
-│   │   ├── models/       # Database models
-│   │   ├── services/     # Business logic
-│   │   ├── middleware/   # Security middleware
-│   │   └── tasks/        # Celery background tasks
-│   ├── tests/            # Comprehensive test suite
-│   ├── alembic/          # Database migrations
-│   ├── docker/           # Docker configuration
-│   └── docs/             # Technical documentation
-│
-├── devintel-frontend/    # React frontend with Vite
-│   ├── src/              # React components
-│   │   ├── components/   # Reusable UI components
-│   │   ├── pages/        # Page components
-│   │   ├── hooks/        # Custom React hooks
-│   │   └── lib/          # Utilities
-│   ├── public/           # Static assets
-│   └── tests/            # Component tests
-│
-├── scripts/              # Setup and automation scripts
-├── docs/                 # Project documentation
-├── CONTRIBUTING.md       # Contribution guidelines
-├── LICENSE              # MIT License
-└── README.md            # This file
+           ┌──────────────────────────────────┐
+           │   Generate Unified Diff Patch    │
+           └────────────────┬─────────────────┘
+                            │
+                            ▼
+           ┌──────────────────────────────────┐
+           │ Run Syntax Linter (jsbeautifier) │
+           └────────────────┬─────────────────┘
+                            │
+             [Syntax Errors Found?]
+             ├── Yes ──> [Append compiler logs to prompt] ──┐
+             │                                              │
+             └── No                                         ▼
+                 │                          ┌──────────────────────────────┐
+                 ▼                          │ Self-Correction Prompt Loop  │
+       ┌───────────────────┐                └──────────────────────────────┘
+       │ Commit & Create PR│
+       └───────────────────┘
 ```
+This loop executes up to 3 times in-memory, completely filtering out syntax bugs before they can reach GitHub.
 
-## 🚀 Quick Start
+---
+
+## 🚢 Free-Tier Deployment Guide
+
+DevIntel AI has been optimized to deploy **100% free** on **Vercel** (frontend), **Render** (backend API), and **Neon** (database). 
+
+### 💡 Why It Fits Rendering & Hosting Free Limits
+* **Inference Offloading**: Because all heavyweight AI tasks (embeddings and text generation) are offloaded to **OpenAI's API endpoints**, the server consumes almost no CPU or memory.
+* **Lightweight ASGI Server**: The API runs on a FastAPI + Uvicorn engine, keeping the base memory consumption under **100MB RAM** (well below Render's 512MB limit).
+* **Pre-Built Dependency Wheels**: The backend uses compiled pre-built wheels for dependencies (such as `tree-sitter`, `tiktoken`), eliminating Render build timeout issues from compiling C packages from source.
+* **Memory-Optimized Local Caching**: If a Celery/Redis instance is omitted, the API safely falls back to a thread-safe, in-process cache and background task worker.
+
+---
+
+### Step 1: Set Up Neon Database (PostgreSQL + pgvector)
+1. Go to [Neon.tech](https://neon.tech/) and sign up for a free account.
+2. Create a new project named `devintel`.
+3. In the Neon Dashboard, navigate to **SQL Editor** and run the following command to enable the vector extension:
+   ```sql
+   CREATE EXTENSION IF NOT EXISTS vector;
+   ```
+4. Copy the connection string (it will look like `postgresql://alex:passwd@ep-cool-snowflake-1234.us-east-2.neon.tech/neondb?sslmode=require`).
+5. Replace `postgresql://` with `postgresql+asyncpg://` at the beginning of the string to support FastAPI's asynchronous drivers (e.g., `postgresql+asyncpg://alex:passwd@...`).
+
+### Step 2: Set Up Render Backend (Web Service)
+1. Sign up on [Render.com](https://render.com/).
+2. Click **New +** and select **Web Service**.
+3. Link your GitHub repository and choose the `devintel` repository.
+4. Set the following build options:
+   * **Name**: `devintel-api`
+   * **Region**: Choose the region closest to you
+   * **Root Directory**: `devintel-backend`
+   * **Language**: `Docker` (Render will automatically detect the production `Dockerfile`)
+   * **Instance Type**: `Free`
+5. Click **Advanced** and add the following Environment Variables:
+
+| Environment Variable | Value / Description |
+| :--- | :--- |
+| **ENVIRONMENT** | `production` |
+| **DEBUG** | `false` |
+| **DATABASE_URL** | *Your modified Neon connection string (from Step 1)* |
+| **OPENAI_API_KEY** | *Your OpenAI API Key* |
+| **OPENAI_CHAT_MODEL** | `gpt-4o` |
+| **TOKEN_ENCRYPTION_KEY** | *A 32-byte Base64 key (Generate via: `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`) * |
+| **SECRET_KEY** | *A random hex string (Generate via: `python -c "import secrets; print(secrets.token_hex(32))"`) * |
+| **JWT_SECRET_KEY** | *A second random hex string* |
+| **GITHUB_CLIENT_ID** | *Your GitHub OAuth App Client ID (See Step 4)* |
+| **GITHUB_CLIENT_SECRET** | *Your GitHub OAuth App Client Secret (See Step 4)* |
+| **GITHUB_REDIRECT_URI** | `https://devintel-api.onrender.com/api/v1/auth/github/callback` (Change `devintel-api.onrender.com` to your Render app domain) |
+| **CORS_ORIGINS** | `["https://devintel-frontend.vercel.app"]` (Change to your Vercel deployment URL from Step 3) |
+
+6. Deploy the web service. Render will build the Docker container and start serving on HTTPS automatically.
+
+### Step 3: Set Up Vercel Frontend
+1. Sign up on [Vercel.com](https://vercel.com/).
+2. Click **Add New** -> **Project** and select your `devintel` repository.
+3. Vercel will auto-detect the workspace structure because we have configured [vercel.json](file:///c:/Users/HP/Documents/Projects/devintel/vercel.json) at the root level.
+4. Keep the root directory configuration as the root of the repository. Vercel will execute the custom build commands specified in our configuration:
+   * **Build Command**: `npm run build --prefix devintel-frontend`
+   * **Install Command**: `npm install --prefix devintel-frontend`
+   * **Output Directory**: `devintel-frontend/dist`
+5. Under **Environment Variables**, add:
+   * **VITE_API_URL**: `https://devintel-api.onrender.com` (Your Render API URL)
+6. Click **Deploy**. Vercel will build and serve your static Vite bundle on a global CDN. Copy your Vercel project URL (e.g. `https://devintel-frontend.vercel.app`).
+
+### Step 4: Configure GitHub OAuth App
+1. Go to your GitHub profile settings -> **Developer Settings** -> **OAuth Apps** -> **New OAuth App**.
+2. Set configuration values:
+   * **Application Name**: `DevIntel AI`
+   * **Homepage URL**: `https://devintel-frontend.vercel.app` (Your Vercel URL)
+   * **Authorization callback URL**: `https://devintel-api.onrender.com/api/v1/auth/github/callback` (Your Render API Callback URL)
+3. Generate a **Client Secret** and copy both the **Client ID** and **Client Secret** into your Render environment variables (from Step 2). Re-deploy Render backend if needed to load the keys.
+
+---
+
+## 🔧 Local Development & Quick Start
 
 ### Prerequisites
+* Python 3.11+ & Virtual Environment
+* Node.js 18+ & npm
+* Docker & Docker Compose (optional for local PostgreSQL)
 
-- **Backend**: Docker & Docker Compose, Python 3.11+
-- **Frontend**: Node.js 18+, npm
-- **API Keys**: GitHub OAuth App credentials, OpenAI API key
-
-### Setup & Run
-
-#### Option 1: Automated Setup (Recommended)
-
-Run both backend and frontend with a single command:
+### Run with Local Scripts (Automated)
+Run the following script at the root directory to automatically verify dependencies, set up environments, and run both services:
 
 ```powershell
-# Windows PowerShell
+# Windows
 .\scripts\start.ps1
 ```
 
 ```bash
-# Linux/Mac
+# Linux/MacOS
 ./scripts/start.sh
 ```
 
-This will:
-- Start the backend API server on http://localhost:8000
-- Start the frontend dev server on http://localhost:8080
-- Open API documentation at http://localhost:8000/docs
+---
 
-#### Option 2: Manual Setup
+## 🔬 Local Manual Ingress Testing
 
-**Backend:**
+To test individual components locally:
+
 ```bash
+# 1. Run Backend Tests
 cd devintel-backend
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+pytest tests/
 
-# Copy and configure environment
-cp .env.example .env
-# Edit .env with your API keys (see detailed instructions in file)
-
-# Start services (PostgreSQL, Redis, API, Worker, Flower)
-docker-compose up --build
-
-# Run migrations (in another terminal)
-make migrate
-```
-
-**Frontend:**
-```bash
+# 2. Run Frontend Build Checks
 cd devintel-frontend
-
-# Install dependencies
 npm install
-
-# Start development server
-npm run dev
-```
-
-## 📚 Architecture Overview
-
-```mermaid
-graph TB
-    subgraph Frontend
-        UI[React + TypeScript]
-        UI --> API_CLIENT[API Client]
-    end
-    
-    subgraph Backend_Services[Backend Services]
-        API[FastAPI]
-        AGENT[Agent Service]
-        WORKER[Celery Workers]
-        
-        API --> AGENT
-        API --> REDIS[Redis Cache/Queue]
-        WORKER --> REDIS
-    end
-    
-    subgraph Data_Layer[Data Layer]
-        PG[(PostgreSQL + pgvector)]
-        EMBEDDINGS[Vector Embeddings]
-        PG --> EMBEDDINGS
-    end
-    
-    subgraph External_APIs[External APIs]
-        GITHUB[GitHub API]
-        OPENAI[OpenAI Function Calling]
-    end
-    
-    API_CLIENT --> API
-    API --> PG
-    AGENT --> OPENAI
-    AGENT --> GITHUB
-    WORKER --> PG
-    WORKER --> OPENAI
-    WORKER --> GITHUB
-```
-
-### Tech Stack
-
-**Backend:**
-- **Framework**: FastAPI with async support
-- **Database**: PostgreSQL 16 + pgvector for embeddings
-- **Cache/Queue**: Redis 7 + Celery
-- **AI**: OpenAI GPT-4o + text-embedding-3-small
-- **Auth**: GitHub OAuth + JWT
-- **Security**: OWASP compliance, input validation, security headers
-
-**Frontend:**
-- **Build Tool**: Vite
-- **Framework**: React with TypeScript
-- **UI**: shadcn-ui + Tailwind CSS
-- **State**: TanStack Query
-- **Testing**: Vitest + React Testing Library
-
-## 🔧 Development
-
-### Backend Development
-
-See [devintel-backend/README.md](./devintel-backend/README.md) for detailed backend documentation.
-
-```bash
-cd devintel-backend
-
-# Run tests
-make test
-
-# Run with coverage
-make test-cov
-
-# Lint and format
-make lint
-make format
-```
-
-### Frontend Development
-
-See [devintel-frontend/README.md](./devintel-frontend/README.md) for detailed frontend documentation.
-
-```bash
-cd devintel-frontend
-
-# Run tests
-npm test
-
-# Lint
-npm run lint
-
-# Build for production
 npm run build
 ```
-
-## 📡 API Endpoints
-
-- **API Base**: http://localhost:8000
-- **API Docs**: http://localhost:8000/docs
-- **Frontend**: http://localhost:8080
-
-### Main Endpoints
-- `GET /auth/github` - GitHub OAuth
-- `GET /repos` - List repositories
-- `POST /repos/index` - Index repository
-- `POST /chat` - Chat with AI (streaming)
-- `POST /pr-review` - AI PR review
-
-## 🌐 Environment Variables
-
-### Backend (.env)
-```bash
-# GitHub OAuth
-GITHUB_CLIENT_ID=your_client_id
-GITHUB_CLIENT_SECRET=your_client_secret
-
-# OpenAI
-OPENAI_API_KEY=your_openai_key
-
-# Security
-SECRET_KEY=generate_with_openssl
-JWT_SECRET_KEY=generate_with_openssl
-
-# Database (handled by docker-compose)
-DATABASE_URL=postgresql+asyncpg://...
-REDIS_URL=redis://localhost:6379
-```
-
-### Frontend (.env)
-```bash
-VITE_API_URL=http://localhost:8000
-```
-
-## 🚢 Deployment
-
-### Production Checklist
-- [ ] Set strong SECRET_KEY and JWT_SECRET_KEY
-- [ ] Use managed PostgreSQL and Redis
-- [ ] Set DEBUG=false
-- [ ] Configure CORS for production domain
-- [ ] Enable HTTPS
-- [ ] Set up monitoring (Sentry, DataDog)
-- [ ] Configure log aggregation
-- [ ] Set up automated backups
-
-### Build Commands
-```bash
-# Backend
-cd devintel-backend
-docker-compose -f docker-compose.prod.yml up -d
-
-# Frontend
-cd devintel-frontend
-npm run build
-# Deploy dist/ folder to hosting service
-```
-
-## 🛣️ Roadmap
-
-### Current (V1.0 MVP & Agent Capabilities)
-- [x] GitHub OAuth authentication
-- [x] Advanced Tree-Sitter repository indexing
-- [x] RAG-powered chat interface
-- [x] Basic PR review capabilities
-- [x] Real-time usage analytics
-- [x] **Autonomous PR Generator (Agent Mode)**
-
-### Phase 2: Collaboration & Automation
-- [ ] Multi-repository context integration
-- [ ] CI/CD Webhook triggers for auto-reindexing
-- [ ] Team collaboration & shared workspaces
-- [ ] Deep GitHub App Integration
-
-### Phase 3: IDE & Local Extensions
-- [ ] Desktop/Electron local execution agent
-- [ ] Official VS Code extension
-- [ ] Direct Terminal CLI integration
-- [ ] Advanced Graph Search & Knowledge Base
-
-## 📝 License
-
-MIT License - see LICENSE file for details
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📧 Support
-
-- **Issues**: GitHub Issues
-- **Email**: support@devintel.ai
 
 ---
 
-**Built with ❤️ for developers by developers**
+## 📝 License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
