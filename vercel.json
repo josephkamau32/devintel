@@ -1,0 +1,10 @@
+{
+  "buildCommand": "npm run build --prefix devintel-frontend",
+  "outputDirectory": "devintel-frontend/dist",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
