@@ -5,7 +5,6 @@ and REDIS_URL is configured. In free-tier deployments without Redis,
 the module safely no-ops.
 """
 
-from typing import Optional
 
 from app.core.config import settings
 from app.core.logging import get_logger
@@ -22,10 +21,10 @@ except ImportError:
 
 class RedisPool:
     """Redis connection pool manager."""
-    
+
     _pool = None
     _client = None
-    
+
     @classmethod
     async def get_pool(cls):
         """Get or create Redis connection pool."""
@@ -40,14 +39,14 @@ class RedisPool:
                 socket_keepalive=True,
             )
             logger.info(
-                f"Created Redis connection pool",
+                "Created Redis connection pool",
                 extra={
                     "url": settings.redis_url,
                     "max_connections": settings.redis_pool_size,
                 },
             )
         return cls._pool
-    
+
     @classmethod
     async def get_client(cls):
         """Get Redis client from pool."""
@@ -57,19 +56,19 @@ class RedisPool:
             pool = await cls.get_pool()
             cls._client = aioredis.Redis(connection_pool=pool)
         return cls._client
-    
+
     @classmethod
     async def close(cls):
         """Close Redis connection pool."""
         if cls._client:
             await cls._client.close()
             cls._client = None
-        
+
         if cls._pool:
             await cls._pool.disconnect()
             cls._pool = None
             logger.info("Closed Redis connection pool")
-    
+
     @classmethod
     async def health_check(cls) -> bool:
         """Check Redis connection health."""

@@ -1,17 +1,15 @@
 """Chat routes with RAG."""
 
-import asyncio
 import json
 import time
-from datetime import datetime
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user, check_repo_access
+from app.api.deps import check_repo_access, get_current_user
 from app.core.logging import get_logger
 from app.db.session import get_db
 from app.models.user import User
@@ -27,12 +25,10 @@ from app.schemas.chat import (
     ChatHistoryRecord,
     ChatHistoryResponse,
     ChatRequest,
-    ChatResponse,
 )
 from app.services.agent import AgentService
 from app.services.chat import ChatService
 from app.services.encryption import encryption_service
-from app.services.organization_service import OrganizationService
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/chat", tags=["Chat"])
@@ -92,14 +88,14 @@ async def stream_chat_response(
 ) -> AsyncGenerator[str, None]:
     """Stream chat response as Server-Sent Events."""
     from app.db.session import AsyncSessionLocal
-    
+
     try:
         # Pre-load data in a short-lived session
         async with AsyncSessionLocal() as db:
             # Get repository
             repo_repo = RepositoryRepository(db)
             repository = await repo_repo.get_by_id(chat_request.repository_id)
-            
+
             if not repository:
                 yield f"data: {json.dumps({'error': 'Repository not found'})}\n\n"
                 return
@@ -110,15 +106,15 @@ async def stream_chat_response(
             except Exception:
                 yield f"data: {json.dumps({'error': 'Not authorized'})}\n\n"
                 return
-            
+
             if not repository.indexed_status:
                 yield f"data: {json.dumps({'error': 'Repository not indexed yet'})}\n\n"
                 return
-            
+
             # Retrieve relevant chunks
             chat_service = ChatService()
             embedding_repo = EmbeddingRepository(db)
-            
+
             context_chunks = await chat_service.retrieve_relevant_chunks(
                 repo_id=chat_request.repository_id,
                 question=chat_request.question,
@@ -126,10 +122,10 @@ async def stream_chat_response(
             )
             repo_full_name = repository.full_name
             # db session closes here
-        
+
         # Track response time
         start_time = time.time()
-        
+
         # Stream response
         full_response = ""
         async for chunk in chat_service.stream_chat(
@@ -141,7 +137,7 @@ async def stream_chat_response(
             full_response += chunk
             # Send SSE chunk
             yield f"data: {json.dumps({'content': chunk, 'done': False})}\n\n"
-        
+
         # Calculate real token usage
         response_time_ms = int((time.time() - start_time) * 1000)
         input_tokens = chat_service.count_tokens(chat_request.question)
@@ -177,7 +173,7 @@ async def stream_chat_response(
 
         # Send final chunk with token info and cost
         yield f"data: {json.dumps({'content': '', 'done': True, 'chat_id': chat_id_str, 'token_usage': total_tokens, 'input_tokens': input_tokens, 'output_tokens': output_tokens, 'cost_usd': round(cost_usd, 8), 'response_time_ms': response_time_ms})}\n\n"
-        
+
     except Exception as e:
         logger.error(f"Chat streaming error: {e}", exc_info=True)
         yield f"data: {json.dumps({'error': 'An internal error occurred. Please try again.'})}\n\n"
@@ -204,22 +200,22 @@ async def agent_draft(
     """Generate a draft PR proposal for user review."""
     repo_repo = RepositoryRepository(db)
     repository = await repo_repo.get_by_id(request.repository_id)
-    
+
     if not repository:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Repository not found")
 
     await check_repo_access(repository, current_user, db)
-        
+
     if not current_user.github_access_token_encrypted:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="GitHub token not found. Please re-authenticate.")
-        
+
     if not repository.indexed_status:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Repository must be indexed.")
 
     token = encryption_service.decrypt(current_user.github_access_token_encrypted)
     agent_service = AgentService(token)
     embedding_repo = EmbeddingRepository(db)
-    
+
     try:
         draft_payload = await agent_service.draft_pr_plan(
             repository=repository,
@@ -243,18 +239,18 @@ async def agent_execute(
     """Execute an approved draft PR on GitHub."""
     repo_repo = RepositoryRepository(db)
     repository = await repo_repo.get_by_id(request.repository_id)
-    
+
     if not repository:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Repository not found")
 
     await check_repo_access(repository, current_user, db)
-        
+
     if not current_user.github_access_token_encrypted:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="GitHub token not found. Please re-authenticate.")
 
     token = encryption_service.decrypt(current_user.github_access_token_encrypted)
     agent_service = AgentService(token)
-    
+
     try:
         # Convert DraftPayload schema to dict for service method
         draft_dict = request.draft.model_dump()

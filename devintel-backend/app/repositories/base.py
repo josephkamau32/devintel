@@ -1,6 +1,6 @@
 """Base repository class for data access."""
 
-from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
+from typing import Any, Generic, Optional, TypeVar
 from uuid import UUID
 
 from sqlalchemy import delete, select, update
@@ -14,7 +14,7 @@ ModelType = TypeVar("ModelType", bound=Base)
 class BaseRepository(Generic[ModelType]):
     """Base repository with common CRUD operations."""
 
-    def __init__(self, model: Type[ModelType], db: AsyncSession):
+    def __init__(self, model: type[ModelType], db: AsyncSession):
         """Initialize repository."""
         self.model = model
         self.db = db
@@ -32,7 +32,7 @@ class BaseRepository(Generic[ModelType]):
         result = await self.db.execute(select(self.model).where(self.model.id == id))
         return result.scalar_one_or_none()
 
-    async def get_all(self, skip: int = 0, limit: int = 100) -> List[ModelType]:
+    async def get_all(self, skip: int = 0, limit: int = 100) -> list[ModelType]:
         """Get all records with pagination."""
         result = await self.db.execute(select(self.model).offset(skip).limit(limit))
         return list(result.scalars().all())

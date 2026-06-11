@@ -1,6 +1,8 @@
 """Embedding service."""
 
-from typing import List, Optional, Callable, Any, Coroutine
+from collections.abc import Callable, Coroutine
+from typing import Any, Optional
+
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.core.logging import get_logger
@@ -16,32 +18,32 @@ class EmbeddingService:
         """Initialize service."""
         self.openai_client = OpenAIClient()
 
-    async def generate_embedding(self, text: str) -> List[float]:
+    async def generate_embedding(self, text: str) -> list[float]:
         """Generate embedding for text."""
         return await self.openai_client.generate_embedding(text)
 
     async def generate_embeddings_batch(
         self,
-        texts: List[str],
+        texts: list[str],
         batch_size: int = 50,
         on_progress: Optional[Callable[[int, int], Coroutine[Any, Any, None]]] = None,
-    ) -> List[List[float]]:
+    ) -> list[list[float]]:
         """
         Generate embeddings in batches to handle large volumes.
-        
+
         Args:
             texts: List of texts to embed
             batch_size: Number of texts per batch
             on_progress: Async callback(current_count, total_count)
-            
+
         Returns:
             List of embeddings
         """
         all_embeddings = []
-        
+
         for i in range(0, len(texts), batch_size):
             batch = texts[i:i + batch_size]
-            
+
             @retry(
                 stop=stop_after_attempt(5),
                 wait=wait_exponential(multiplier=1, min=4, max=30),
@@ -52,12 +54,12 @@ class EmbeddingService:
 
             embeddings = await _generate_with_retry()
             all_embeddings.extend(embeddings)
-            
+
             current_count = len(all_embeddings)
             total_count = len(texts)
             logger.info(f"Generated embeddings for batch {i // batch_size + 1}/{max(1, (len(texts) + batch_size - 1) // batch_size)} ({current_count}/{total_count})")
-            
+
             if on_progress:
                 await on_progress(current_count, total_count)
-        
+
         return all_embeddings

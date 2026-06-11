@@ -1,33 +1,29 @@
 """Pytest configuration and shared fixtures for testing."""
 
-import asyncio
-from typing import AsyncGenerator, Generator, Optional
+from collections.abc import AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
+from dotenv import load_dotenv
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
-from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-
-import os
-from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
 
 from app.core.config import settings
+
 settings.database_url = "sqlite+aiosqlite:///:memory:"
 
+from app.core.security import create_access_token
 from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
-from app.models.user import User
 from app.models.repository import Repository
-from app.core.security import create_access_token
+from app.models.user import User
 
 # Test database URL (in-memory SQLite for tests)
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
@@ -47,12 +43,6 @@ TestSessionLocal = async_sessionmaker(
 )
 
 
-@pytest.fixture(scope="session")
-def event_loop() -> Generator:
-    """Create an instance of the default event loop for the test session."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -231,15 +221,15 @@ def mock_openai_client():
 def mock_github_client():
     """Mock GitHub API client for testing."""
     mock = MagicMock()
-    
+
     # Mock user data - get_user is synchronous in PyGithub, but our wrapper might be async?
-    # Wait, the code uses `await github_client.get_user_info()`. 
-    # Our GitHubClient WRAPPER has async methods. 
-    # The test patches "app.api.v1.auth.GitHubClient". 
-    # The return_value of that patch is this mock. 
+    # Wait, the code uses `await github_client.get_user_info()`.
+    # Our GitHubClient WRAPPER has async methods.
+    # The test patches "app.api.v1.auth.GitHubClient".
+    # The return_value of that patch is this mock.
     # So this mock represents the GitHubClient INSTANCE.
     # Its methods (get_user_info) should be async.
-    
+
     mock.get_user_info = AsyncMock(return_value={
         "github_id": "123",
         "login": "testuser",
@@ -270,7 +260,7 @@ def mock_github_client():
             "description": "Test Repo 2"
         },
     ])
-    
+
     return mock
 
 
@@ -279,7 +269,7 @@ async def disable_csrf():
     """Disable CSRF protection for tests."""
     async def bypass_csrf(request, call_next):
         return await call_next(request)
-        
+
     with patch("app.middleware.csrf.CSRFMiddleware.dispatch", side_effect=bypass_csrf):
         yield
 

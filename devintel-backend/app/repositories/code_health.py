@@ -1,6 +1,6 @@
 """Code Health repository — CRUD operations for CodeHealth records."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Optional
 from uuid import UUID
 
@@ -31,7 +31,7 @@ class CodeHealthRepository(BaseRepository[CodeHealth]):
         Uses PostgreSQL's ON CONFLICT DO UPDATE for atomic upsert.
         """
         data["repo_id"] = repo_id
-        data["computed_at"] = datetime.now(timezone.utc)
+        data["computed_at"] = datetime.now(UTC)
 
         stmt = (
             pg_insert(CodeHealth)

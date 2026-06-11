@@ -43,12 +43,12 @@ class UserRepository:
             # Only update fields if they are provided
             if email:
                 user.email = email
-            
+
             # For name, we only update if it's currently empty, OR if we want to sync from GitHub
             # Priority: Existing Name > GitHub Name > GitHub Username > GitHub ID
             if not user.name:
                 user.name = name or username or github_id
-            
+
             if avatar_url:
                 user.avatar_url = avatar_url
             if username:

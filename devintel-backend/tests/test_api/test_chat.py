@@ -1,13 +1,12 @@
 """Tests for chat endpoints."""
 
+from unittest.mock import patch
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
-from unittest.mock import patch, AsyncMock, MagicMock
-import json
 
 from app.models.repository import Repository
-from app.models.user import User
 
 
 class TestChatEndpoints:

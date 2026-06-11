@@ -1,10 +1,10 @@
 """Security middleware for the application."""
 
 import time
-from typing import Callable
+from collections.abc import Callable
 from uuid import uuid4
 
-from fastapi import Request, Response, status
+from fastapi import HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
@@ -17,14 +17,14 @@ logger = get_logger(__name__)
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """
     Add security headers to all responses.
-    
+
     Implements OWASP security best practices for HTTP headers.
     """
 
     def __init__(self, app: ASGIApp):
         super().__init__(app)
         from app.core.config import settings
-        
+
         self.security_headers = {
             # Prevent MIME type sniffing
             "X-Content-Type-Options": "nosniff",
@@ -39,7 +39,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             # Permissions policy
             "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
         }
-        
+
         # Only add HSTS in production (breaks HTTP localhost in dev)
         if settings.environment == "production":
             self.security_headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
@@ -47,18 +47,18 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Add security headers to response."""
         response = await call_next(request)
-        
+
         # Add all security headers
         for header, value in self.security_headers.items():
             response.headers[header] = value
-        
+
         return response
 
 
 class RequestIDMiddleware(BaseHTTPMiddleware):
     """
     Add unique request ID to each request for tracing.
-    
+
     The request ID is:
     - Added to response headers
     - Added to log context
@@ -69,23 +69,23 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
         """Add request ID to request and response."""
         # Generate or extract request ID
         request_id = request.headers.get("X-Request-ID", str(uuid4()))
-        
+
         # Add to request state for access in routes
         request.state.request_id = request_id
-        
+
         # Process request
         response = await call_next(request)
-        
+
         # Add request ID to response headers
         response.headers["X-Request-ID"] = request_id
-        
+
         return response
 
 
 class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
     """
     Limit request body size to prevent DoS attacks.
-    
+
     Default limit: 10MB
     """
 
@@ -96,7 +96,7 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Check request size and reject if too large."""
         content_length = request.headers.get("content-length")
-        
+
         if content_length and int(content_length) > self.max_size:
             logger.warning(
                 f"Request size too large: {content_length} bytes",
@@ -109,14 +109,14 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
                     "max_size": self.max_size,
                 },
             )
-        
+
         return await call_next(request)
 
 
 class AuditLoggingMiddleware(BaseHTTPMiddleware):
     """
     Log sensitive operations for security auditing.
-    
+
     Logs:
     - All authentication attempts
     - Repository modifications
@@ -132,12 +132,12 @@ class AuditLoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Log sensitive operations."""
         start_time = time.time()
-        
+
         # Check if this is a sensitive path
         is_sensitive = any(
             request.url.path.startswith(path) for path in self.SENSITIVE_PATHS
         )
-        
+
         if is_sensitive:
             # Log request
             logger.info(
@@ -150,10 +150,10 @@ class AuditLoggingMiddleware(BaseHTTPMiddleware):
                     "request_id": getattr(request.state, "request_id", "unknown"),
                 },
             )
-        
+
         # Process request
         response = await call_next(request)
-        
+
         if is_sensitive:
             # Log response
             duration = time.time() - start_time
@@ -167,7 +167,7 @@ class AuditLoggingMiddleware(BaseHTTPMiddleware):
                     "request_id": getattr(request.state, "request_id", "unknown"),
                 },
             )
-        
+
         return response
 
 
@@ -176,7 +176,7 @@ class SQLInjectionDetectionMiddleware(BaseHTTPMiddleware):
 
     def __init__(self, app, block_on_detection: bool = True):
         """Initialize SQL injection detection middleware.
-        
+
         Args:
             app: FastAPI application
             block_on_detection: If True, block requests with SQL injection patterns
@@ -187,13 +187,13 @@ class SQLInjectionDetectionMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Check request for SQL injection patterns and block if detected."""
         from app.core.validators import detect_sql_injection
-        
+
         # Exempt chat and PR review paths — users naturally discuss SQL code
         # These endpoints have their own input validation (prompt injection defense, etc.)
         exempt_prefixes = ("/api/v1/chat", "/api/v1/pr-review")
         if any(request.url.path.startswith(p) for p in exempt_prefixes):
             return await call_next(request)
-        
+
         # Check query parameters
         for key, value in request.query_params.items():
             try:
@@ -223,7 +223,7 @@ class SQLInjectionDetectionMiddleware(BaseHTTPMiddleware):
             detect_sql_injection(str(request.url.path), block=self.block_on_detection)
         except HTTPException as e:
             logger.warning(
-                f"Blocked SQL injection in path",
+                "Blocked SQL injection in path",
                 extra={
                     "path": request.url.path,
                     "ip": request.client.host if request.client else "unknown",

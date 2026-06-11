@@ -1,14 +1,14 @@
 """Tests for Organization API endpoints and RBAC."""
 
+from uuid import uuid4
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
-from uuid import uuid4
 
 from app.models.organization import Organization, OrganizationMember
 from app.models.repository import Repository
 from app.models.user import User
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

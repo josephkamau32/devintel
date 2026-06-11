@@ -47,7 +47,7 @@ async def _review_pull_request_async(
     from app.integrations.github_client import GitHubClient
     from app.repositories.embedding import EmbeddingRepository
     from app.repositories.repository import RepositoryRepository
-    from app.services.pr_review_service import PRReviewService, REVIEW_WATERMARK
+    from app.services.pr_review_service import REVIEW_WATERMARK, PRReviewService
 
     async with AsyncSessionLocal() as db:
         try:

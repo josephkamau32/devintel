@@ -1,24 +1,24 @@
 # Production Dockerfile for DevIntel Backend
 
 # Build stage
-FROM python:3.11-slim as builder
+FROM python:3.11-slim AS builder
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies for building packages
 RUN apt-get update && apt-get install -y \
     gcc \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements
+# Copy requirements first for Docker layer caching
 COPY requirements.txt .
 
-# Install Python dependencies
-RUN pip install --no-cache-dir --user -r requirements.txt
+# Install Python dependencies to a shared location
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
 # Production stage
-FROM python:3.11-slim as production
+FROM python:3.11-slim AS production
 
 WORKDIR /app
 
@@ -28,22 +28,19 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy Python dependencies from builder
-COPY --from=builder /root/.local /root/.local
+# Create non-root user first (before COPY, so files get correct ownership)
+RUN useradd -m -u 1000 devintel
 
-# Copy application code
-COPY . .
+# Copy Python dependencies from builder to system-wide location
+COPY --from=builder /install /usr/local
+
+# Copy application code and set ownership
+COPY --chown=devintel:devintel . .
 
 # Make sure scripts are executable
-RUN chmod +x scripts/*.sh || true
+RUN chmod +x scripts/*.sh 2>/dev/null || true
 
-# Add local bin to PATH
-ENV PATH=/root/.local/bin:$PATH
-
-# Create non-root user
-RUN useradd -m -u 1000 devintel && \
-    chown -R devintel:devintel /app
-
+# Switch to non-root user
 USER devintel
 
 # Expose port

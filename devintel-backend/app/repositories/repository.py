@@ -1,6 +1,5 @@
 """Repository repository."""
 
-from typing import List
 from uuid import UUID
 
 from sqlalchemy import select
@@ -19,14 +18,14 @@ class RepositoryRepository(BaseRepository[Repository]):
 
     async def get_by_user(
         self, user_id: UUID, org_id: UUID | None = None, skip: int = 0, limit: int = 100
-    ) -> List[Repository]:
+    ) -> list[Repository]:
         """Get repositories by user ID or organization ID."""
         stmt = select(Repository)
         if org_id:
             stmt = stmt.where(Repository.org_id == org_id)
         else:
             stmt = stmt.where(Repository.user_id == user_id, Repository.org_id.is_(None))
-            
+
         result = await self.db.execute(
             stmt.offset(skip)
             .limit(limit)
@@ -57,7 +56,7 @@ class RepositoryRepository(BaseRepository[Repository]):
             stmt = stmt.where(Repository.org_id == org_id)
         else:
             stmt = stmt.where(Repository.user_id == user_id, Repository.org_id.is_(None))
-            
+
         result = await self.db.execute(stmt)
         return result.scalar_one()
 

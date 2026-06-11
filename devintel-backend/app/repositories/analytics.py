@@ -1,7 +1,6 @@
 """Analytics repository."""
 
-from datetime import datetime, timedelta
-from typing import List, Tuple
+from datetime import UTC
 from uuid import UUID
 
 from sqlalchemy import Date, cast, desc, func, select
@@ -29,7 +28,7 @@ class AnalyticsRepository(BaseRepository[Analytics]):
 
     async def increment_query_count(self, user_id: UUID, tokens: int = 0) -> Analytics:
         """Increment query count and token usage for a user."""
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         analytics = await self.get_by_user(user_id)
 
@@ -38,18 +37,18 @@ class AnalyticsRepository(BaseRepository[Analytics]):
                 user_id=user_id,
                 query_count=1,
                 token_usage=tokens,
-                last_active_at=datetime.now(timezone.utc),
+                last_active_at=datetime.now(UTC),
             )
         else:
             analytics.query_count += 1
             analytics.token_usage += tokens
-            analytics.last_active_at = datetime.now(timezone.utc)
+            analytics.last_active_at = datetime.now(UTC)
             await self.db.flush()
             await self.db.refresh(analytics)
 
     async def increment_repositories_indexed(self, user_id: UUID) -> Analytics:
         """Increment repositories indexed count for a user."""
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         analytics = await self.get_by_user(user_id)
 
@@ -57,11 +56,11 @@ class AnalyticsRepository(BaseRepository[Analytics]):
             analytics = await self.create(
                 user_id=user_id,
                 repositories_indexed=1,
-                last_active_at=datetime.now(timezone.utc),
+                last_active_at=datetime.now(UTC),
             )
         else:
             analytics.repositories_indexed += 1
-            analytics.last_active_at = datetime.now(timezone.utc)
+            analytics.last_active_at = datetime.now(UTC)
             await self.db.flush()
             await self.db.refresh(analytics)
 
@@ -69,8 +68,8 @@ class AnalyticsRepository(BaseRepository[Analytics]):
 
     async def get_dashboard_stats(self, user_id: UUID) -> dict:
         """Get comprehensive stats for the user dashboard."""
-        from datetime import datetime, timedelta, timezone
-        
+        from datetime import datetime, timedelta
+
         # 1. Get totals from analytics table
         analytics = await self.get_by_user(user_id)
         if not analytics:
@@ -84,7 +83,7 @@ class AnalyticsRepository(BaseRepository[Analytics]):
             }
 
         # 2. Get usage trend (last 7 days)
-        seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
+        seven_days_ago = datetime.now(UTC) - timedelta(days=7)
         trend_query = (
             select(
                 cast(Chat.created_at, Date).label("date"),

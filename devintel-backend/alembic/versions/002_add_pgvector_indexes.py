@@ -5,9 +5,8 @@ Revises: 001_user_tokens
 Create Date: 2026-02-15
 
 """
-from alembic import op
-import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = '002_pgvector_indexes'
@@ -22,22 +21,22 @@ def upgrade() -> None:
     # lists parameter: number of clusters (recommended: rows/1000, min 10)
     # For 100k embeddings, use lists=100
     op.execute("""
-        CREATE INDEX IF NOT EXISTS embeddings_vector_idx 
-        ON embeddings 
-        USING ivfflat (embedding vector_cosine_ops) 
+        CREATE INDEX IF NOT EXISTS embeddings_vector_idx
+        ON embeddings
+        USING ivfflat (embedding vector_cosine_ops)
         WITH (lists = 100);
     """)
-    
+
     # Add index on repo_id for faster filtering
     op.execute("""
-        CREATE INDEX IF NOT EXISTS idx_embeddings_repo_id 
+        CREATE INDEX IF NOT EXISTS idx_embeddings_repo_id
         ON embeddings (repo_id);
     """)
-    
+
     # Composite index for repo_id + vector search
     op.execute("""
-        CREATE INDEX IF NOT EXISTS idx_embeddings_repo_vector 
-        ON embeddings (repo_id) 
+        CREATE INDEX IF NOT EXISTS idx_embeddings_repo_vector
+        ON embeddings (repo_id)
         INCLUDE (embedding);
     """)
 

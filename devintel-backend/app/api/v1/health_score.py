@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import check_repo_access, get_current_user
@@ -105,6 +105,7 @@ async def refresh_code_health(
 
     import asyncio
     import uuid
+
     from app.tasks.code_health import compute_code_health_task
     task_id = str(uuid.uuid4())
     asyncio.create_task(compute_code_health_task(str(repository_id)))
@@ -118,6 +119,7 @@ async def refresh_code_health(
 
 from app.schemas.health_score import AutoFixRequest, AutoFixResponse
 from app.services.auto_fix_service import AutoFixService
+
 
 @router.post("/{repository_id}/auto-fix", response_model=AutoFixResponse, status_code=status.HTTP_200_OK)
 async def auto_fix_code_health_issue(
@@ -146,7 +148,7 @@ async def auto_fix_code_health_issue(
 
     embedding_repo = EmbeddingRepository(db)
     auto_fix_svc = AutoFixService()
-    
+
     try:
         result = await auto_fix_svc.generate_and_apply_fix(
             repository=repository,

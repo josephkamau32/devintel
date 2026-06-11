@@ -1,9 +1,10 @@
 """Tests for authentication endpoints."""
 
+from unittest.mock import patch
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
-from unittest.mock import patch, MagicMock
 
 from app.models.user import User
 

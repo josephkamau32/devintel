@@ -2,7 +2,8 @@
 
 import logging
 import sys
-from typing import Any, Dict
+from datetime import UTC
+from typing import Any
 
 from app.core.config import settings
 
@@ -13,10 +14,10 @@ class JSONFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         """Format log record as JSON."""
         import json
-        from datetime import datetime, timezone
+        from datetime import datetime
 
-        log_data: Dict[str, Any] = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+        log_data: dict[str, Any] = {
+            "timestamp": datetime.now(UTC).isoformat(),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),

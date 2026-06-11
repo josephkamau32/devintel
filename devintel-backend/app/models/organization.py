@@ -2,7 +2,7 @@
 
 import enum
 from datetime import datetime
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from sqlalchemy import DateTime, Enum, ForeignKey, String
@@ -30,7 +30,7 @@ class Organization(Base, UUIDMixin, TimestampMixin):
 
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     slug: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
-    
+
     # Creator of the organization
     created_by: Mapped[UUID] = mapped_column(
         PGUUID(as_uuid=True),
@@ -39,13 +39,13 @@ class Organization(Base, UUIDMixin, TimestampMixin):
     )
 
     # Relationships
-    members: Mapped[List["OrganizationMember"]] = relationship(
+    members: Mapped[list["OrganizationMember"]] = relationship(
         "OrganizationMember",
         back_populates="organization",
         cascade="all, delete-orphan",
         lazy="raise",
     )
-    repositories: Mapped[List["Repository"]] = relationship(
+    repositories: Mapped[list["Repository"]] = relationship(
         "Repository",
         back_populates="organization",
         cascade="all, delete-orphan",
@@ -72,7 +72,7 @@ class OrganizationMember(Base):
         ForeignKey("users.id", ondelete="CASCADE"),
         primary_key=True,
     )
-    
+
     role: Mapped[OrganizationRole] = mapped_column(
         Enum(OrganizationRole, name="organizationrole"),
         default=OrganizationRole.MEMBER,

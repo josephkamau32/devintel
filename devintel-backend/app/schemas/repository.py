@@ -1,10 +1,10 @@
 """Repository schemas."""
 
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field
 
 
 class RepositoryBase(BaseModel):
@@ -63,7 +63,7 @@ class RepositoryResponse(RepositoryBase):
 class RepositoryListResponse(BaseModel):
     """Repository list response schema."""
 
-    repositories: List[RepositoryResponse]
+    repositories: list[RepositoryResponse]
     total: int
 
 

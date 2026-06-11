@@ -1,6 +1,5 @@
 """Organization API endpoints."""
 
-from typing import List
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -33,7 +32,7 @@ async def create_organization(
     return await OrganizationService.create_organization(db, org_in, current_user.id)
 
 
-@router.get("/", response_model=List[OrganizationWithRole])
+@router.get("/", response_model=list[OrganizationWithRole])
 async def list_user_organizations(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -53,7 +52,7 @@ async def get_organization(
     await OrganizationService.check_user_role(
         db, org_id, current_user.id, ["owner", "admin", "member"]
     )
-    
+
     org = await OrganizationService.get_organization(db, org_id)
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
@@ -71,7 +70,7 @@ async def update_organization(
     return await OrganizationService.update_organization(db, org_id, current_user.id, org_update)
 
 
-@router.get("/{org_id}/members", response_model=List[OrganizationMemberRead])
+@router.get("/{org_id}/members", response_model=list[OrganizationMemberRead])
 async def list_organization_members(
     org_id: UUID,
     db: AsyncSession = Depends(get_db),
@@ -88,7 +87,7 @@ async def list_organization_members(
         m.name = m.user.name if m.user else None
         m.avatar_url = m.user.avatar_url if m.user else None
         result.append(m)
-        
+
     return result
 
 
@@ -102,7 +101,7 @@ async def add_organization_member(
     """Invite/Add a user to the organization by user_id."""
     if not member_in.user_id:
         raise HTTPException(status_code=400, detail="Must provide user_id to invite")
-        
+
     member = await OrganizationService.add_member(
         db, org_id, current_user.id, member_in.user_id, member_in.role
     )

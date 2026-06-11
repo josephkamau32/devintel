@@ -1,7 +1,7 @@
 """Analytics schemas."""
 
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
@@ -37,6 +37,6 @@ class AnalyticsDashboard(BaseModel):
     total_queries: int
     total_tokens: int
     total_repos_indexed: int
-    usage_trend: List[UsageTrend]
-    top_repositories: List[RepoUsage]
+    usage_trend: list[UsageTrend]
+    top_repositories: list[RepoUsage]
     last_active_at: datetime | None

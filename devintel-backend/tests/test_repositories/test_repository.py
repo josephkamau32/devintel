@@ -1,17 +1,16 @@
 """Test repository layer functionality."""
 
+
 import pytest
-from uuid import uuid4
 
 from app.repositories.repository import RepositoryRepository
-from app.models.repository import Repository
 
 
 @pytest.mark.asyncio
 async def test_create_repository(db_session, test_user):
     """Test creating a repository."""
     repo_repo = RepositoryRepository(db_session)
-    
+
     repo_data = {
         "user_id": test_user.id,
         "repo_name": "testrepo",
@@ -19,9 +18,9 @@ async def test_create_repository(db_session, test_user):
         "description": "Test repository",
         "url": "https://github.com/testowner/testrepo",
     }
-    
+
     repo = await repo_repo.create(**repo_data)
-    
+
     assert repo.id is not None
     assert repo.repo_name == "testrepo"
 
@@ -30,12 +29,12 @@ async def test_create_repository(db_session, test_user):
 async def test_get_by_full_name(db_session, test_user, test_repository):
     """Test getting repository by full name."""
     repo_repo = RepositoryRepository(db_session)
-    
+
     repo = await repo_repo.get_by_full_name(
         full_name=test_repository.full_name,
         user_id=test_user.id,
     )
-    
+
     assert repo is not None
     assert repo.id == test_repository.id
     assert repo.full_name == test_repository.full_name
@@ -45,9 +44,9 @@ async def test_get_by_full_name(db_session, test_user, test_repository):
 async def test_list_user_repositories(db_session, test_user, test_repository):
     """Test listing user repositories."""
     repo_repo = RepositoryRepository(db_session)
-    
+
     repos = await repo_repo.get_by_user(test_user.id, skip=0, limit=10)
-    
+
     assert len(repos) >= 1
     assert any(r.id == test_repository.id for r in repos)
 
@@ -56,13 +55,13 @@ async def test_list_user_repositories(db_session, test_user, test_repository):
 async def test_update_indexing_status(db_session, test_repository):
     """Test updating repository indexing status."""
     repo_repo = RepositoryRepository(db_session)
-    
+
     updated = await repo_repo.update(
         test_repository.id,
         indexed_status=True,
         indexing_progress=50
     )
-    
+
     assert updated.indexed_status is True
     assert updated.indexing_progress == 50
 
@@ -71,11 +70,11 @@ async def test_update_indexing_status(db_session, test_repository):
 async def test_delete_repository(db_session, test_repository):
     """Test deleting a repository."""
     repo_repo = RepositoryRepository(db_session)
-    
+
     result = await repo_repo.delete(test_repository.id)
-    
+
     assert result is True
-    
+
     # Verify deletion
     deleted = await repo_repo.get_by_id(test_repository.id)
     assert deleted is None

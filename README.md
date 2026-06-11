@@ -1,29 +1,44 @@
-# DevIntel AI - Full-Stack Developer Productivity Platform
+# DevIntel AI — AI-Powered Developer Productivity Platform
 
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/josephkamau32/devintel)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.109+-green.svg)](https://fastapi.tiangolo.com/)
-[![React](https://img.shields.io/badge/React-18.3+-blue.svg)](https://reactjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.8+-blue.svg)](https://www.typescriptlang.org/)
+[![React 18](https://img.shields.io/badge/React-18.3+-61DAFB.svg?logo=react&logoColor=white)](https://reactjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8+-3178C6.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![PostgreSQL + pgvector](https://img.shields.io/badge/PostgreSQL-pgvector-4169E1.svg?logo=postgresql&logoColor=white)](https://github.com/pgvector/pgvector)
+[![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4o-412991.svg?logo=openai&logoColor=white)](https://openai.com/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Security: OWASP](https://img.shields.io/badge/security-OWASP-brightgreen.svg)](./devintel-backend/docs/SECURITY.md)
 
-**DevIntel AI** is an AI-powered developer productivity platform that enables developers to connect GitHub repositories, index code bases, and chat with an AI assistant using Retrieval Augmented Generation (RAG). Get instant code insights, refactoring suggestions, and intelligent explanations.
+<!-- 🔗 LIVE DEMO: Uncomment and update when deployed -->
+<!-- > **[🚀 Live Demo](https://devintel-frontend.vercel.app)** | **[📡 API Docs](https://devintel-api.onrender.com/docs)** -->
+
+**DevIntel AI** is a full-stack, production-grade AI platform that enables developers to connect GitHub repositories, index codebases with AST-aware chunking, and interact with an autonomous AI agent using **Retrieval Augmented Generation (RAG)**. The agent can chat about your architecture, review pull requests, and autonomously generate code fixes with self-correction loops.
+
+## 🔄 How It Works
+
+```
+1. Connect  →  2. Index  →  3. Chat / Review  →  4. Auto-Fix
+   GitHub        AST-aware      RAG-powered         Agent creates
+   OAuth         Tree-Sitter    vector search        branch + PR
+                 + pgvector     conversations        autonomously
+```
 
 ## ✨ Key Features
 
-- 🤖 **Agentic "Auto-Fix" Workflows (V2)** - An elite, autonomous AI coding agent tightly integrated into the dashboard. Click "Auto-Fix" on any repository issue, and the agent will:
+- 🤖 **Agentic "Auto-Fix" Workflows** — An autonomous AI coding agent integrated into the dashboard. Click "Auto-Fix" on any repository issue, and the agent will:
   - Utilize **Low-Latency RAG** (via pgvector) to semantically locate the exact vulnerable files in milliseconds without scanning the entire repo.
   - Dynamically write a **Unified Diff Patch** directly targeting the flawed functions, heavily preserving token context limits.
   - Employ a **Self-Correction Loop** using an AST/Syntax Linter in memory to automatically fix its own hallucinations and syntax errors before committing.
   - Execute a **One-Click PR Generation**, securely opening a new branch and Pull Request on GitHub using the low-level Git Data API, ensuring zero-risk to `main`.
-- 💬 **Context-Aware RAG Chat** - Intelligent conversations about your architecture with semantic vector search.
-- 🔐 **Secure Authentication** - GitHub OAuth with encrypted token management and JWT sessions.
-- 📂 **Smart Code Indexing** - AST-aware Treesitter chunking of repositories powered by PostgreSQL `pgvector`.
-- 📊 **Real-Time Analytics** - Track usage, API performance, and token consumption metrics.
-- 🕵️ **AI-Powered PR Review** - Automated code review suggestions for open pull requests.
-- 🔒 **Enterprise-Grade Security** - Strict transaction boundaries, connection pooling optimizations, and OWASP compliance.
-- ✅ **Test-Driven Reliability** - 80%+ test coverage with `pytest` and `Vitest`.
+- 💬 **Context-Aware RAG Chat** — Intelligent conversations about your architecture with semantic vector search and context window management.
+- 🔐 **Secure Authentication** — GitHub OAuth with Fernet-encrypted token management, JWT sessions with refresh tokens.
+- 📂 **Smart Code Indexing** — AST-aware Tree-Sitter chunking with context expansion, powered by PostgreSQL `pgvector`.
+- 📊 **Real-Time Analytics** — Track usage, API performance, and token consumption metrics via Prometheus.
+- 🕵️ **AI-Powered PR Review** — Automated code review suggestions with file-level patches for open pull requests.
+- 🔒 **Enterprise-Grade Security** — OWASP compliance, CSRF protection, SQL injection detection, rate limiting, security headers, request size limits, and audit logging.
+- ✅ **Test-Driven Reliability** — Comprehensive test suite with `pytest` (backend) and `Vitest` (frontend).
 
 ## 🏗️ Project Structure
 
@@ -162,7 +177,7 @@ graph TB
 - **Framework**: FastAPI with async support
 - **Database**: PostgreSQL 16 + pgvector for embeddings
 - **Cache/Queue**: Redis 7 + Celery
-- **AI**: OpenAI GPT-4 + text-embedding-3-small
+- **AI**: OpenAI GPT-4o + text-embedding-3-small
 - **Auth**: GitHub OAuth + JWT
 - **Security**: OWASP compliance, input validation, security headers
 

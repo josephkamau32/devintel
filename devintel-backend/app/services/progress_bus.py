@@ -7,7 +7,8 @@ clients can independently consume events from the same channel.
 
 import asyncio
 from collections import defaultdict
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Any
 
 from app.core.logging import get_logger
 

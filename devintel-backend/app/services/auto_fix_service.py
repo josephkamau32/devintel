@@ -1,19 +1,22 @@
 """Auto-Fix Service - LLM-powered autonomous PR generation for Code Health issues."""
 
+import asyncio
 import json
 import uuid
-import asyncio
-from typing import Any, Dict, List
+from typing import Any
+
+from github import GithubException
 
 from app.core.exceptions import APIError
 from app.core.logging import get_logger
-from app.services.encryption import encryption_service
 from app.integrations.github_client import GitHubClient
 from app.integrations.openai_client import OpenAIClient
 from app.models.repository import Repository
 from app.models.user import User
 from app.repositories.embedding import EmbeddingRepository
 from app.services.embedding import EmbeddingService
+from app.services.encryption import encryption_service
+from app.utils.linter import check_syntax
 
 logger = get_logger(__name__)
 
@@ -31,7 +34,7 @@ class AutoFixService:
         issue_description: str,
         user: User,
         embedding_repo: EmbeddingRepository,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         End-to-end workflow to fix a code health issue.
         1. Find relevant files
@@ -66,16 +69,12 @@ class AutoFixService:
         # 2. Fetch current file contents from GitHub main branch
         # (Assuming the default branch represents the current state)
         file_contents = {}
-        # Get repository details to find default branch
-        repos_info = await github_client.get_user_repositories(per_page=100)
-        repo_info = next((r for r in repos_info if r["full_name"] == repository.full_name), None)
-        
         # We need the default branch to create a new branch from it
         # The PyGithub integration doesn't explicitly return default_branch in our wrapper,
         # so we'll fetch default branch dynamically or assume 'main'/'master'.
         # For safety, let's just use the PyGithub client directly to get the default branch.
-        from github import GithubException
-        
+
+
         def _get_repo_details():
             repo = github_client.client.get_repo(repository.full_name)
             return {"default_branch": repo.default_branch}
@@ -93,7 +92,7 @@ class AutoFixService:
                     repo = github_client.client.get_repo(repository.full_name)
                     contents = repo.get_contents(path, ref=base_branch)
                     return contents.decoded_content.decode("utf-8")
-                
+
                 content = await asyncio.to_thread(_get_file_content, path=file_path)
                 file_contents[file_path] = content
             except Exception as e:
@@ -104,13 +103,13 @@ class AutoFixService:
 
         # 3. Generate fix using LLM
         fix_plan = await self._generate_fix(repository.full_name, issue_description, file_contents)
-        
+
         if not fix_plan or not fix_plan.get("modified_files"):
             raise APIError("AI could not generate a valid fix for this issue.", status_code=500)
 
         # 4. Apply fix (Branch -> Commit -> PR)
         branch_name = f"devintel/auto-fix-{uuid.uuid4().hex[:8]}"
-        
+
         logger.info(f"Creating branch {branch_name} from {base_branch}")
         await github_client.create_branch(repository.full_name, base_branch, branch_name)
 
@@ -157,10 +156,8 @@ class AutoFixService:
             "branch_name": branch_name,
         }
 
-    async def _generate_fix(self, repo_name: str, issue: str, file_contents: Dict[str, str]) -> Dict[str, Any]:
+    async def _generate_fix(self, repo_name: str, issue: str, file_contents: dict[str, str]) -> dict[str, Any]:
         """Call LLM to propose fixed code using Search/Replace blocks with a retry loop."""
-        from app.utils.linter import check_syntax
-        import re
 
         files_context = ""
         for path, content in file_contents.items():
@@ -173,7 +170,7 @@ The identified issue is: "{issue}"
 Here are the contents of the relevant files:
 {files_context}
 
-Your task is to fix the issue by modifying the necessary files. 
+Your task is to fix the issue by modifying the necessary files.
 Instead of returning the entire file, you MUST return a Search and Replace block.
 
 Respond ONLY with a valid JSON object matching this schema:
@@ -199,17 +196,17 @@ CRITICAL REQUIREMENTS FOR SEARCH BLOCKS:
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": f"Generate the fix for: {issue}"},
         ]
-        
+
         max_retries = 3
         for attempt in range(max_retries):
             try:
                 response = await self.openai_client.chat_completion(
                     messages=messages,
                     temperature=0.1,
-                    max_tokens=2500, 
+                    max_tokens=2500,
                 )
                 raw = response.content if hasattr(response, "content") else str(response)
-                
+
                 content = raw.strip()
                 if content.startswith("```"):
                     content = content.split("\n", 1)[-1]
@@ -217,25 +214,25 @@ CRITICAL REQUIREMENTS FOR SEARCH BLOCKS:
                         content = content.rsplit("```", 1)[0]
                 if content.startswith("json"):
                     content = content[4:].strip()
-                
+
                 fix_plan = json.loads(content)
-                
+
                 # Verify and apply the diff locally
                 has_errors = False
                 error_feedback = "Your previous attempt failed with the following errors:\n"
-                
+
                 for mod_file in fix_plan.get("modified_files", []):
                     path = mod_file["file_path"]
                     search = mod_file.get("search_block", "")
                     replace = mod_file.get("replace_block", "")
-                    
+
                     if path not in file_contents:
                         has_errors = True
                         error_feedback += f"- File {path} was not in the provided context.\n"
                         continue
-                        
+
                     orig_content = file_contents[path]
-                    
+
                     if search not in orig_content:
                         # Try a more lenient search for whitespace issues
                         lenient_search = "\n".join([line.rstrip() for line in search.split('\n')])
@@ -243,23 +240,23 @@ CRITICAL REQUIREMENTS FOR SEARCH BLOCKS:
                             has_errors = True
                             error_feedback += f"- The search_block for {path} could not be found EXACTLY in the original file. Be extremely careful with indentation.\n"
                             continue
-                    
+
                     # Apply diff in memory
                     mod_file["new_content"] = orig_content.replace(search, replace)
-                    
+
                     # Run Linter
                     syntax_errors = check_syntax(path, mod_file["new_content"])
                     if syntax_errors:
                         has_errors = True
                         error_feedback += f"- Syntax errors in {path} after applying your fix:\n" + "\n".join(syntax_errors) + "\n"
-                
+
                 if not has_errors:
                     return fix_plan
-                    
+
                 logger.warning(f"Auto-Fix attempt {attempt+1} failed validation. Retrying...")
                 messages.append({"role": "assistant", "content": raw})
                 messages.append({"role": "user", "content": error_feedback + "\nPlease generate a new JSON fix plan that resolves these errors."})
-                
+
             except json.JSONDecodeError as e:
                 logger.warning(f"JSON decode failed on attempt {attempt+1}: {e}")
                 messages.append({"role": "assistant", "content": raw})

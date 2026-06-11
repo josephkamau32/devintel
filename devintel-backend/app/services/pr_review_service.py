@@ -1,11 +1,10 @@
 """PR Review Service — generates AI-powered code reviews using RAG context."""
 
 import json
-from typing import Any, Dict, List
+from typing import Any
 from uuid import UUID
 
 from app.core.logging import get_logger
-from app.integrations.github_client import GitHubClient
 from app.integrations.openai_client import OpenAIClient
 from app.models.repository import Repository
 from app.repositories.embedding import EmbeddingRepository
@@ -34,7 +33,7 @@ class PRReviewService:
         repository: Repository,
         pr_number: int,
         pr_title: str,
-        changed_files: List[Dict[str, Any]],
+        changed_files: list[dict[str, Any]],
         embedding_repo: EmbeddingRepository,
     ) -> str:
         """
@@ -119,7 +118,7 @@ Be specific, cite file names. Keep each issue description under 100 words."""
 
     def _build_diff_summary(
         self,
-        changed_files: List[Dict[str, Any]],
+        changed_files: list[dict[str, Any]],
         max_files: int = 8,
         max_patch_lines: int = 120,
     ) -> str:
@@ -155,7 +154,7 @@ Be specific, cite file names. Keep each issue description under 100 words."""
     async def _retrieve_file_context(
         self,
         repo_id: UUID,
-        changed_files: List[Dict[str, Any]],
+        changed_files: list[dict[str, Any]],
         embedding_repo: EmbeddingRepository,
     ) -> str:
         """
@@ -189,7 +188,7 @@ Be specific, cite file names. Keep each issue description under 100 words."""
 
         return "\n".join(context_parts) if context_parts else "[No existing indexed context found]"
 
-    def _parse_review_json(self, raw_content: str) -> Dict[str, Any]:
+    def _parse_review_json(self, raw_content: str) -> dict[str, Any]:
         """Extract and parse JSON from the LLM response, with fallbacks."""
         # Strip markdown code fences if present
         content = raw_content.strip()
@@ -226,7 +225,7 @@ Be specific, cite file names. Keep each issue description under 100 words."""
         self,
         pr_number: int,
         pr_title: str,
-        data: Dict[str, Any],
+        data: dict[str, Any],
     ) -> str:
         """Render structured review data as a rich GitHub markdown comment."""
         verdict = data.get("overall_verdict", "Review Completed")
@@ -258,10 +257,10 @@ Be specific, cite file names. Keep each issue description under 100 words."""
         lines = [
             REVIEW_WATERMARK,
             f"## {verdict_emoji} DevIntel AI Code Review",
-            f"",
+            "",
             f"**Verdict:** {verdict} &nbsp;|&nbsp; **Risk:** {risk_badge}",
-            f"",
-            f"### 📋 Summary",
+            "",
+            "### 📋 Summary",
             summary,
             "",
         ]
@@ -303,7 +302,7 @@ Be specific, cite file names. Keep each issue description under 100 words."""
             lines.append("")
 
         if test_note:
-            lines += [f"### 🧪 Test Coverage", test_note, ""]
+            lines += ["### 🧪 Test Coverage", test_note, ""]
 
         lines += [
             "---",

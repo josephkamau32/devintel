@@ -6,8 +6,8 @@ from fastapi import HTTPException
 from app.core.validators import (
     detect_sql_injection,
     sanitize_file_path,
-    validate_repository_name,
     sanitize_user_input,
+    validate_repository_name,
 )
 
 
@@ -30,7 +30,7 @@ def test_detect_sql_injection_blocks_unsafe():
     malicious_input = "'; DROP TABLE users; --"
     with pytest.raises(HTTPException) as exc_info:
         detect_sql_injection(malicious_input, block=True)
-    
+
     assert exc_info.value.status_code == 400
 
 
@@ -46,7 +46,7 @@ def test_sanitize_file_path_traversal():
     malicious_path = "../../../etc/passwd"
     with pytest.raises(HTTPException) as exc_info:
         sanitize_file_path(malicious_path)
-    
+
     assert exc_info.value.status_code == 400
 
 
@@ -62,7 +62,7 @@ def test_validate_repository_name_invalid():
     invalid_name = "invalid format"
     with pytest.raises(HTTPException) as exc_info:
         validate_repository_name(invalid_name)
-    
+
     assert exc_info.value.status_code == 400
 
 
@@ -78,5 +78,5 @@ def test_sanitize_user_input_too_long():
     long_input = "a" * 10001
     with pytest.raises(HTTPException) as exc_info:
         sanitize_user_input(long_input)
-    
+
     assert exc_info.value.status_code == 400

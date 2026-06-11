@@ -10,8 +10,12 @@ services:
         fromDatabase:
           name: devintel-db
           property: connectionString
+      - key: REDIS_URL
+        value: ""
       - key: ENVIRONMENT
         value: production
+      - key: DEBUG
+        value: "false"
       - key: CORS_ORIGINS
         sync: false
       - key: FRONTEND_URL
@@ -24,12 +28,14 @@ services:
         sync: false
       - key: OPENAI_API_KEY
         sync: false
+      - key: OPENAI_CHAT_MODEL
+        value: gpt-4o
       - key: SECRET_KEY
         generateValue: true
       - key: JWT_SECRET_KEY
         generateValue: true
       - key: TOKEN_ENCRYPTION_KEY
-        generateValue: true
+        sync: false
 
 databases:
   - name: devintel-db

@@ -1,8 +1,9 @@
 """Alembic migration: add code_health table and chat cost columns."""
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 revision = "20260305_1342_add_health_and_cost"
 down_revision = "20260301_1220_b3e9a1d7f45c_add_default_branch_and_repo_uniqueness"

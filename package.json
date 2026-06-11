@@ -1,16 +1,16 @@
 {
-  "name": "vite_react_shadcn_ts",
+  "name": "devintel-ai",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "build:dev": "vite build --mode development",
-    "lint": "eslint .",
-    "preview": "vite preview",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "dev": "npm run dev --prefix devintel-frontend",
+    "build": "npm run build --prefix devintel-frontend",
+    "build:dev": "npm run build:dev --prefix devintel-frontend",
+    "lint": "npm run lint --prefix devintel-frontend",
+    "preview": "npm run preview --prefix devintel-frontend",
+    "test": "npm run test --prefix devintel-frontend",
+    "test:watch": "npm run test:watch --prefix devintel-frontend"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

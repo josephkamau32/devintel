@@ -150,6 +150,12 @@ src/test/
 # GLOBAL
 # ==========================================
 
+# Python bytecode (global)
+__pycache__/
+*.py[cod]
+*$py.class
+.mypy_cache/
+
 # Docker
 docker-compose.override.yml
 
@@ -190,11 +196,27 @@ nginx/logs/
 # Database backup files
 backups/
 
-# Leftover temp test/log files
-devintel-backend/test_output.txt
+# ==========================================
+# DEBUG & TEST OUTPUT FILES
+# ==========================================
+# These should NEVER be committed — use .gitignore to prevent it
+
+# Catch-all patterns for test/debug output
+*_out.txt
+*_out_*.txt
+err*.txt
+api_logs.txt
+lint-results*.json
+lint_out*.txt
+pytest_*.txt
+test_output*.txt
+
+# Backend specifics
 devintel-backend/test_result*.log
-devintel-backend/pytest_out.txt
 devintel-backend/verify_*.py
+
+# Frontend specifics
 devintel-frontend/*.log
 devintel-frontend/lint_*.txt
 devintel-frontend/err.*
+

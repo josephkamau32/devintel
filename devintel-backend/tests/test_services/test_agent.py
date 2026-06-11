@@ -2,6 +2,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
 from app.models.repository import Repository
 from app.services.agent import AgentService
 
@@ -29,14 +30,14 @@ def agent_service():
     with patch("app.services.agent.OpenAIClient") as mock_openai, \
          patch("app.services.agent.GitHubClient") as mock_github, \
          patch("app.services.agent.ChatService") as mock_chat:
-        
+
         service = AgentService("fake_token")
-        
+
         # Setup chat service mock
         service.chat_service.retrieve_relevant_chunks = AsyncMock(return_value=[
             (MagicMock(file_path="src/main.py", chunk_text="def main(): pass"), 0.9)
         ])
-        
+
         # Setup GitHub mock
         service.github_client.create_branch = AsyncMock(return_value="feature/test")
         service.github_client.create_commit = AsyncMock(return_value="fake_sha")
@@ -45,7 +46,7 @@ def agent_service():
             "url": "https://github.com/testuser/testrepo/pull/1",
             "title": "Test PR"
         })
-        
+
         yield service
 
 
@@ -55,7 +56,7 @@ async def test_draft_pr_plan_success(agent_service, mock_repository, mock_embedd
     # Mock LLM response
     mock_response = MagicMock()
     mock_tool_call = MagicMock()
-    
+
     expected_args = {
         "branch_name": "feature/test",
         "pr_title": "Fix bug",
@@ -100,7 +101,7 @@ async def test_draft_pr_plan_empty_files(agent_service, mock_repository, mock_em
     """Test drafting fails if no file changes are proposed."""
     mock_response = MagicMock()
     mock_tool_call = MagicMock()
-    
+
     expected_args = {
         "branch_name": "feature/test",
         "pr_title": "Empty",

@@ -1,7 +1,7 @@
 """GitHub API client."""
 
 import asyncio
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import httpx
 from github import Github, GithubException
@@ -21,7 +21,7 @@ class GitHubClient:
         self.client = Github(access_token, per_page=30)
         self.access_token = access_token
 
-    async def get_user_info(self) -> Dict[str, Any]:
+    async def get_user_info(self) -> dict[str, Any]:
         """Get authenticated user information."""
         try:
             user = await asyncio.to_thread(self.client.get_user)
@@ -43,7 +43,7 @@ class GitHubClient:
         self,
         page: int = 1,
         per_page: int = 30,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get user repositories with true pagination."""
         try:
             def _fetch_repos_page():
@@ -80,7 +80,7 @@ class GitHubClient:
         state: str = "open",
         page: int = 1,
         per_page: int = 30,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get pull requests for a specific repository with true pagination."""
         try:
             def _fetch_pulls_page():
@@ -108,7 +108,7 @@ class GitHubClient:
         except GithubException as e:
             logger.error(f"Failed to get pull requests for {full_name}: {e}")
             raise ExternalServiceError(
-                message=f"Failed to fetch pull requests from GitHub",
+                message="Failed to fetch pull requests from GitHub",
                 details={"error": str(e)},
             )
 
@@ -139,7 +139,7 @@ class GitHubClient:
         except (GithubException, httpx.HTTPError) as e:
             logger.error(f"Failed to get diff for PR #{pr_number} in {full_name}: {e}")
             raise ExternalServiceError(
-                message=f"Failed to fetch PR diff from GitHub",
+                message="Failed to fetch PR diff from GitHub",
                 details={"error": str(e)},
             )
 
@@ -148,7 +148,7 @@ class GitHubClient:
         full_name: str,
         pr_number: int,
         body: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Post a comment on a pull request."""
         try:
             def _do_post_comment():
@@ -169,7 +169,7 @@ class GitHubClient:
         self,
         full_name: str,
         pr_number: int,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get the list of files changed in a pull request with their patches."""
         try:
             def _do_get_files():
@@ -216,7 +216,7 @@ class GitHubClient:
         except GithubException as e:
             logger.error(f"Failed to create branch {new_branch_name} in {full_name}: {e}")
             raise ExternalServiceError(
-                message=f"Failed to create branch on GitHub",
+                message="Failed to create branch on GitHub",
                 details={"error": str(e)},
             )
 
@@ -224,7 +224,7 @@ class GitHubClient:
         self,
         full_name: str,
         branch_name: str,
-        file_changes: List[Dict[str, str]],
+        file_changes: list[dict[str, str]],
         commit_message: str,
     ) -> str:
         """
@@ -234,12 +234,12 @@ class GitHubClient:
         try:
             def _do_create_commit():
                 repo = self.client.get_repo(full_name)
-                
+
                 # Get the branch reference
                 ref = repo.get_git_ref(f"heads/{branch_name}")
                 base_commit = repo.get_git_commit(ref.object.sha)
                 base_tree = repo.get_git_tree(base_commit.tree.sha)
-                
+
                 # Create blobs and build tree elements
                 element_list = []
                 for change in file_changes:
@@ -253,27 +253,27 @@ class GitHubClient:
                         sha=blob.sha
                     )
                     element_list.append(element)
-                
+
                 # Create the new tree
                 new_tree = repo.create_git_tree(element_list, base_tree)
-                
+
                 # Create the commit
                 new_commit = repo.create_git_commit(
                     commit_message,
                     new_tree,
                     [base_commit]
                 )
-                
+
                 # Update the branch reference
                 ref.edit(new_commit.sha)
-                
+
                 return new_commit.sha
 
             return await asyncio.to_thread(_do_create_commit)
         except GithubException as e:
             logger.error(f"Failed to create commit on branch {branch_name} in {full_name}: {e}")
             raise ExternalServiceError(
-                message=f"Failed to commit files to GitHub",
+                message="Failed to commit files to GitHub",
                 details={"error": str(e)},
             )
 
@@ -284,7 +284,7 @@ class GitHubClient:
         body: str,
         head_branch: str,
         base_branch: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Create a new Pull Request."""
         try:
             def _do_create_pr():
@@ -305,7 +305,7 @@ class GitHubClient:
         except GithubException as e:
             logger.error(f"Failed to create pull request in {full_name}: {e}")
             raise ExternalServiceError(
-                message=f"Failed to create Pull Request on GitHub",
+                message="Failed to create Pull Request on GitHub",
                 details={"error": str(e)},
             )
 
@@ -321,11 +321,7 @@ async def exchange_code_for_token(code: str) -> str:
             "redirect_uri": settings.github_redirect_uri,
         }
 
-        # ── Diagnostic: print request params (redact secret) ──────────────────
-        safe_payload = {**payload, "client_secret": "***REDACTED***"}
-        print(f"\n[OAuth DEBUG] Exchanging code with GitHub:")
-        print(f"  Request payload: {safe_payload}")
-        # ──────────────────────────────────────────────────────────────────────
+        logger.debug("Exchanging OAuth code with GitHub")
 
         response = await client.post(
             "https://github.com/login/oauth/access_token",
@@ -333,10 +329,7 @@ async def exchange_code_for_token(code: str) -> str:
             data=payload,
         )
 
-        # ── Diagnostic: print raw GitHub response ──────────────────────────────
-        print(f"  GitHub response status: {response.status_code}")
-        print(f"  GitHub response body:   {response.text}")
-        # ──────────────────────────────────────────────────────────────────────
+        logger.debug(f"GitHub OAuth response status: {response.status_code}")
 
         if response.status_code != 200:
             raise ExternalServiceError(

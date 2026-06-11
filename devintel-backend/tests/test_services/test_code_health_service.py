@@ -4,13 +4,13 @@ scoring, and the full analyze() orchestration with mocked dependencies.
 """
 
 import json
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
-from app.services.code_health_service import CodeHealthService, PROBE_QUERIES
-from app.models.repository import Repository
+import pytest
 
+from app.models.repository import Repository
+from app.services.code_health_service import PROBE_QUERIES, CodeHealthService
 
 # ─── Fixtures ────────────────────────────────────────────────────────────────
 

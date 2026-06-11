@@ -4,13 +4,13 @@ rendering, and the full generate_review() orchestration with mocked dependencies
 """
 
 import json
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
-from app.services.pr_review_service import PRReviewService, REVIEW_WATERMARK
-from app.models.repository import Repository
+import pytest
 
+from app.models.repository import Repository
+from app.services.pr_review_service import REVIEW_WATERMARK, PRReviewService
 
 # ─── Fixtures ────────────────────────────────────────────────────────────────
 

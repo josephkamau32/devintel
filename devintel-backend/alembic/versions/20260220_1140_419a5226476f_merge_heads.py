@@ -5,11 +5,8 @@ Revises: 002_pgvector_indexes, ceef8efa415f
 Create Date: 2026-02-20 11:40:43.451351
 
 """
-from typing import Sequence, Union
-
-from alembic import op
-import sqlalchemy as sa
-
+from collections.abc import Sequence
+from typing import Union
 
 # revision identifiers, used by Alembic.
 revision: str = '419a5226476f'

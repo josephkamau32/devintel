@@ -1,7 +1,7 @@
 """Application configuration using Pydantic Settings."""
 
 from functools import lru_cache
-from typing import List, Optional
+from typing import Optional
 
 from pydantic import ConfigDict, Field, field_validator
 from pydantic_settings import BaseSettings
@@ -49,7 +49,7 @@ class Settings(BaseSettings):
     openai_embedding_model: str = Field(
         default="text-embedding-3-small", alias="OPENAI_EMBEDDING_MODEL"
     )
-    openai_chat_model: str = Field(default="gpt-4-turbo-preview", alias="OPENAI_CHAT_MODEL")
+    openai_chat_model: str = Field(default="gpt-4o", alias="OPENAI_CHAT_MODEL")
     openai_max_tokens: int = Field(default=4096, alias="OPENAI_MAX_TOKENS")
 
     # Security
@@ -66,7 +66,7 @@ class Settings(BaseSettings):
     token_encryption_key: str = Field(..., alias="TOKEN_ENCRYPTION_KEY")
 
     # CORS
-    cors_origins: List[str] | str = Field(
+    cors_origins: list[str] | str = Field(
         default=["http://localhost:3000", "http://localhost:5173", "http://localhost:8080"],
         alias="CORS_ORIGINS"
     )
@@ -125,7 +125,7 @@ class Settings(BaseSettings):
     )
 
 
-@lru_cache()
+@lru_cache
 def get_settings() -> Settings:
     """Get cached settings instance."""
     return Settings()

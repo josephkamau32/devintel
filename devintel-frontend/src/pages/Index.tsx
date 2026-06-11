@@ -1,8 +1,7 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Zap, GitBranch, MessageSquare, GitPullRequest, ArrowRight, Check } from "lucide-react";
+import { Zap, GitBranch, MessageSquare, GitPullRequest, ArrowRight, Check, Search, Bot, Code2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
 
 const features = [
   {
@@ -117,6 +116,41 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* How It Works */}
+      <section className="border-t border-border py-20">
+        <div className="mx-auto max-w-6xl px-6">
+          <div className="text-center">
+            <h2 className="text-3xl font-bold">How It Works</h2>
+            <p className="mt-3 text-muted-foreground">Four steps from connection to autonomous code fixes.</p>
+          </div>
+          <div className="mt-12 grid gap-1 md:grid-cols-4">
+            {[
+              { step: "1", icon: GitBranch, title: "Connect", desc: "Authenticate with GitHub OAuth and select your repositories." },
+              { step: "2", icon: Code2, title: "Index", desc: "AST-aware Tree-Sitter chunking creates semantic embeddings via pgvector." },
+              { step: "3", icon: Search, title: "Chat & Review", desc: "RAG-powered conversations and AI pull request reviews." },
+              { step: "4", icon: Bot, title: "Auto-Fix", desc: "Agent creates a branch, commits fixes, and opens a PR automatically." },
+            ].map((item, i) => (
+              <motion.div
+                key={item.step}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.15, duration: 0.4 }}
+                className="relative flex flex-col items-center text-center p-6"
+              >
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary border border-primary/20">
+                  <item.icon className="h-5 w-5" />
+                </div>
+                <span className="mt-1 text-xs font-medium text-primary">Step {item.step}</span>
+                <h3 className="mt-2 font-semibold text-card-foreground">{item.title}</h3>
+                <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
+                {i < 3 && <div className="hidden md:block absolute right-0 top-1/2 -translate-y-1/2 text-muted-foreground/30"><ArrowRight className="h-5 w-5" /></div>}
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Features */}
       <section id="features" className="border-t border-border py-20">
         <div className="mx-auto max-w-6xl px-6">
@@ -199,10 +233,9 @@ export default function LandingPage() {
             <span className="text-sm font-semibold">DevIntel AI</span>
           </div>
           <div className="flex gap-6 text-sm text-muted-foreground">
-            <button onClick={() => toast("Documentation coming soon!")} className="hover:text-foreground transition-colors">Docs</button>
-            <button onClick={() => toast("Blog coming soon!")} className="hover:text-foreground transition-colors">Blog</button>
-            <button onClick={() => toast("Privacy Policy coming soon!")} className="hover:text-foreground transition-colors">Privacy</button>
-            <button onClick={() => toast("Terms of Service coming soon!")} className="hover:text-foreground transition-colors">Terms</button>
+            <a href="https://github.com/josephkamau32/devintel" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">GitHub</a>
+            <a href="#features" className="hover:text-foreground transition-colors">Features</a>
+            <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
           </div>
           <p className="text-xs text-muted-foreground">© 2026 DevIntel AI. All rights reserved.</p>
         </div>

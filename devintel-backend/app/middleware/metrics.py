@@ -1,10 +1,10 @@
 """Prometheus metrics middleware for monitoring."""
 
 import time
-from typing import Callable
+from collections.abc import Callable
 
 from fastapi import Request, Response
-from prometheus_client import Counter, Histogram, Gauge
+from prometheus_client import Counter, Gauge, Histogram
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.core.logging import get_logger
@@ -74,17 +74,17 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
         """Collect metrics for each request."""
         method = request.method
         path = request.url.path
-        
+
         # Skip metrics endpoint itself
         if path == "/metrics":
             return await call_next(request)
-        
+
         # Increment in-progress gauge
         http_requests_in_progress.labels(method=method, endpoint=path).inc()
-        
+
         # Time the request
         start_time = time.time()
-        
+
         try:
             response = await call_next(request)
             status_code = response.status_code
@@ -95,20 +95,20 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
         finally:
             # Record metrics
             duration = time.time() - start_time
-            
+
             http_requests_total.labels(
                 method=method,
                 endpoint=path,
                 status=status_code,
             ).inc()
-            
+
             http_request_duration_seconds.labels(
                 method=method,
                 endpoint=path,
             ).observe(duration)
-            
+
             http_requests_in_progress.labels(method=method, endpoint=path).dec()
-        
+
         return response
 
 

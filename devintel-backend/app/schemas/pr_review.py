@@ -1,6 +1,6 @@
 """PR review schemas."""
 
-from typing import List, Optional
+from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -20,12 +20,12 @@ class PRReviewResponse(BaseModel):
     """PR review response schema."""
 
     summary: str = Field(..., description="Overall assessment of the PR")
-    potential_issues: List[str] = Field(default_factory=list, description="Potential issues found")
-    refactoring_suggestions: List[str] = Field(
+    potential_issues: list[str] = Field(default_factory=list, description="Potential issues found")
+    refactoring_suggestions: list[str] = Field(
         default_factory=list, description="Refactoring suggestions"
     )
-    security_warnings: List[str] = Field(default_factory=list, description="Security concerns")
-    performance_notes: List[str] = Field(default_factory=list, description="Performance considerations")
+    security_warnings: list[str] = Field(default_factory=list, description="Security concerns")
+    performance_notes: list[str] = Field(default_factory=list, description="Performance considerations")
 
 
 class PullRequestResponse(BaseModel):
@@ -46,5 +46,5 @@ class PullRequestResponse(BaseModel):
 class PullRequestListResponse(BaseModel):
     """Pull request list response schema."""
 
-    pulls: List[PullRequestResponse]
+    pulls: list[PullRequestResponse]
     repository_id: UUID

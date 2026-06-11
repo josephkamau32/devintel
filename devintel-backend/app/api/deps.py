@@ -1,6 +1,5 @@
 """API dependencies."""
 
-from typing import List
 from uuid import UUID
 
 from fastapi import Depends, Header, HTTPException, status

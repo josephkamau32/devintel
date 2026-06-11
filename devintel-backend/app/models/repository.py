@@ -1,7 +1,7 @@
 """Repository model."""
 
 from datetime import datetime
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
@@ -54,13 +54,13 @@ class Repository(Base, UUIDMixin, TimestampMixin):
     # Relationships
     user: Mapped[Optional["User"]] = relationship("User", back_populates="repositories")
     organization: Mapped[Optional["Organization"]] = relationship("Organization", back_populates="repositories")
-    embeddings: Mapped[List["Embedding"]] = relationship(
+    embeddings: Mapped[list["Embedding"]] = relationship(
         "Embedding",
         back_populates="repository",
         cascade="all, delete-orphan",
         lazy="raise",
     )
-    chats: Mapped[List["Chat"]] = relationship(
+    chats: Mapped[list["Chat"]] = relationship(
         "Chat",
         back_populates="repository",
         cascade="all, delete-orphan",

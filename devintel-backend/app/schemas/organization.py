@@ -1,7 +1,7 @@
 """Organization schemas."""
 
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -59,7 +59,7 @@ class OrganizationMemberRead(OrganizationMemberBase):
     user_id: UUID
     org_id: UUID
     joined_at: datetime
-    
+
     # We will include basic user info if joined
     username: Optional[str] = None
     email: Optional[str] = None
@@ -77,4 +77,4 @@ class OrganizationWithRole(OrganizationRead):
 
 class OrganizationDetailed(OrganizationRead):
     """Detailed organization schema with members."""
-    members: List[OrganizationMemberRead] = []
+    members: list[OrganizationMemberRead] = []

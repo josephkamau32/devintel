@@ -9,10 +9,21 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
-from app.api.v1 import analytics, auth, chat, health_score, organizations, pr_review, repositories, webhooks, ws
+from app.api.v1 import (
+    analytics,
+    auth,
+    chat,
+    health_score,
+    organizations,
+    pr_review,
+    repositories,
+    webhooks,
+    ws,
+)
 from app.core.config import settings
 from app.core.exceptions import DevIntelException
 from app.core.logging import get_logger, setup_logging
+from app.middleware.csrf import CSRFMiddleware
 from app.middleware.security import (
     AuditLoggingMiddleware,
     RequestIDMiddleware,
@@ -20,7 +31,6 @@ from app.middleware.security import (
     SecurityHeadersMiddleware,
     SQLInjectionDetectionMiddleware,
 )
-from app.middleware.csrf import CSRFMiddleware
 
 # Setup logging
 setup_logging()
@@ -36,14 +46,14 @@ async def lifespan(app: FastAPI):
     logger.info("Starting DevIntel AI backend")
     yield
     logger.info("Shutting down DevIntel AI backend")
-    
+
     # Graceful shutdown: Close cache (Redis or in-memory)
     from app.services.cache import cache
     try:
         await cache.close()
     except Exception as e:
         logger.error(f"Error closing cache: {e}")
-        
+
     # Graceful shutdown: Dispose SQLAlchemy engine
     from app.db.session import engine
     try:
@@ -56,8 +66,11 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.app_name,
     description="AI-powered developer productivity platform with RAG",
-    version="0.1.0",
+    version="1.0.0",
     lifespan=lifespan,
+    # Hide API docs in production for security
+    docs_url="/docs" if settings.debug else None,
+    redoc_url="/redoc" if settings.debug else None,
 )
 
 # Add rate limiting

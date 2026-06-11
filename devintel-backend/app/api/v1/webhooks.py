@@ -224,6 +224,7 @@ async def _get_repo_access_token(repository, db) -> str:
     # Org repository — find any org member with a token
     if repository.org_id:
         from sqlalchemy import select
+
         from app.models.organization import OrganizationMember
         from app.models.user import User
         stmt = (

@@ -1,10 +1,12 @@
 """Chat service for RAG."""
 
 import hashlib
-from typing import AsyncGenerator, List, Tuple
+import json
+import re
+from collections.abc import AsyncGenerator
+from uuid import UUID
 
 import tiktoken
-from uuid import UUID
 
 from app.core.config import settings
 from app.core.logging import get_logger
@@ -47,11 +49,10 @@ class ChatService:
     def sanitize_user_input(question: str) -> str:
         """
         Sanitize user input to defend against prompt injection.
-        
+
         Returns sanitized input or raises ValueError if malicious.
         """
-        import re
-        
+
         # Common prompt injection patterns
         injection_patterns = [
             r"(?i)ignore\s+(all\s+)?previous\s+instructions",
@@ -67,25 +68,25 @@ class ChatService:
             r"(?i)\[system\]",
             r"(?i)\[INST\]",
         ]
-        
+
         for pattern in injection_patterns:
             if re.search(pattern, question):
                 logger.warning(f"Prompt injection attempt detected: {question[:100]}")
                 raise ValueError("Your message contains patterns that look like prompt injection. Please rephrase your question.")
-        
+
         return question
 
     def validate_context_window(self, messages: list, max_tokens: int = 120000) -> list:
         """
         Validate that messages fit within the model's context window.
-        
+
         Trims chat history if needed (keeps system prompt + last user message).
         """
         total = self.count_messages_tokens(messages)
-        
+
         if total <= max_tokens:
             return messages
-        
+
         # Keep system prompt (first) and current question (last), trim middle history
         if len(messages) > 2:
             logger.warning(f"Context window exceeded ({total} tokens). Trimming chat history.")
@@ -93,22 +94,22 @@ class ChatService:
                 # Remove oldest history message (index 1)
                 messages.pop(1)
                 total = self.count_messages_tokens(messages)
-        
+
         return messages
 
     @staticmethod
-    def build_system_prompt(repo_name: str, context_chunks: List[Tuple[Embedding, float]]) -> str:
+    def build_system_prompt(repo_name: str, context_chunks: list[tuple[Embedding, float]]) -> str:
         """Build system prompt with retrieved context."""
         context_text = ""
-        
+
         for embedding, similarity in context_chunks:
             context_text += f"\n\n--- File: {embedding.file_path} (Chunk {embedding.chunk_index}) ---\n"
             context_text += embedding.chunk_text
-        
+
         # Handle empty context
         if not context_chunks:
             context_text = "\n[No relevant code was found for this query.]\n"
-        
+
         system_prompt = f"""You are an expert code assistant for the repository: {repo_name}
 
 Context from codebase:
@@ -132,16 +133,16 @@ Rules:
         embedding_repo: EmbeddingRepository,
         top_k: int = settings.top_k_chunks,
         expand_context: bool = True,
-    ) -> List[Tuple[Embedding, float]]:
+    ) -> list[tuple[Embedding, float]]:
         """Retrieve relevant chunks using vector similarity search."""
         # Check cache
         cache_key = f"embed:{repo_id}:{hashlib.sha256(question.encode()).hexdigest()}"
         cached_result = await cache.get(cache_key)
-        
+
         results = []
         if cached_result:
             logger.info("Retrieved chunks from cache")
-            import json
+
             try:
                 cached_data = json.loads(cached_result)
                 for item in cached_data:
@@ -150,33 +151,32 @@ Rules:
                         results.append((embedding, item["similarity"]))
             except Exception as e:
                 logger.warning(f"Cache deserialization failed: {e}, fetching from DB")
-        
+
         if not results:
             # Generate question embedding
             question_embedding = await self.embedding_service.generate_embedding(question)
-            
+
             # Vector search
             results = await embedding_repo.vector_search(
                 repo_id=repo_id,
                 query_embedding=question_embedding,
                 top_k=top_k,
             )
-            
+
             # Cache results (serialize to JSON)
-            import json
             cache_data = [
                 {"embedding_id": str(emb.id), "similarity": sim}
                 for emb, sim in results
             ]
             await cache.set(cache_key, json.dumps(cache_data), ttl=3600)
-        
+
         if not expand_context:
             return results
 
         # --- Context Expansion ---
         # For each hit, retrieve adjacent chunks to provide semantic continuity
         expanded_results = {} # map (file_path, chunk_index) -> (Embedding, similarity)
-        
+
         for emb, sim in results:
             # Load neighbors
             neighbors = await embedding_repo.get_neighbors(
@@ -187,7 +187,7 @@ Rules:
             )
             for n in neighbors:
                 key = (n.file_path, n.chunk_index)
-                # If it's the original hit, use its similarity. 
+                # If it's the original hit, use its similarity.
                 # If it's a neighbor, use a slightly decayed similarity or just the original hit's sim.
                 if key not in expanded_results:
                     # Neighboring chunks inherit a fraction of the relevance
@@ -202,19 +202,19 @@ Rules:
         self,
         repo_name: str,
         question: str,
-        context_chunks: List[Tuple[Embedding, float]],
+        context_chunks: list[tuple[Embedding, float]],
         chat_history: list = None,
     ) -> AsyncGenerator[str, None]:
         """Stream chat response with multi-turn memory and safety checks."""
         # Prompt injection defense
         question = self.sanitize_user_input(question)
-        
+
         system_prompt = self.build_system_prompt(repo_name, context_chunks)
-        
+
         messages = [
             {"role": "system", "content": system_prompt},
         ]
-        
+
         # Include chat history for multi-turn context
         if chat_history:
             for msg in chat_history:
@@ -222,12 +222,12 @@ Rules:
                     "role": msg.role if hasattr(msg, 'role') else msg.get("role", "user"),
                     "content": msg.content if hasattr(msg, 'content') else msg.get("content", ""),
                 })
-        
+
         # Add current question
         messages.append({"role": "user", "content": question})
-        
+
         # Validate context window and trim if needed
         messages = self.validate_context_window(messages)
-        
+
         async for chunk in self.openai_client.chat_completion_stream(messages):
             yield chunk

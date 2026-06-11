@@ -1,16 +1,17 @@
 """Initial schema with pgvector
 
 Revision ID: ceef8efa415f
-Revises: 
+Revises:
 Create Date: 2026-02-11 16:37:16.764864
 
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
+from typing import Union
+
+import pgvector.sqlalchemy
+import sqlalchemy as sa
 
 from alembic import op
-import sqlalchemy as sa
-import pgvector.sqlalchemy
-
 
 # revision identifiers, used by Alembic.
 revision: str = 'ceef8efa415f'

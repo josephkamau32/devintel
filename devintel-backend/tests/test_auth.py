@@ -1,8 +1,8 @@
 """Test authentication endpoints."""
 
 import pytest
-from httpx import AsyncClient
 from fastapi import status
+from httpx import AsyncClient
 
 from app.main import app
 
@@ -12,7 +12,7 @@ async def test_github_login_redirect():
     """Test GitHub OAuth login redirect."""
     async with AsyncClient(app=app, base_url="http://test") as client:
         response = await client.get("/api/v1/auth/github")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert "url" in response.json()
         assert "github.com/login/oauth/authorize" in response.json()["url"]

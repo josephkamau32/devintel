@@ -1,8 +1,9 @@
 """Security utilities for authentication and authorization."""
 
 import hashlib
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional
+import hmac
+from datetime import UTC, datetime, timedelta
+from typing import Any, Optional
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -14,18 +15,18 @@ from app.core.exceptions import AuthenticationError
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
-def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(data: dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
     """Create JWT access token."""
     to_encode = data.copy()
 
     if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
+        expire = datetime.now(UTC) + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(
+        expire = datetime.now(UTC) + timedelta(
             minutes=settings.jwt_access_token_expire_minutes
         )
 
-    to_encode.update({"exp": expire, "iat": datetime.now(timezone.utc)})
+    to_encode.update({"exp": expire, "iat": datetime.now(UTC)})
 
     encoded_jwt = jwt.encode(
         to_encode,
@@ -36,12 +37,12 @@ def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta]
     return encoded_jwt
 
 
-def create_refresh_token(data: Dict[str, Any]) -> str:
+def create_refresh_token(data: dict[str, Any]) -> str:
     """Create JWT refresh token with 7-day expiry."""
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + timedelta(days=7)
-    to_encode.update({"exp": expire, "iat": datetime.now(timezone.utc), "type": "refresh"})
-    
+    expire = datetime.now(UTC) + timedelta(days=7)
+    to_encode.update({"exp": expire, "iat": datetime.now(UTC), "type": "refresh"})
+
     encoded_jwt = jwt.encode(
         to_encode,
         settings.jwt_secret_key,
@@ -50,7 +51,7 @@ def create_refresh_token(data: Dict[str, Any]) -> str:
     return encoded_jwt
 
 
-def verify_token(token: str) -> Dict[str, Any]:
+def verify_token(token: str) -> dict[str, Any]:
     """Verify JWT token and return payload."""
     try:
         payload = jwt.decode(
@@ -83,4 +84,4 @@ def hash_token(token: str) -> str:
 
 def verify_token_hash(token: str, token_hash: str) -> bool:
     """Verify a token against its stored SHA-256 hash."""
-    return hashlib.sha256(token.encode()).hexdigest() == token_hash
+    return hmac.compare_digest(hashlib.sha256(token.encode()).hexdigest(), token_hash)

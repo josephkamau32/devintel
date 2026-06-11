@@ -1,6 +1,6 @@
 """User model."""
 
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -26,18 +26,18 @@ class User(Base, UUIDMixin, TimestampMixin):
     name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     username: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     avatar_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
-    
+
     # JWT Refresh Token
     refresh_token: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
 
     # Relationships
-    repositories: Mapped[List["Repository"]] = relationship(
+    repositories: Mapped[list["Repository"]] = relationship(
         "Repository",
         back_populates="user",
         cascade="all, delete-orphan",
         lazy="raise",
     )
-    chats: Mapped[List["Chat"]] = relationship(
+    chats: Mapped[list["Chat"]] = relationship(
         "Chat",
         back_populates="user",
         cascade="all, delete-orphan",
@@ -50,7 +50,7 @@ class User(Base, UUIDMixin, TimestampMixin):
         cascade="all, delete-orphan",
         lazy="raise",
     )
-    organizations: Mapped[List["OrganizationMember"]] = relationship(
+    organizations: Mapped[list["OrganizationMember"]] = relationship(
         "OrganizationMember",
         back_populates="user",
         cascade="all, delete-orphan",

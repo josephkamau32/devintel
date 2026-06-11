@@ -1,9 +1,7 @@
 """Embedding repository."""
 
-from typing import List, Tuple
 from uuid import UUID
 
-from pgvector.sqlalchemy import Vector
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,7 +16,7 @@ class EmbeddingRepository(BaseRepository[Embedding]):
         """Initialize repository."""
         super().__init__(Embedding, db)
 
-    async def create_bulk(self, embeddings_data: List[dict]) -> List[Embedding]:
+    async def create_bulk(self, embeddings_data: list[dict]) -> list[Embedding]:
         """Create multiple embeddings at once."""
         instances = [Embedding(**data) for data in embeddings_data]
         self.db.add_all(instances)
@@ -37,22 +35,22 @@ class EmbeddingRepository(BaseRepository[Embedding]):
     async def vector_search(
         self,
         repo_id: UUID,
-        query_embedding: List[float],
+        query_embedding: list[float],
         top_k: int = 6,
         threshold: float = 0.3,
-    ) -> List[Tuple[Embedding, float]]:
+    ) -> list[tuple[Embedding, float]]:
         """
         Perform vector similarity search using cosine distance.
         Returns list of (Embedding, similarity_score) tuples.
         """
         from app.core.constants import SIMILARITY_THRESHOLD
-        
+
         # Use provided threshold or default from constants
         active_threshold = threshold if threshold is not None else SIMILARITY_THRESHOLD
 
         # Use pgvector's cosine distance operator
         query = text("""
-            SELECT 
+            SELECT
                 id,
                 repo_id,
                 file_path,
@@ -63,7 +61,7 @@ class EmbeddingRepository(BaseRepository[Embedding]):
                 updated_at,
                 (1 - (embedding <=> :query_embedding)) as similarity
             FROM embeddings
-            WHERE repo_id = :repo_id 
+            WHERE repo_id = :repo_id
               AND (1 - (embedding <=> :query_embedding)) >= :threshold
             ORDER BY embedding <=> :query_embedding
             LIMIT :top_k
@@ -108,7 +106,7 @@ class EmbeddingRepository(BaseRepository[Embedding]):
         await self.db.flush()
         return result.rowcount
 
-    async def get_neighbors(self, repo_id: UUID, file_path: str, chunk_index: int, radius: int = 1) -> List[Embedding]:
+    async def get_neighbors(self, repo_id: UUID, file_path: str, chunk_index: int, radius: int = 1) -> list[Embedding]:
         """Fetch adjacent chunks for a given file and chunk index."""
         result = await self.db.execute(
             select(Embedding)

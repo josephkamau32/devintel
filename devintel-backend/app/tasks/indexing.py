@@ -4,13 +4,11 @@ Runs as an asyncio task in-process — no Celery or Redis required.
 """
 
 import asyncio
-import json
 from datetime import datetime
 from uuid import UUID
 
 from app.core.logging import get_logger
 from app.db.session import AsyncSessionLocal
-from app.models.repository import Repository
 from app.repositories.embedding import EmbeddingRepository
 from app.repositories.repository import RepositoryRepository
 from app.services.embedding import EmbeddingService
@@ -56,18 +54,18 @@ async def _index_repository_async(
     """Async implementation of repository indexing."""
     repo_path = None
     indexing_service = IndexingService()
-    
+
     async with AsyncSessionLocal() as db:
         try:
             repo_repo = RepositoryRepository(db)
             embedding_repo = EmbeddingRepository(db)
-            
+
             # Get repository
             repo = await repo_repo.get_by_id(UUID(repo_id))
             if not repo:
                 logger.error(f"Repository not found: {repo_id}")
                 return
-            
+
             # Update status to in-progress
             await repo_repo.update(
                 UUID(repo_id),
@@ -76,24 +74,24 @@ async def _index_repository_async(
                 indexing_error=None,
             )
             await db.commit()
-            
+
             # Clone repository
             logger.info(f"Cloning repository: {clone_url}")
             # 10 minute timeout for cloning
             repo_path = await asyncio.wait_for(
                 indexing_service.clone_repository(clone_url, access_token),
-                timeout=600 
+                timeout=600
             )
-            
+
             # Update progress: Finished cloning
             await repo_repo.update(UUID(repo_id), indexing_progress=15)
             await db.commit()
             await _publish_progress(repo_id, 15, "cloning")
-            
+
             # Parse and chunk files
-            logger.info(f"Parsing and chunking repository")
+            logger.info("Parsing and chunking repository")
             chunks = await indexing_service.parse_and_chunk_repository(repo_path)
-            
+
             if not chunks:
                 logger.warning(f"No supported files found in repo {repo_id}")
                 await repo_repo.update(
@@ -104,18 +102,18 @@ async def _index_repository_async(
                 )
                 await db.commit()
                 return
-            
+
             # Update progress: Finished parsing
             await repo_repo.update(UUID(repo_id), indexing_progress=30)
             await db.commit()
             await _publish_progress(repo_id, 30, "parsing")
-            
+
             # Delete old embeddings before re-indexing (prevents duplicates)
             deleted_count = await embedding_repo.delete_by_repo(UUID(repo_id))
             if deleted_count > 0:
                 logger.info(f"Deleted {deleted_count} old embeddings for repo {repo_id}")
                 await db.commit()
-            
+
             # Update progress: Starting embedding
             await repo_repo.update(UUID(repo_id), indexing_progress=40)
             await db.commit()
@@ -124,9 +122,9 @@ async def _index_repository_async(
             # Generate embeddings
             logger.info(f"Generating embeddings for {len(chunks)} chunks")
             embedding_service = EmbeddingService()
-            
+
             chunk_texts = [chunk[2] for chunk in chunks]
-            
+
             async def update_embedding_progress(current: int, total: int):
                 # Map current progress between 40% and 80%
                 progress = 40 + int((current / total) * 40)
@@ -137,19 +135,19 @@ async def _index_repository_async(
             # 30 minute timeout for large embedding jobs
             embeddings = await asyncio.wait_for(
                 embedding_service.generate_embeddings_batch(
-                    chunk_texts, 
+                    chunk_texts,
                     batch_size=50,
                     on_progress=update_embedding_progress
                 ),
                 timeout=1800
             )
-            
+
             # Update progress: Finished embeddings
             await repo_repo.update(UUID(repo_id), indexing_progress=80)
             await db.commit()
-            
+
             # Store embeddings in database
-            logger.info(f"Storing embeddings in database")
+            logger.info("Storing embeddings in database")
             embeddings_data = []
             for (file_path, chunk_index, chunk_text), embedding in zip(chunks, embeddings):
                 embeddings_data.append({
@@ -159,11 +157,11 @@ async def _index_repository_async(
                     "chunk_text": chunk_text,
                     "embedding": embedding,
                 })
-            
+
             # Bulk insert
             await embedding_repo.create_bulk(embeddings_data)
             await db.commit()
-            
+
             # Update repository as indexed
             await repo_repo.update(
                 UUID(repo_id),
@@ -172,24 +170,24 @@ async def _index_repository_async(
                 indexing_progress=100,
                 indexing_error=None,
             )
-            
+
             # Clear embedding cache for this repository
             from app.services.cache import cache
             await cache.delete_pattern(f"embed:{repo_id}:*")
-            
+
             # Update analytics counter (only for personal repos; org repos don't have a direct user_id)
             if repo.user_id:
                 from app.repositories.analytics import AnalyticsRepository
                 analytics_repo = AnalyticsRepository(db)
                 await analytics_repo.increment_repositories_indexed(repo.user_id)
-            
+
             await db.commit()
             logger.info(f"Successfully indexed repository: {repo_id} ({len(chunks)} chunks)")
 
             # Fire code health analysis as a follow-up background task
             from app.tasks.code_health import compute_code_health_task
             asyncio.create_task(compute_code_health_task(repo_id))
-            
+
         except asyncio.TimeoutError:
             error_msg = "Indexing timed out during processing (cloning or embedding)"
             logger.error(f"Timeout indexing repository {repo_id}")
@@ -198,7 +196,7 @@ async def _index_repository_async(
             error_msg = f"Unexpected error: {str(e)}"
             logger.error(f"Failed to index repository {repo_id}: {e}", exc_info=True)
             await _handle_indexing_failure(repo_repo, db, repo_id, error_msg)
-        
+
         finally:
             # Cleanup
             if repo_path:

@@ -6,7 +6,7 @@ import json
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user, check_repo_access
+from app.api.deps import check_repo_access, get_current_user
 from app.core.logging import get_logger
 from app.db.session import get_db
 from app.integrations.github_client import GitHubClient
@@ -45,17 +45,17 @@ async def review_pull_request(
 
     # Authorization: use shared helper — handles both org and personal repos
     await check_repo_access(repository, current_user, db)
-    
+
     # Get diff (either from request or from GitHub)
     diff_content = request.pull_request_diff
-    
+
     if request.pr_number:
         if not current_user.github_access_token_encrypted:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="GitHub token not found. Please re-authenticate.",
             )
-        
+
         token = encryption_service.decrypt(current_user.github_access_token_encrypted)
         github_client = GitHubClient(token)
         try:
@@ -68,7 +68,7 @@ async def review_pull_request(
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail=f"Failed to fetch PR diff from GitHub: {str(e)}",
             )
-    
+
     if not diff_content:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -82,14 +82,14 @@ async def review_pull_request(
             detail=f"PR diff is too large ({len(diff_content):,} chars). "
                    f"Maximum allowed is {MAX_DIFF_CHARS:,} chars (~30K tokens).",
         )
-    
+
     # Optional: Enhance with RAG context if the repository is indexed
     context_text = ""
     if repository.indexed_status:
         try:
             chat_service = ChatService()
             embedding_repo = EmbeddingRepository(db)
-            
+
             # Simple heuristic: use the PR title and description to find relevant architectural context
             search_query = f"{request.pr_title} {request.pr_description}"
             relevant_chunks = await chat_service.retrieve_relevant_chunks(
@@ -98,7 +98,7 @@ async def review_pull_request(
                 embedding_repo=embedding_repo,
                 top_k=5
             )
-            
+
             if relevant_chunks:
                 context_text = "\n\nRelevant Repository Context:\n"
                 for embedding, _ in relevant_chunks:
@@ -127,7 +127,7 @@ Provide a review as a JSON object with these exact keys:
   "performance_notes": ["Performance impacts or optimization opportunities"]
 }}
 """
-    
+
     # Call OpenAI with timeout and structured JSON output
     openai_client = OpenAIClient()
     try:
@@ -145,7 +145,7 @@ Provide a review as a JSON object with these exact keys:
             status_code=status.HTTP_504_GATEWAY_TIMEOUT,
             detail="PR review timed out. The diff may be too complex. Try a smaller PR.",
         )
-    
+
     # Parse response
     try:
         review_data = json.loads(response)

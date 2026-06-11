@@ -1,7 +1,7 @@
 """Code Health Service — LLM-powered per-repository quality analysis."""
 
 import json
-from typing import Any, Dict, List
+from typing import Any
 from uuid import UUID
 
 from app.core.logging import get_logger
@@ -41,7 +41,7 @@ class CodeHealthService:
         repository: Repository,
         embedding_repo: EmbeddingRepository,
         health_repo: CodeHealthRepository,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Run a full code health analysis and persist the results.
 
@@ -109,7 +109,7 @@ class CodeHealthService:
         repo_id: UUID,
         embedding_repo: EmbeddingRepository,
         top_k_per_query: int = 2,
-    ) -> List[Any]:
+    ) -> list[Any]:
         """Run all probe queries in parallel and deduplicate results."""
         import asyncio
 
@@ -156,7 +156,7 @@ class CodeHealthService:
         language: str,
         context_text: str,
         files_analyzed: int,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Call the OpenAI API for a structured code quality assessment."""
         system_prompt = f"""You are an expert software quality engineer analyzing repository: {repo_name}.
 Primary language: {language}
@@ -197,7 +197,7 @@ Be objective, use the sampled code as evidence. Score 0=very poor, 50=average, 1
             logger.error(f"LLM call failed for code health analysis: {e}")
             return self._default_result()
 
-    def _parse_json(self, raw: str) -> Dict[str, Any]:
+    def _parse_json(self, raw: str) -> dict[str, Any]:
         """Parse JSON from LLM response with fallback."""
         content = raw.strip()
         if content.startswith("```"):
@@ -215,7 +215,7 @@ Be objective, use the sampled code as evidence. Score 0=very poor, 50=average, 1
                     pass
         return self._default_result()
 
-    def _default_result(self) -> Dict[str, Any]:
+    def _default_result(self) -> dict[str, Any]:
         return {
             "overall_score": 50.0,
             "complexity_score": 50.0,
@@ -232,7 +232,7 @@ Be objective, use the sampled code as evidence. Score 0=very poor, 50=average, 1
         self,
         repo_id: UUID,
         health_repo: CodeHealthRepository,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Persist a default result when no chunks are available."""
         result = self._default_result()
         record = await health_repo.upsert(
@@ -243,7 +243,7 @@ Be objective, use the sampled code as evidence. Score 0=very poor, 50=average, 1
         return self._record_to_dict(record)
 
     @staticmethod
-    def _record_to_dict(record) -> Dict[str, Any]:
+    def _record_to_dict(record) -> dict[str, Any]:
         return {
             "id": str(record.id),
             "repo_id": str(record.repo_id),

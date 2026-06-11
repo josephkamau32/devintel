@@ -13,6 +13,9 @@ jobs:
   frontend:
     name: Frontend CI
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./devintel-frontend
     
     steps:
       - name: Checkout code
@@ -142,7 +145,7 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       
       - name: Verify project structure
         run: |
@@ -206,6 +209,7 @@ jobs:
           node-version: '18'
       
       - name: NPM Security Audit
+        working-directory: ./devintel-frontend
         run: |
-          npm install
+          npm ci
           npm audit --audit-level=moderate || true

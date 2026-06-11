@@ -3,7 +3,6 @@
 Uses the in-process ProgressBus instead of Redis pub/sub.
 """
 
-import json
 from uuid import UUID
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status

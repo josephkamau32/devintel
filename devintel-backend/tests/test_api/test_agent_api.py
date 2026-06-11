@@ -1,14 +1,12 @@
 """Tests for agent API endpoints (/api/v1/chat/draft and /api/v1/chat/execute)."""
 
-import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from httpx import AsyncClient
 
 from app.models.repository import Repository
 from app.models.user import User
-
 
 DRAFT_URL = "/api/v1/chat/draft"
 EXECUTE_URL = "/api/v1/chat/execute"

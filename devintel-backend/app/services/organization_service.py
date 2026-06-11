@@ -1,7 +1,7 @@
 """Organization service for business logic."""
 
 import logging
-from typing import List, Optional
+from typing import Optional
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -10,7 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from app.models.organization import Organization, OrganizationMember, OrganizationRole
-from app.models.user import User
 from app.schemas.organization import (
     OrganizationCreate,
     OrganizationUpdate,
@@ -31,7 +30,7 @@ class OrganizationService:
         base_slug = org_create.name.lower().replace(" ", "-")
         slug = base_slug
         counter = 1
-        
+
         # Ensure slug is unique
         while True:
             result = await db.execute(select(Organization).where(Organization.slug == slug))
@@ -73,14 +72,14 @@ class OrganizationService:
         return result.scalars().first()
 
     @staticmethod
-    async def get_user_organizations(db: AsyncSession, user_id: UUID) -> List[Organization]:
+    async def get_user_organizations(db: AsyncSession, user_id: UUID) -> list[Organization]:
         """Get all organizations the user is a member of."""
         result = await db.execute(
             select(OrganizationMember)
             .options(joinedload(OrganizationMember.user))
             .where(OrganizationMember.user_id == user_id)
         )
-        
+
         # We want to return the Organization objects, but we need to know the user's role in it
         members = result.scalars().all()
         orgs = []
@@ -91,12 +90,12 @@ class OrganizationService:
                 # Add a custom attribute that will be matched by `OrganizationWithRole` schema
                 setattr(org, "my_role", member.role)
                 orgs.append(org)
-                
+
         return orgs
 
     @staticmethod
     async def check_user_role(
-        db: AsyncSession, org_id: UUID, user_id: UUID, required_roles: List[OrganizationRole]
+        db: AsyncSession, org_id: UUID, user_id: UUID, required_roles: list[OrganizationRole]
     ) -> OrganizationMember:
         """Check if a user has one of the required roles in an organization. Raises 403 if not."""
         result = await db.execute(
@@ -107,13 +106,13 @@ class OrganizationService:
             )
         )
         member = result.scalar_one_or_none()
-        
+
         if not member:
             raise HTTPException(status_code=403, detail="Not a member of this organization")
-        
+
         if member.role not in required_roles:
             raise HTTPException(status_code=403, detail="Insufficient permissions in this organization")
-            
+
         return member
 
     @staticmethod
@@ -124,14 +123,14 @@ class OrganizationService:
         await OrganizationService.check_user_role(
             db, org_id, user_id, [OrganizationRole.OWNER, OrganizationRole.ADMIN]
         )
-        
+
         org = await OrganizationService.get_organization(db, org_id)
         if not org:
             raise HTTPException(status_code=404, detail="Organization not found")
-            
+
         if org_update.name is not None:
             org.name = org_update.name
-            
+
         await db.commit()
         # Re-fetch with joinedload so that `members` relationship is available
         loaded_org = await OrganizationService.get_organization(db, org_id)
@@ -150,7 +149,7 @@ class OrganizationService:
         admin_member = await OrganizationService.check_user_role(
             db, org_id, admin_user_id, [OrganizationRole.OWNER, OrganizationRole.ADMIN]
         )
-        
+
         # Only owners can add other owners or admins
         if role in [OrganizationRole.OWNER, OrganizationRole.ADMIN] and admin_member.role != OrganizationRole.OWNER:
             raise HTTPException(status_code=403, detail="Only owners can assign admin or owner roles")
@@ -165,7 +164,7 @@ class OrganizationService:
         existing = result.scalar_one_or_none()
         if existing:
             raise HTTPException(status_code=400, detail="User is already a member")
-            
+
         new_member = OrganizationMember(
             org_id=org_id,
             user_id=target_user_id,
@@ -179,12 +178,12 @@ class OrganizationService:
     @staticmethod
     async def get_organization_members(
         db: AsyncSession, org_id: UUID, user_id: UUID
-    ) -> List[OrganizationMember]:
+    ) -> list[OrganizationMember]:
         """Get all members of an organization (requires being a member)."""
         await OrganizationService.check_user_role(
             db, org_id, user_id, [OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.MEMBER]
         )
-        
+
         result = await db.execute(
             select(OrganizationMember)
             .options(joinedload(OrganizationMember.user))
@@ -204,7 +203,7 @@ class OrganizationService:
         await OrganizationService.check_user_role(
             db, org_id, admin_user_id, [OrganizationRole.OWNER]
         )
-        
+
         result = await db.execute(
             select(OrganizationMember).where(
                 OrganizationMember.org_id == org_id,
@@ -214,7 +213,7 @@ class OrganizationService:
         member = result.scalar_one_or_none()
         if not member:
             raise HTTPException(status_code=404, detail="Member not found")
-            
+
         # Prevent last owner from removing their own owner status
         if member.role == OrganizationRole.OWNER and new_role != OrganizationRole.OWNER:
             owner_count_res = await db.execute(
@@ -226,7 +225,7 @@ class OrganizationService:
             owners = owner_count_res.scalars().all()
             if len(owners) <= 1:
                 raise HTTPException(status_code=400, detail="Organization must have at least one owner")
-                
+
         member.role = new_role
         await db.commit()
         await db.refresh(member)
@@ -241,7 +240,7 @@ class OrganizationService:
             await OrganizationService.check_user_role(
                 db, org_id, admin_user_id, [OrganizationRole.OWNER, OrganizationRole.ADMIN]
             )
-            
+
         result = await db.execute(
             select(OrganizationMember).where(
                 OrganizationMember.org_id == org_id,
@@ -251,7 +250,7 @@ class OrganizationService:
         member = result.scalar_one_or_none()
         if not member:
             raise HTTPException(status_code=404, detail="Member not found")
-            
+
         if member.role == OrganizationRole.OWNER:
             owner_count_res = await db.execute(
                 select(OrganizationMember).where(
@@ -262,7 +261,7 @@ class OrganizationService:
             owners = owner_count_res.scalars().all()
             if len(owners) <= 1:
                 raise HTTPException(status_code=400, detail="Cannot remove the last owner of the organization")
-                
+
         await db.delete(member)
         await db.commit()
         return {"success": True}

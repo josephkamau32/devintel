@@ -11,16 +11,14 @@ Approach:
   - The progress bus and DB calls are mocked at the module level.
 """
 
-import json
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
+import pytest
 from fastapi.testclient import TestClient
 
-from app.main import app
 from app.core.security import create_access_token
-
+from app.main import app
 
 # ─── Shared helpers ──────────────────────────────────────────────────────────
 

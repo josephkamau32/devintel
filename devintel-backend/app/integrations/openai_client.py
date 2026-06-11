@@ -1,6 +1,7 @@
 """OpenAI API client."""
 
-from typing import Any, AsyncGenerator, List, Optional
+from collections.abc import AsyncGenerator
+from typing import Any, Optional
 
 import openai
 
@@ -10,9 +11,6 @@ from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
-# Configure OpenAI
-openai.api_key = settings.openai_api_key
-
 
 class OpenAIClient:
     """OpenAI API client wrapper."""
@@ -21,7 +19,7 @@ class OpenAIClient:
         """Initialize OpenAI client."""
         self.client = openai.AsyncOpenAI(api_key=settings.openai_api_key)
 
-    async def generate_embedding(self, text: str) -> List[float]:
+    async def generate_embedding(self, text: str) -> list[float]:
         """Generate embedding for text."""
         try:
             response = await self.client.embeddings.create(
@@ -36,7 +34,7 @@ class OpenAIClient:
                 details={"error": str(e)},
             )
 
-    async def generate_embeddings_batch(self, texts: List[str]) -> List[List[float]]:
+    async def generate_embeddings_batch(self, texts: list[str]) -> list[list[float]]:
         """Generate embeddings for multiple texts."""
         try:
             response = await self.client.embeddings.create(
@@ -53,7 +51,7 @@ class OpenAIClient:
 
     async def chat_completion_stream(
         self,
-        messages: List[dict],
+        messages: list[dict],
         temperature: float = 0.7,
         max_tokens: int = settings.openai_max_tokens,
     ) -> AsyncGenerator[str, None]:
@@ -66,11 +64,11 @@ class OpenAIClient:
                 max_tokens=max_tokens,
                 stream=True,
             )
-            
+
             async for chunk in stream:
                 if chunk.choices[0].delta.content:
                     yield chunk.choices[0].delta.content
-                    
+
         except Exception as e:
             logger.error(f"Failed to stream chat completion: {e}")
             raise ExternalServiceError(
@@ -80,11 +78,11 @@ class OpenAIClient:
 
     async def chat_completion(
         self,
-        messages: List[dict],
+        messages: list[dict],
         temperature: float = 0.7,
         max_tokens: int = settings.openai_max_tokens,
         json_mode: bool = False,
-        tools: Optional[List[dict]] = None,
+        tools: Optional[list[dict]] = None,
         tool_choice: Optional[str] = None,
     ) -> Any:
         """
@@ -98,23 +96,23 @@ class OpenAIClient:
                 "temperature": temperature,
                 "max_tokens": max_tokens,
             }
-            
+
             # Use structured JSON output when requested
             if json_mode:
                 kwargs["response_format"] = {"type": "json_object"}
-                
+
             if tools:
                 kwargs["tools"] = tools
             if tool_choice:
                 kwargs["tool_choice"] = tool_choice
-            
+
             response = await self.client.chat.completions.create(**kwargs)
             message = response.choices[0].message
-            
+
             # If tool calls are present, return the whole message object
             if hasattr(message, "tool_calls") and message.tool_calls:
                 return message
-                
+
             return message.content or ""
         except Exception as e:
             logger.error(f"Failed to generate chat completion: {e}")

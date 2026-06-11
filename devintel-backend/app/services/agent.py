@@ -1,8 +1,7 @@
 """Agent service for autonomous actions."""
 
 import json
-from typing import Any, Dict, List
-from uuid import UUID
+from typing import Any
 
 from app.core.logging import get_logger
 from app.integrations.github_client import GitHubClient
@@ -24,7 +23,7 @@ class AgentService:
         self.chat_service = ChatService()
 
     @property
-    def create_pr_tool(self) -> Dict[str, Any]:
+    def create_pr_tool(self) -> dict[str, Any]:
         """Tool definition for creating a pull request."""
         return {
             "type": "function",
@@ -79,7 +78,7 @@ class AgentService:
         repository: Repository,
         instruction: str,
         embedding_repo: EmbeddingRepository,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Drafts a Pull Request plan by retrieving context and prompting the LLM.
         Does not execute any changes on GitHub.
@@ -144,14 +143,14 @@ When using the tool, you must provide the ENTIRE updated content for each file y
     async def execute_pr(
         self,
         repository: Repository,
-        draft_payload: Dict[str, Any],
+        draft_payload: dict[str, Any],
         default_branch: str = "main",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Executes a drafted Pull Request plan on GitHub.
         """
         repo_name = repository.full_name
-        
+
         branch_name = draft_payload["branch_name"]
         pr_title = draft_payload["pr_title"]
         pr_body = draft_payload["pr_body"]
