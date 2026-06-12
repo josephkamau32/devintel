@@ -1,10 +1,9 @@
 {
-  "buildCommand": "npm run build --prefix devintel-frontend",
+  "buildCommand": "cd devintel-frontend && npm install && npm run build",
   "outputDirectory": "devintel-frontend/dist",
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
+  "framework": null,
+  "routes": [
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
