@@ -206,7 +206,7 @@ async def _index_repository_async(
                     logger.error(f"Failed to cleanup repo path {repo_path}: {cleanup_error}")
 
 async def _handle_indexing_failure(repo_repo, db, repo_id, error_msg):
-    """Helper to safely record indexing failure."""
+    """Helper to record indexing failure and enqueue retry."""
     try:
         await repo_repo.update(
             UUID(repo_id),
@@ -215,5 +215,14 @@ async def _handle_indexing_failure(repo_repo, db, repo_id, error_msg):
             indexing_progress=0,
         )
         await db.commit()
+
+        # Enqueue retry for transient failures
+        from app.services.retry_queue import retry_queue
+        asyncio.create_task(retry_queue.enqueue(
+            "index_repository",
+            args=(repo_id,),
+            kwargs={},
+            attempt=0,
+        ))
     except Exception as update_error:
         logger.error(f"Critical: Failed to update error status for repo {repo_id}: {update_error}")

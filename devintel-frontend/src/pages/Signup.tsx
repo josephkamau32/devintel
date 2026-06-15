@@ -38,7 +38,7 @@ export default function SignupPage() {
         password,
         name,
       });
-      setTokens(response.data.access_token, response.data.refresh_token, response.data.user);
+      setTokens(response.access_token, response.refresh_token, response.user);
       toast.success("Account created successfully!");
       navigate("/dashboard");
     } catch (error: any) {

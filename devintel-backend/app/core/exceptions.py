@@ -89,3 +89,11 @@ class APIError(DevIntelException):
     def __init__(self, message: str = "API error", status_code: int = 500, details: Optional[dict[str, Any]] = None) -> None:
         """Initialize exception."""
         super().__init__(message, status_code=status_code, details=details)
+
+
+class CircuitBreakerError(DevIntelException):
+    """Circuit breaker is open, service temporarily unavailable."""
+
+    def __init__(self, message: str = "Service temporarily unavailable", details: Optional[dict[str, Any]] = None) -> None:
+        """Initialize exception."""
+        super().__init__(message, status_code=503, details=details)

@@ -1,48 +1,15 @@
-[tool.poetry]
+[project]
 name = "devintel-backend"
-version = "0.1.0"
+version = "1.0.0"
 description = "Production-grade backend for DevIntel AI - RAG-powered developer productivity platform"
-authors = ["DevIntel Team"]
-readme = "README.md"
-python = "^3.11"
-
-[tool.poetry.dependencies]
-python = "^3.11"
-fastapi = "^0.109.0"
-uvicorn = {extras = ["standard"], version = "^0.27.0"}
-sqlalchemy = "^2.0.25"
-asyncpg = "^0.29.0"
-alembic = "^1.13.1"
-pgvector = "^0.2.4"
-redis = "^5.0.1"
-celery = {extras = ["redis"], version = "^5.3.6"}
-openai = "^1.10.0"
-PyGithub = "^2.1.1"
-pydantic = "^2.5.3"
-pydantic-settings = "^2.1.0"
-python-jose = {extras = ["cryptography"], version = "^3.3.0"}
-passlib = {extras = ["bcrypt"], version = "^1.7.4"}
-python-multipart = "^0.0.6"
-httpx = "^0.26.0"
-tiktoken = "^0.5.2"
-GitPython = "^3.1.41"
-slowapi = "^0.1.9"
-
-[tool.poetry.group.dev.dependencies]
-pytest = "^8.0.0"
-pytest-asyncio = "^0.23.3"
-pytest-cov = "^4.1.0"
-ruff = "^0.1.14"
-black = "^24.1.1"
-mypy = "^1.8.0"
-types-redis = "^4.6.0"
+requires-python = ">=3.11"
 
 [tool.ruff]
 line-length = 100
 target-version = "py311"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "N", "W", "UP"]
+select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM"]
 ignore = ["E501"]
 
 [tool.black]
@@ -62,7 +29,3 @@ testpaths = ["tests"]
 python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"

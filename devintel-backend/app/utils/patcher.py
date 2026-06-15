@@ -1,3 +1,6 @@
+"""Robust unified diff patcher with validation and error handling."""
+
+import difflib
 import re
 
 
@@ -5,8 +8,9 @@ class PatcherError(Exception):
     """Raised when a patch cannot be applied."""
     pass
 
+
 class UnifiedDiffPatcher:
-    """Utility to apply standard Unified Diffs to code strings."""
+    """Utility to apply standard Unified Diffs to code strings with validation."""
 
     @staticmethod
     def apply_patch(original_content: str, patch_content: str) -> str:
@@ -23,75 +27,148 @@ class UnifiedDiffPatcher:
         Raises:
             PatcherError: If the patch is malformed or cannot be applied.
         """
+        if not original_content:
+            raise PatcherError("Original content cannot be empty")
+
+        if not patch_content or not patch_content.strip():
+            raise PatcherError("Patch content cannot be empty")
+
         original_lines = original_content.splitlines(keepends=True)
         patch_lines = patch_content.splitlines(keepends=True)
 
-        # Basic validation: ensure it looks like a unified diff
-        if not any(line.startswith('---') or line.startswith('+++') or line.startswith('@@') for line in patch_lines):
-             # If it doesn't look like a full diff, maybe it's just the hunks?
-             # We'll try to prepend dummy headers if needed, but let's assume LLM provides valid diff.
-             pass
+        # Parse hunks from the diff
+        hunks = UnifiedDiffPatcher._parse_hunks(patch_lines)
 
-        # We'll use a simplified version of the logic to apply hunks
-        # A more robust way is to use a library or the 'patch' command,
-        # but for this autonomous agent, we'll implement a clean hunk-based applier.
-
-        # For simplicity in this implementation, we'll use difflib to help if possible,
-        # but difflib doesn't have a direct 'apply' function.
-        # We'll parse the hunks manually.
+        if not hunks:
+            raise PatcherError("No valid hunks found in patch")
 
         new_lines = list(original_lines)
-        offset = 0
+        cumulative_offset = 0
 
+        for hunk in hunks:
+            old_start, old_count, new_start, new_count, hunk_lines = hunk
+
+            # Apply with offset adjustment
+            target_idx = old_start - 1 + cumulative_offset
+
+            # Extract old and new segments
+            old_segment = [line[1:] for line in hunk_lines if line.startswith((' ', '-'))]
+            new_segment = [line[1:] for line in hunk_lines if line.startswith((' ', '+'))]
+
+            # Validate context (fuzzy matching for robustness)
+            if not UnifiedDiffPatcher._validate_context(
+                original_lines, target_idx, old_segment, old_count
+            ):
+                # Try to find the context in the file (fallback matching)
+                found_idx = UnifiedDiffPatcher._find_fuzzy_match(
+                    original_lines, old_segment
+                )
+                if found_idx is not None:
+                    target_idx = found_idx
+                    cumulative_offset += found_idx - (old_start - 1)
+                else:
+                    raise PatcherError(
+                        f"Context mismatch at line {old_start}: "
+                        f"expected lines not found in original content"
+                    )
+
+            # Replace the segment
+            if target_idx + old_count - cumulative_offset > len(new_lines):
+                raise PatcherError(
+                    f"Patch extends beyond file length at line {target_idx}"
+                )
+
+            new_lines[target_idx + cumulative_offset : target_idx + old_count - cumulative_offset] = new_segment
+
+            # Update offset for next hunk
+            cumulative_offset += len(new_segment) - old_count
+
+        return "".join(new_lines)
+
+    @staticmethod
+    def _parse_hunks(patch_lines: list[str]) -> list[tuple[int, int, int, int, list[str]]]:
+        """Parse unified diff hunks.
+
+        Returns list of (old_start, old_count, new_start, new_count, hunk_lines).
+        """
+        hunks = []
         hunk_re = re.compile(r'^@@ -(\d+),?(\d*) \+(\d+),?(\d*) @@')
 
         i = 0
         while i < len(patch_lines):
-            line = patch_lines[i]
-            match = hunk_re.match(line)
-            if match:
-                # Start of a hunk
-                old_start = int(match.group(1))
-                old_len = int(match.group(2)) if match.group(2) else 1
-                _new_start = int(match.group(3))
-                _new_len = int(match.group(4)) if match.group(4) else 1
-
-                # Hunk lines
-                hunk_data = []
+            if not patch_lines[i].startswith('@@'):
                 i += 1
-                while i < len(patch_lines) and not patch_lines[i].startswith('@@'):
-                    if patch_lines[i].startswith(('+', '-', ' ')):
-                        hunk_data.append(patch_lines[i])
-                    i += 1
-
-                # Apply the hunk
-                # Note: Unified diff line numbers are 1-indexed.
-                # Adjusting for offset from previous hunks.
-                target_idx = old_start - 1 + offset
-
-                # Verification: the context lines in the hunk SHOULD match the original
-                # but we'll be slightly lenient if the lines are mostly right.
-                # In a real production system, you'd use more sophisticated fuzzy matching.
-
-                # Extract the old lines from the hunk (lines starting with ' ' or '-')
-                _expected_old_segment = [line[1:] for line in hunk_data if line.startswith((' ', '-'))]
-                # Compare with target_idx to target_idx + old_len
-
-                # For now, we'll just replace the range
-                new_segment = [line[1:] for line in hunk_data if line.startswith((' ', '+'))]
-
-                # Update new_lines
-                new_lines[target_idx : target_idx + old_len] = new_segment
-
-                # Update offset
-                offset += len(new_segment) - old_len
-
-                # Continue from current i (which is at the next @@ or end)
                 continue
-            i += 1
 
-        return "".join(new_lines)
+            match = hunk_re.match(patch_lines[i])
+            if not match:
+                i += 1
+                continue
+
+            old_start = int(match.group(1))
+            old_count = int(match.group(2)) if match.group(2) else 1
+            new_start = int(match.group(3))
+            new_count = int(match.group(4)) if match.group(4) else 1
+
+            i += 1
+            hunk_lines = []
+            while i < len(patch_lines) and not patch_lines[i].startswith('@@'):
+                if patch_lines[i].startswith(('+', '-', ' ')):
+                    hunk_lines.append(patch_lines[i])
+                i += 1
+
+            hunks.append((old_start, old_count, new_start, new_count, hunk_lines))
+
+        return hunks
+
+    @staticmethod
+    def _validate_context(
+        original_lines: list[str],
+        target_idx: int,
+        expected_old: list[str],
+        old_count: int,
+    ) -> bool:
+        """Validate that context lines match the original."""
+        if target_idx < 0 or target_idx >= len(original_lines):
+            return False
+
+        # Get the actual lines at the target position
+        end_idx = min(target_idx + old_count, len(original_lines))
+        actual_lines = original_lines[target_idx:end_idx]
+
+        # Use difflib for fuzzy matching
+        matcher = difflib.SequenceMatcher(None, expected_old, actual_lines)
+        return matcher.ratio() >= 0.8  # Accept 80% similarity
+
+    @staticmethod
+    def _find_fuzzy_match(
+        original_lines: list[str],
+        search_lines: list[str],
+    ) -> int | None:
+        """Find a fuzzy match for the search lines in the original."""
+        if not search_lines:
+            return 0
+
+        for start_idx in range(len(original_lines) - len(search_lines) + 1):
+            candidate = original_lines[start_idx : start_idx + len(search_lines)]
+            matcher = difflib.SequenceMatcher(None, search_lines, candidate)
+            if matcher.ratio() >= 0.85:
+                return start_idx
+
+        return None
+
 
 def apply_unified_diff(content: str, diff: str) -> str:
-    """Wrapper for UnifiedDiffPatcher."""
+    """Apply a unified diff to content.
+
+    Args:
+        content: Original code content
+        diff: Unified diff string
+
+    Returns:
+        Patched content
+
+    Raises:
+        PatcherError: If patch cannot be applied
+    """
     return UnifiedDiffPatcher.apply_patch(content, diff)

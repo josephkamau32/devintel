@@ -36,11 +36,11 @@ export default function AuthCallback() {
             }
 
             try {
-                const { data } = await apiClient.post<TokenResponse>("/api/v1/auth/github/callback", {
+                const response = await apiClient.post<TokenResponse>("/api/v1/auth/github/callback", {
                     code,
                 });
 
-                const { access_token, refresh_token, user } = data;
+                const { access_token, refresh_token, user } = response;
 
                 setTokens(access_token, refresh_token, user);
 
