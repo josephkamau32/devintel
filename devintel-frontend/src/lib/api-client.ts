@@ -62,8 +62,8 @@ class APIClient {
                 };
 
                 // If 401 and not already retrying, attempt token refresh
-                // Skip auth endpoints — they are intentionally unauthenticated
-                if (originalRequest.url?.includes('/auth/')) {
+                // Skip auth login/github endpoints — they are intentionally unauthenticated
+                if (originalRequest.url?.includes('/auth/login') || originalRequest.url?.includes('/auth/github')) {
                     return Promise.reject(error);
                 }
 
@@ -91,8 +91,15 @@ class APIClient {
                             refresh_token: refreshToken,
                         });
 
-                        const { access_token } = response.data;
+                        const { access_token, refresh_token, user } = response.data;
                         localStorage.setItem('access_token', access_token);
+                        if (refresh_token) {
+                            localStorage.setItem('refresh_token', refresh_token);
+                        }
+                        if (user) {
+                            localStorage.setItem('user', JSON.stringify(user));
+                            window.dispatchEvent(new CustomEvent('user-updated', { detail: user }));
+                        }
 
                         // Retry all queued requests
                         this.failedQueue.forEach((promise) => promise.resolve());

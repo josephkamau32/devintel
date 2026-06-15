@@ -44,22 +44,24 @@ limiter = Limiter(key_func=get_remote_address)
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
     logger.info("Starting DevIntel AI backend")
-    yield
-    logger.info("Shutting down DevIntel AI backend")
-
-    # Graceful shutdown: Close cache (Redis or in-memory)
-    from app.services.cache import cache
     try:
-        await cache.close()
-    except Exception as e:
-        logger.error(f"Error closing cache: {e}")
+        yield
+    finally:
+        logger.info("Shutting down DevIntel AI backend")
 
-    # Graceful shutdown: Dispose SQLAlchemy engine
-    from app.db.session import engine
-    try:
-        await engine.dispose()
-    except Exception as e:
-        logger.error(f"Error disposing database engine: {e}")
+        # Graceful shutdown: Close cache (Redis or in-memory)
+        from app.services.cache import cache
+        try:
+            await cache.close()
+        except Exception as e:
+            logger.error(f"Error closing cache: {e}")
+
+        # Graceful shutdown: Dispose SQLAlchemy engine
+        from app.db.session import engine
+        try:
+            await engine.dispose()
+        except Exception as e:
+            logger.error(f"Error disposing database engine: {e}")
 
 
 # Create FastAPI app
@@ -117,9 +119,10 @@ async def general_exception_handler(request: Request, exc: Exception):
     if origin and origin in settings.cors_origins:
         headers["Access-Control-Allow-Origin"] = origin
         headers["Access-Control-Allow-Credentials"] = "true"
+    detail = str(exc) if settings.debug else "An unexpected error occurred."
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={"message": "Internal server error", "detail": str(exc)},
+        content={"message": "Internal server error", "detail": detail},
         headers=headers,
     )
 

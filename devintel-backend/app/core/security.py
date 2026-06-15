@@ -38,9 +38,9 @@ def create_access_token(data: dict[str, Any], expires_delta: Optional[timedelta]
 
 
 def create_refresh_token(data: dict[str, Any]) -> str:
-    """Create JWT refresh token with 7-day expiry."""
+    """Create JWT refresh token with configurable expiry."""
     to_encode = data.copy()
-    expire = datetime.now(UTC) + timedelta(days=7)
+    expire = datetime.now(UTC) + timedelta(days=settings.jwt_refresh_token_expire_days)
     to_encode.update({"exp": expire, "iat": datetime.now(UTC), "type": "refresh"})
 
     encoded_jwt = jwt.encode(

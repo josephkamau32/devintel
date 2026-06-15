@@ -52,22 +52,17 @@ const MOCK_NOTIFICATIONS: Notification[] = [
   }
 ];
 
+import { useAuth } from "../../contexts/AuthContext";
+
 export function AppHeader({ onMenuClick }: AppHeaderProps) {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [searchFocused, setSearchFocused] = useState(false);
-  const [userName, setUserName] = useState('User');
-  const [userEmail, setUserEmail] = useState('');
   const [notifications, setNotifications] = useState<Notification[]>(MOCK_NOTIFICATIONS);
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const handleLogout = () => {
-    // Clear all auth data
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('csrf_token');
-
-    // Redirect to login
+    logout();
     navigate('/login');
   };
 
@@ -79,38 +74,7 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
     setNotifications([]);
   };
 
-  // Load user name from localStorage and listen for updates
-  useEffect(() => {
-    const loadUserName = () => {
-      try {
-        const userStr = localStorage.getItem('user');
-        if (userStr) {
-          const user = JSON.parse(userStr);
-          setUserName(user.name || user.login || 'User');
-          setUserEmail(user.email || '');
-        }
-      } catch (error) {
-        console.error('Failed to load user data:', error);
-      }
-    };
 
-    // Load initially
-    loadUserName();
-
-    // Listen for updates from Settings page
-    const handleUserUpdate = (event: Event) => {
-      const customEvent = event as CustomEvent;
-      const user = customEvent.detail;
-      setUserName(user.name || user.login || 'User');
-      setUserEmail(user.email || '');
-    };
-
-    window.addEventListener('user-updated', handleUserUpdate);
-
-    return () => {
-      window.removeEventListener('user-updated', handleUserUpdate);
-    };
-  }, []);
 
   return (
     <header className="flex h-14 items-center justify-between border-b border-border/30 bg-background/40 backdrop-blur-xl px-4 sm:px-6 sticky top-0 z-40">
@@ -205,16 +169,16 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
               <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/20 text-primary border border-primary/30 shadow-[0_0_10px_-2px_hsl(var(--primary)/0.3)]">
                 <User className="h-4 w-4" />
               </div>
-              <span className="hidden sm:inline font-medium max-w-[100px] truncate">{userName}</span>
+              <span className="hidden sm:inline font-medium max-w-[100px] truncate">{user?.name || user?.username || 'User'}</span>
               <ChevronDown className="h-3 w-3 hidden sm:block opacity-50" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">{userName}</p>
+                <p className="text-sm font-medium leading-none">{user?.name || user?.username || 'User'}</p>
                 <p className="text-xs leading-none text-muted-foreground truncate">
-                  {userEmail || 'user@devintel.ai'}
+                  {user?.email || 'user@devintel.ai'}
                 </p>
               </div>
             </DropdownMenuLabel>

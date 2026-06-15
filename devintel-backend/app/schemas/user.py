@@ -40,6 +40,7 @@ class UserResponse(UserBase):
 
     id: UUID
     github_id: Optional[str] = None
+    username: Optional[str] = None
     created_at: datetime
 
     class Config:

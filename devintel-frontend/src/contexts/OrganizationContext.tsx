@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { OrganizationWithRole, organizationsApi } from '../lib/api/organizations';
+import { useAuth } from './AuthContext';
 
 interface OrganizationContextType {
     organizations: OrganizationWithRole[];
@@ -13,8 +14,7 @@ interface OrganizationContextType {
 const OrganizationContext = createContext<OrganizationContextType | undefined>(undefined);
 
 export const OrganizationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [user, setUser] = useState<unknown>(null);
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const { user, isAuthenticated } = useAuth();
 
     const [organizations, setOrganizations] = useState<OrganizationWithRole[]>([]);
     const [currentOrgId, setCurrentOrgId] = useState<string | null>(
@@ -23,33 +23,7 @@ export const OrganizationProvider: React.FC<{ children: ReactNode }> = ({ childr
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        const checkAuth = () => {
-            const userStr = localStorage.getItem('user');
-            if (userStr) {
-                setUser(JSON.parse(userStr));
-                setIsAuthenticated(true);
-            } else {
-                setUser(null);
-                setIsAuthenticated(false);
-            }
-        };
-
-        checkAuth();
-        window.addEventListener('user-updated', ((e: Event) => {
-            const evt = e as CustomEvent;
-            if (evt.detail) {
-                setUser(evt.detail);
-                setIsAuthenticated(true);
-            } else {
-                setUser(null);
-                setIsAuthenticated(false);
-            }
-        }) as EventListener);
-
-    }, []);
-
-    const refreshOrganizations = React.useCallback(async () => {
+    const refreshOrganizations = useCallback(async () => {
         if (!isAuthenticated) {
             setOrganizations([]);
             return;
@@ -74,8 +48,10 @@ export const OrganizationProvider: React.FC<{ children: ReactNode }> = ({ childr
     }, [isAuthenticated, currentOrgId]);
 
     useEffect(() => {
-        refreshOrganizations();
-    }, [user, isAuthenticated, refreshOrganizations]);
+        if (isAuthenticated) {
+            refreshOrganizations();
+        }
+    }, [isAuthenticated, refreshOrganizations]);
 
     const setCurrentOrganizationId = (orgId: string | null) => {
         setCurrentOrgId(orgId);

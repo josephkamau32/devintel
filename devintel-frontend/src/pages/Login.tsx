@@ -1,15 +1,23 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Zap, Github, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { apiClient } from "@/lib/api-client";
 import { toast } from "sonner";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const { setTokens, isAuthenticated, isLoading: authLoading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,14 +32,7 @@ export default function LoginPage() {
         email,
         password,
       });
-      localStorage.setItem("access_token", response.access_token);
-      if (response.refresh_token) {
-        localStorage.setItem("refresh_token", response.refresh_token);
-      }
-      if (response.user) {
-        localStorage.setItem("user", JSON.stringify(response.user));
-        window.dispatchEvent(new CustomEvent("user-updated", { detail: response.user }));
-      }
+      setTokens(response.access_token, response.refresh_token, response.user);
       toast.success("Welcome back!");
       navigate("/dashboard");
     } catch (error: any) {
@@ -75,9 +76,9 @@ export default function LoginPage() {
             variant="outline"
             className="w-full gap-2"
             onClick={handleGitHubLogin}
-            disabled={isLoading}
+            disabled={isLoading || authLoading}
           >
-            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Github className="h-4 w-4" />}
+            {(isLoading || authLoading) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Github className="h-4 w-4" />}
             Continue with GitHub
           </Button>
 
@@ -109,8 +110,8 @@ export default function LoginPage() {
               />
             </div>
 
-            <Button className="w-full" type="submit" disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button className="w-full" type="submit" disabled={isLoading || authLoading}>
+              {(isLoading || authLoading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Sign In
             </Button>
           </form>

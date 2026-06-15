@@ -1,16 +1,24 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Zap, Github, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { apiClient } from "@/lib/api-client";
 import { toast } from "sonner";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function SignupPage() {
   const navigate = useNavigate();
+  const { setTokens, isAuthenticated, isLoading: authLoading } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,14 +38,7 @@ export default function SignupPage() {
         password,
         name,
       });
-      localStorage.setItem("access_token", response.access_token);
-      if (response.refresh_token) {
-        localStorage.setItem("refresh_token", response.refresh_token);
-      }
-      if (response.user) {
-        localStorage.setItem("user", JSON.stringify(response.user));
-        window.dispatchEvent(new CustomEvent("user-updated", { detail: response.user }));
-      }
+      setTokens(response.data.access_token, response.data.refresh_token, response.data.user);
       toast.success("Account created successfully!");
       navigate("/dashboard");
     } catch (error: any) {
@@ -53,7 +54,7 @@ export default function SignupPage() {
     setIsLoading(true);
     try {
       const response = await apiClient.get<{ url: string }>("/api/v1/auth/github");
-      window.location.href = response.url;
+      window.location.href = response.data.url;
     } catch (error) {
       toast.error("Failed to connect to GitHub. Please try again.");
       console.error(error);
@@ -81,9 +82,9 @@ export default function SignupPage() {
             variant="outline"
             className="w-full gap-2"
             onClick={handleGitHubSignup}
-            disabled={isLoading}
+            disabled={isLoading || authLoading}
           >
-            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Github className="h-4 w-4" />}
+            {(isLoading || authLoading) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Github className="h-4 w-4" />}
             Continue with GitHub
           </Button>
 
@@ -124,8 +125,8 @@ export default function SignupPage() {
                 className="mt-1.5 h-9 w-full rounded-md border border-input bg-accent px-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary transition-colors"
               />
             </div>
-            <Button className="w-full mt-4" type="submit" disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button className="w-full mt-4" type="submit" disabled={isLoading || authLoading}>
+              {(isLoading || authLoading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Create Account
             </Button>
           </form>

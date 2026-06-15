@@ -11,7 +11,9 @@ from app.core.logging import get_logger
 from app.core.security import (
     create_access_token,
     create_refresh_token,
+    get_password_hash,
     hash_token,
+    verify_password,
     verify_token,
     verify_token_hash,
 )
@@ -21,9 +23,6 @@ from app.models.user import User
 from app.repositories.user import UserRepository
 from app.schemas.user import RefreshTokenRequest, TokenResponse, UserResponse, UserUpdate, UserCreate, UserLogin
 from app.services.encryption import encryption_service
-from passlib.context import CryptContext
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -182,7 +181,7 @@ async def signup(
             detail="Email already registered"
         )
         
-    hashed_password = pwd_context.hash(user_in.password)
+    hashed_password = get_password_hash(user_in.password)
     user = await user_repo.create_with_password(
         email=user_in.email,
         hashed_password=hashed_password,
@@ -220,7 +219,7 @@ async def login(
             detail="Invalid email or password"
         )
         
-    if not pwd_context.verify(user_in.password, user.hashed_password):
+    if not verify_password(user_in.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, 
             detail="Invalid email or password"
@@ -239,6 +238,17 @@ async def login(
         token_type="bearer",
         user=UserResponse.model_validate(user),
     )
+
+
+@router.post("/logout")
+async def logout(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Invalidate the user's refresh token (server-side logout)."""
+    current_user.refresh_token = None
+    await db.commit()
+    return {"message": "Logged out successfully"}
 
 
 @router.get("/me", response_model=UserResponse)
