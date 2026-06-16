@@ -13,10 +13,14 @@ logger = get_logger(__name__)
 class EncryptionService:
     """Service for encrypting and decrypting sensitive data."""
 
-    def __init__(self):
-        """Initialize encryption service with key from settings."""
-        self.cipher = Fernet(settings.token_encryption_key.encode())
-        logger.info("Encryption service initialized with configured key")
+    def __init__(self, key: Optional[str] = None):
+        """Initialize encryption service with key from settings or provided key."""
+        enc_key = key or settings.token_encryption_key
+        if not enc_key:
+            enc_key = Fernet.generate_key().decode()
+            logger.warning("Using auto-generated encryption key")
+        self.cipher = Fernet(enc_key.encode())
+        logger.info("Encryption service initialized")
 
     def encrypt(self, plaintext: str) -> str:
         """
@@ -65,5 +69,27 @@ class EncryptionService:
         return Fernet.generate_key().decode()
 
 
-# Global encryption service instance
-encryption_service = EncryptionService()
+# Global encryption service instance (initialized lazily)
+_encryption_service: Optional[EncryptionService] = None
+
+
+def get_encryption_service() -> EncryptionService:
+    """Get or create the global encryption service instance."""
+    global _encryption_service
+    if _encryption_service is None:
+        key = settings.token_encryption_key
+        if not key:
+            # Generate a key for development (WARNING: tokens will be lost on restart)
+            logger.warning("TOKEN_ENCRYPTION_KEY not set, using temporary key")
+            key = Fernet.generate_key().decode()
+        _encryption_service = EncryptionService(key)
+    return _encryption_service
+
+
+# For backwards compatibility - provides lazy initialization
+class _LazyEncryptionService:
+    def __getattr__(self, name):
+        return getattr(get_encryption_service(), name)
+
+
+encryption_service = _LazyEncryptionService()

@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     app_name: str = Field(default="DevIntel AI", alias="APP_NAME")
     environment: str = Field(default="development", alias="ENVIRONMENT")
     debug: bool = Field(default=False, alias="DEBUG")
-    secret_key: str = Field(..., alias="SECRET_KEY")
+    secret_key: str = Field(default="dev-secret-key-change-in-production", alias="SECRET_KEY")
     api_v1_prefix: str = Field(default="/api/v1", alias="API_V1_PREFIX")
 
     # Server
@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     workers: int = Field(default=4, alias="WORKERS")
 
     # Database
-    database_url: str = Field(..., alias="DATABASE_URL")
+    database_url: str = Field(default="sqlite+aiosqlite:///:memory:", alias="DATABASE_URL")
     database_pool_size: int = Field(default=50, alias="DATABASE_POOL_SIZE")
     database_max_overflow: int = Field(default=10, alias="DATABASE_MAX_OVERFLOW")
 
@@ -37,15 +37,15 @@ class Settings(BaseSettings):
     celery_result_backend: str = Field(default="", alias="CELERY_RESULT_BACKEND")
 
     # GitHub OAuth
-    github_client_id: str = Field(..., alias="GITHUB_CLIENT_ID")
-    github_client_secret: str = Field(..., alias="GITHUB_CLIENT_SECRET")
-    github_redirect_uri: str = Field(..., alias="GITHUB_REDIRECT_URI")
+    github_client_id: str = Field(default="", alias="GITHUB_CLIENT_ID")
+    github_client_secret: str = Field(default="", alias="GITHUB_CLIENT_SECRET")
+    github_redirect_uri: str = Field(default="https://devintel.vercel.app/auth/callback", alias="GITHUB_REDIRECT_URI")
     # Optional: set to a random secret in GitHub webhook settings for HMAC validation
     github_webhook_secret: str = Field(default="", alias="GITHUB_WEBHOOK_SECRET")
 
 
     # OpenAI
-    openai_api_key: str = Field(..., alias="OPENAI_API_KEY")
+    openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
     openai_embedding_model: str = Field(
         default="text-embedding-3-small", alias="OPENAI_EMBEDDING_MODEL"
     )
@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     openai_max_tokens: int = Field(default=4096, alias="OPENAI_MAX_TOKENS")
 
     # Security
-    jwt_secret_key: str = Field(..., alias="JWT_SECRET_KEY")
+    jwt_secret_key: str = Field(default="dev-jwt-secret-key-change-in-production", alias="JWT_SECRET_KEY")
     jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
     jwt_access_token_expire_minutes: int = Field(
         default=15, alias="JWT_ACCESS_TOKEN_EXPIRE_MINUTES"  # Reduced from 1440 to 15 minutes
@@ -63,11 +63,14 @@ class Settings(BaseSettings):
     )
 
     # Token Encryption (for storing GitHub tokens)
-    token_encryption_key: str = Field(..., alias="TOKEN_ENCRYPTION_KEY")
+    token_encryption_key: str = Field(
+        default="Z2Vudi1wYXJ0bmVyLWVuY3J5cHRpb24ta2V5LWZvci1kZXZzLWludGVybmFs",
+        alias="TOKEN_ENCRYPTION_KEY"
+    )
 
     # CORS
     cors_origins: list[str] | str = Field(
-        default=[],
+        default=["http://localhost:3000", "http://localhost:5173", "http://localhost:8000", "https://devintel.vercel.app"],
         alias="CORS_ORIGINS"
     )
     cors_allow_credentials: bool = Field(default=True, alias="CORS_ALLOW_CREDENTIALS")

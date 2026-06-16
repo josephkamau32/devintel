@@ -45,6 +45,12 @@ async def lifespan(app: FastAPI):
     """Application lifespan manager."""
     logger.info("Starting DevIntel AI backend")
     try:
+        if not settings.secret_key:
+            logger.warning("SECRET_KEY not set - authentication will not work")
+        if not settings.database_url:
+            logger.warning("DATABASE_URL not set - database features disabled")
+        if not settings.token_encryption_key:
+            logger.warning("TOKEN_ENCRYPTION_KEY not set - using auto-generated key")
         yield
     finally:
         logger.info("Shutting down DevIntel AI backend")
@@ -115,8 +121,10 @@ async def general_exception_handler(request: Request, exc: Exception):
     """Handle general exceptions with CORS headers so the browser can read the error."""
     logger.error(f"Unhandled exception: {exc}", exc_info=True)
     origin = request.headers.get("origin", "")
+    # Check against known production origins or any in cors_origins
+    allowed_origins = settings.cors_origins + ["https://devintel.vercel.app"]
     headers = {}
-    if origin and origin in settings.cors_origins:
+    if origin and origin in allowed_origins:
         headers["Access-Control-Allow-Origin"] = origin
         headers["Access-Control-Allow-Credentials"] = "true"
     detail = str(exc) if settings.debug else "An unexpected error occurred."
