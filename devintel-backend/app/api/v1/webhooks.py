@@ -86,11 +86,26 @@ async def github_webhook(
     if event == "ping":
         return {"status": "pong", "message": "Webhook registered successfully."}
 
-    # --- Push event: re-index the repository ---
+    # --- Push event: incremental re-index the repository ---
     if event == "push":
         repo_full_name: str = payload.get("repository", {}).get("full_name", "")
         default_branch: str = payload.get("repository", {}).get("default_branch", "main")
         pushed_ref: str = payload.get("ref", "")
+        head_commit_sha: str = payload.get("after", "")
+
+        # Extract changed files from commits
+        commits: list[dict] = payload.get("commits", [])
+        changed_files = set()
+        added_files = set()
+        removed_files = set()
+
+        for commit in commits:
+            for f in commit.get("added", []):
+                added_files.add(f)
+            for f in commit.get("modified", []):
+                changed_files.add(f)
+            for f in commit.get("removed", []):
+                removed_files.add(f)
 
         if not repo_full_name:
             logger.warning("Push event missing repository.full_name — ignoring.")
@@ -123,25 +138,57 @@ async def github_webhook(
             )
             return {"status": "skipped", "reason": "Repository is already being indexed."}
 
-        # Enqueue indexing task (fire-and-forget)
-        task_id = str(uuid.uuid4())
-        asyncio.create_task(
-            index_repository_task(
-                repo_id=str(repository.id),
-                clone_url=repository.url,
-                access_token="",  # Public repos or tokens already stored
-            )
-        )
+        # Get access token for cloning (may be empty for public repos)
+        access_token = await _get_repo_access_token(repository, db)
 
-        logger.info(
-            f"Webhook triggered re-index for {repo_full_name} "
-            f"(repo_id={repository.id}, task_id={task_id})"
-        )
-        return {
-            "status": "queued",
-            "repository": repo_full_name,
-            "task_id": task_id,
-        }
+        # Determine if we should do incremental or full reindex
+        # Fall back to full reindex if we don't have a last_indexed_commit_sha
+        if repository.last_indexed_commit_sha and head_commit_sha:
+            # Use incremental indexing
+            from app.services.incremental_indexer import process_push_event
+            task_id = str(uuid.uuid4())
+            asyncio.create_task(
+                process_push_event(
+                    repo_id=str(repository.id),
+                    clone_url=repository.url,
+                    access_token=access_token,
+                    changed_files=list(changed_files),
+                    added_files=list(added_files),
+                    removed_files=list(removed_files),
+                    head_commit_sha=head_commit_sha,
+                )
+            )
+            logger.info(
+                f"Webhook triggered incremental re-index for {repo_full_name} "
+                f"(repo_id={repository.id}, task_id={task_id})"
+            )
+            return {
+                "status": "queued",
+                "mode": "incremental",
+                "repository": repo_full_name,
+                "task_id": task_id,
+                "files_changed": len(changed_files) + len(added_files) + len(removed_files),
+            }
+        else:
+            # Fall back to full reindex
+            task_id = str(uuid.uuid4())
+            asyncio.create_task(
+                index_repository_task(
+                    repo_id=str(repository.id),
+                    clone_url=repository.url,
+                    access_token=access_token,
+                )
+            )
+            logger.info(
+                f"Webhook triggered full re-index for {repo_full_name} "
+                f"(repo_id={repository.id}, task_id={task_id})"
+            )
+            return {
+                "status": "queued",
+                "mode": "full",
+                "repository": repo_full_name,
+                "task_id": task_id,
+            }
 
     # --- Pull Request event: trigger AI code review ---
     if event == "pull_request":

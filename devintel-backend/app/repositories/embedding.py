@@ -119,3 +119,25 @@ class EmbeddingRepository(BaseRepository[Embedding]):
             .order_by(Embedding.chunk_index.asc())
         )
         return list(result.scalars().all())
+
+    async def delete_by_file_path(self, repo_id: UUID, file_path: str) -> int:
+        """Delete all embeddings for a specific file in a repository."""
+        from sqlalchemy import delete
+
+        result = await self.db.execute(
+            delete(Embedding).where(
+                Embedding.repo_id == repo_id,
+                Embedding.file_path == file_path
+            )
+        )
+        await self.db.flush()
+        return result.rowcount
+
+    async def get_all_by_repo(self, repo_id: UUID) -> list[Embedding]:
+        """Get all embeddings for a repository (for BM25 indexing)."""
+        result = await self.db.execute(
+            select(Embedding)
+            .where(Embedding.repo_id == repo_id)
+            .order_by(Embedding.file_path, Embedding.chunk_index)
+        )
+        return list(result.scalars().all())

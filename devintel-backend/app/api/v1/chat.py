@@ -3,6 +3,7 @@
 import json
 import time
 from collections.abc import AsyncGenerator
+from typing import Literal, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -22,6 +23,7 @@ from app.schemas.chat import (
     AgentDraftResponse,
     AgentExecuteRequest,
     AgentExecuteResponse,
+    AgentExecuteWithTestsResponse,
     ChatHistoryRecord,
     ChatHistoryResponse,
     ChatRequest,
@@ -29,6 +31,7 @@ from app.schemas.chat import (
 from app.services.agent import AgentService
 from app.services.chat import ChatService
 from app.services.encryption import encryption_service
+from app.services.retrieval.hybrid_retriever import RetrievalMode
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/chat", tags=["Chat"])
@@ -230,13 +233,13 @@ async def agent_draft(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred while drafting the PR.")
 
 
-@router.post("/execute", response_model=AgentExecuteResponse)
+@router.post("/execute", response_model=AgentExecuteResponse | AgentExecuteWithTestsResponse)
 async def agent_execute(
     request: AgentExecuteRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Execute an approved draft PR on GitHub."""
+    """Execute an approved draft PR on GitHub. Optionally generates tests first."""
     repo_repo = RepositoryRepository(db)
     repository = await repo_repo.get_by_id(request.repository_id)
 
@@ -259,6 +262,10 @@ async def agent_execute(
             draft_payload=draft_dict,
             default_branch=repository.default_branch
         )
+
+        if result.get("status") == "tests_failed":
+            return AgentExecuteWithTestsResponse(**result)
+
         return AgentExecuteResponse(**result)
     except Exception as e:
         logger.error(f"Failed to execute agent PR: {e}", exc_info=True)

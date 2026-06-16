@@ -3,15 +3,26 @@
 Uses the in-process ProgressBus instead of Redis pub/sub.
 """
 
+from datetime import datetime
 from uuid import UUID
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 from jose import JWTError, jwt
 
 from app.core.config import settings
+
 from app.core.logging import get_logger
+
 from app.db.session import AsyncSessionLocal
+
 from app.repositories.repository import RepositoryRepository
+
+from app.repositories.user import UserRepository
+
+from app.repositories.collaboration import CollaborationSessionRepository
+
+from app.services.collaboration_service import CollaborationService
+
 from app.services.progress_bus import progress_bus
 
 logger = get_logger(__name__)
@@ -115,6 +126,103 @@ async def repo_indexing_progress(
         logger.info(f"WS client disconnected from {channel}")
     except Exception as e:
         logger.error(f"WebSocket error for {channel}: {e}")
+    finally:
+        try:
+            await websocket.close()
+        except Exception:
+            pass
+
+
+@router.websocket("/ws/collab/{session_id}")
+async def collaboration_ws(
+    websocket: WebSocket,
+    session_id: str,
+):
+    """
+    WebSocket endpoint for real-time collaboration.
+
+    Clients connect with a JWT token in the query string:
+        ws://host/ws/collab/{session_id}?token=<jwt>
+
+    Message types:
+        - text: Chat message
+        - cursor: Cursor position update
+        - code_change: Code edit
+        - ai_suggestion: AI-generated suggestion
+    """
+    token = websocket.query_params.get("token", "")
+    if not token:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    try:
+        payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
+        user_id = payload.get("sub")
+        if not user_id:
+            raise JWTError("No subject")
+    except JWTError:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    await websocket.accept()
+
+    try:
+        session_uuid = UUID(session_id)
+        async with AsyncSessionLocal() as db:
+            user_repo = UserRepository(db)
+            user = await user_repo.get_by_id(user_id)
+
+            if not user:
+                await websocket.send_json({"error": "User not found"})
+                await websocket.close()
+                return
+
+            session_repo = CollaborationSessionRepository(db)
+            session = await session_repo.get_by_id(session_uuid)
+
+            if not session or not session.is_active:
+                await websocket.send_json({"error": "Session not found or inactive"})
+                await websocket.close()
+                return
+
+            collab_service = CollaborationService(db)
+
+            # Send connection confirmation
+            await websocket.send_json({
+                "type": "connected",
+                "session_id": str(session.id),
+                "user": {"id": str(user.id), "login": user.github_login} if user.github_login else {"id": str(user.id)},
+            })
+
+            # Handle incoming messages
+            async for message in websocket.iter_json():
+                msg_type = message.get("type", "text")
+                content = message.get("content", "")
+
+                # Store and broadcast message
+                await collab_service.add_message(
+                    session=session,
+                    user=user,
+                    message_type=msg_type,
+                    content=content,
+                    file_path=message.get("file_path"),
+                    cursor_line=message.get("cursor_line"),
+                    cursor_column=message.get("cursor_column"),
+                )
+
+                # Acknowledge to sender
+                await websocket.send_json({
+                    "type": "ack",
+                    "message_type": msg_type,
+                    "timestamp": datetime.utcnow().isoformat(),
+                })
+
+    except Exception as e:
+        logger.error(f"Collaboration WS error: {e}")
+        try:
+            await websocket.send_json({"error": str(e)})
+        except:
+            pass
     finally:
         try:
             await websocket.close()

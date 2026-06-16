@@ -51,6 +51,8 @@ class RepositoryResponse(RepositoryBase):
     last_indexed_at: Optional[datetime] = None
     indexing_error: Optional[str] = None
     indexing_progress: int = Field(default=0, ge=0, le=100)
+    last_indexed_commit_sha: Optional[str] = None
+    indexing_mode: str = Field(default="full", description="Indexing mode: 'full' or 'incremental'")
     created_at: datetime
     updated_at: datetime
 
@@ -88,3 +90,17 @@ class RepositoryStatusResponse(BaseModel):
     indexed_status: bool
     indexing_progress: int = Field(default=0, ge=0, le=100)
     indexing_error: Optional[str] = None
+    last_indexed_commit_sha: Optional[str] = None
+    indexing_mode: str = Field(default="full", description="Indexing mode: 'full' or 'incremental'")
+
+
+class IndexingStatusResponse(BaseModel):
+    """Extended indexing status response."""
+
+    id: UUID
+    indexed_status: bool
+    indexing_progress: int = Field(default=0, ge=0, le=100)
+    indexing_error: Optional[str] = None
+    last_indexed_at: Optional[datetime] = None
+    last_indexed_commit_sha: Optional[str] = None
+    indexing_mode: str = Field(default="full", description="Indexing mode: 'full' or 'incremental'")

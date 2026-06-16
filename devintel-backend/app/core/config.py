@@ -98,6 +98,9 @@ class Settings(BaseSettings):
     top_k_chunks: int = Field(default=6, alias="TOP_K_CHUNKS")
     embedding_dimensions: int = Field(default=1536, alias="EMBEDDING_DIMENSIONS")
 
+    # Retrieval mode: vector, bm25, or hybrid
+    retrieval_mode: str = Field(default="hybrid", alias="RETRIEVAL_MODE")
+
     # Indexing
     supported_file_extensions: str = Field(
         default=".py,.js,.ts,.tsx,.jsx,.java,.go,.rs,.rb,.md,.json,.yaml,.yml",

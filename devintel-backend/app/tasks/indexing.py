@@ -7,6 +7,8 @@ import asyncio
 from datetime import datetime
 from uuid import UUID
 
+from git import Repo
+
 from app.core.logging import get_logger
 from app.db.session import AsyncSessionLocal
 from app.repositories.embedding import EmbeddingRepository
@@ -16,6 +18,7 @@ from app.services.indexing import IndexingService
 from app.services.progress_bus import progress_bus
 
 logger = get_logger(__name__)
+
 
 
 async def _publish_progress(repo_id: str, progress: int, status: str) -> None:
@@ -162,13 +165,19 @@ async def _index_repository_async(
             await embedding_repo.create_bulk(embeddings_data)
             await db.commit()
 
-            # Update repository as indexed
+            # Get the HEAD commit SHA for incremental indexing support
+            head_sha = await asyncio.to_thread(
+                lambda: Repo(repo_path).head.commit.hexsha if repo_path else None
+            )
+
+            # Update repository as indexed with commit SHA
             await repo_repo.update(
                 UUID(repo_id),
                 indexed_status=True,
                 last_indexed_at=datetime.utcnow(),
                 indexing_progress=100,
                 indexing_error=None,
+                last_indexed_commit_sha=head_sha,
             )
 
             # Clear embedding cache for this repository

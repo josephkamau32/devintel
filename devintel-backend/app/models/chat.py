@@ -43,6 +43,7 @@ class Chat(Base, UUIDMixin, TimestampMixin):
     # Chat content
     question: Mapped[str] = mapped_column(Text, nullable=False)
     response: Mapped[str] = mapped_column(Text, nullable=False)
+    agent_type: Mapped[Optional[str]] = mapped_column(default="general", nullable=True)
 
     # Analytics
     token_usage: Mapped[int] = mapped_column(Integer, default=0, nullable=False)

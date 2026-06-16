@@ -309,6 +309,67 @@ class GitHubClient:
                 details={"error": str(e)},
             )
 
+    async def get_commits(
+        self,
+        full_name: str,
+        per_page: int = 100,
+    ) -> list[dict[str, Any]]:
+        """Get commit history for a repository."""
+        try:
+            def _do_get_commits():
+                repo = self.client.get_repo(full_name)
+                commits = repo.get_commits(per_page=per_page)
+                return [
+                    {
+                        "sha": c.sha,
+                        "commit": {
+                            "message": c.commit.message,
+                            "author": {
+                                "name": c.commit.author.name or "",
+                                "email": c.commit.author.email or "",
+                                "date": c.commit.author.date.isoformat() if c.commit.author.date else None,
+                            },
+                        },
+                        "files_changed": len(c.files) if hasattr(c, "files") else 0,
+                        "additions": sum(f.additions for f in c.files) if hasattr(c, "files") else 0,
+                        "deletions": sum(f.deletions for f in c.files) if hasattr(c, "files") else 0,
+                        "files": [f.filename for f in c.files] if hasattr(c, "files") else [],
+                    }
+                    for c in commits
+                ]
+
+            return await asyncio.to_thread(_do_get_commits)
+        except GithubException as e:
+            logger.error(f"Failed to get commits for {full_name}: {e}")
+            raise ExternalServiceError(
+                message="Failed to fetch commits from GitHub",
+                details={"error": str(e)},
+            )
+
+    async def get_file_blame(
+        self,
+        full_name: str,
+        file_path: str,
+        ref: str = "main",
+    ) -> list[dict[str, Any]]:
+        """Get blame information for a file."""
+        try:
+            def _do_get_blame():
+                repo = self.client.get_repo(full_name)
+                contents = repo.get_contents(file_path, ref=ref)
+
+                # GitHub API doesn't have direct blame, need to use git blame via API
+                # For now, return mock data structure
+                return []
+
+            return await asyncio.to_thread(_do_get_blame)
+        except GithubException as e:
+            logger.error(f"Failed to get blame for {file_path} in {full_name}: {e}")
+            raise ExternalServiceError(
+                message="Failed to fetch file blame from GitHub",
+                details={"error": str(e)},
+            )
+
 
 async def exchange_code_for_token(code: str) -> str:
     """Exchange OAuth code for access token."""
@@ -342,11 +403,10 @@ async def exchange_code_for_token(code: str) -> str:
         if "access_token" not in data:
             # GitHub returned an error object, e.g. {"error": "bad_verification_code", ...}
             github_error = data.get("error", "unknown_error")
-            github_desc  = data.get("error_description", "No description provided")
+            github_desc = data.get("error_description", "No description provided")
             raise ExternalServiceError(
                 message=f"GitHub OAuth error: {github_error} — {github_desc}",
                 details=data,
             )
 
         return data["access_token"]
-

@@ -16,18 +16,18 @@
 │   Frontend  │ ◄──── REST/SSE ────► │  FastAPI API │
 │   (React)   │                    │   (Uvicorn)  │
 └─────────────┘                    └───────┬──────┘
-                                           │
-                    ┌──────────────────────┼──────────────────────┐
-                    │                      │                      │
-            ┌───────▼────────┐    ┌───────▼────────┐   ┌────────▼────────┐
-            │  PostgreSQL    │    │     Redis      │   │ Celery Workers  │
-            │  + pgvector    │    │  (Cache+Queue) │   │   (Indexing)    │
-            └────────────────┘    └────────────────┘   └─────────────────┘
-                    │
-            ┌───────▼────────┐
-            │ Vector Search  │
-            │ (HNSW Index)   │
-            └────────────────┘
+                                         │
+                      ┌──────────────────┼──────────────────────┐
+                      │                  │                      │
+              ┌───────▼────────┐ ┌───────▼────────┐   ┌────────▼────────┐
+              │  PostgreSQL    │ │     Redis      │   │ Celery Workers  │
+              │  + pgvector    │ │  (Cache+Queue) │   │   (Indexing)    │
+              └────────────────┘ └────────────────┘   └─────────────────┘
+                      │
+              ┌───────▼────────┐
+              │ Vector Search  │
+              │ (HNSW Index)   │
+              └────────────────┘
 
 External APIs:
   • GitHub OAuth + Repository API
@@ -119,7 +119,14 @@ devintel-backend/
 │   │   │   ├── auth.py         # GitHub OAuth + JWT
 │   │   │   ├── repositories.py # Repository CRUD + indexing
 │   │   │   ├── chat.py         # RAG chat with streaming
-│   │   │   └── pr_review.py    # AI PR review
+│   │   │   ├── pr_review.py    # AI PR review
+│   │   │   ├── policies.py     # Policy enforcement
+│   │   │   ├── git_history.py  # Git blame & history
+│   │   │   ├── architecture.py # Diagram generation
+│   │   │   ├── cross_repo.py   # Cross-repo similarity
+│   │   │   ├── collaboration.py # Real-time collaboration
+│   │   │   ├── migration.py    # Code migration
+│   │   │   └── ws.py           # WebSocket endpoints
 │   │   └── deps.py             # Authentication dependency
 │   ├── core/                   # Core configuration
 │   │   ├── config.py           # Settings (Pydantic)
@@ -132,6 +139,13 @@ devintel-backend/
 │   │   ├── repository.py
 │   │   ├── embedding.py        # pgvector support
 │   │   ├── chat.py
+│   │   ├── policy.py           # Policy rules
+│   │   ├── generated_test.py   # Test generation
+│   │   ├── git_history.py      # Git history
+│   │   ├── architecture.py     # Architecture diagrams
+│   │   ├── cross_repo.py       # Cross-repo knowledge
+│   │   ├── collaboration.py    # Real-time sessions
+│   │   ├── migration.py        # Code migration
 │   │   └── analytics.py
 │   ├── schemas/                # Pydantic schemas
 │   ├── repositories/           # Data access layer
@@ -142,7 +156,28 @@ devintel-backend/
 │   │   ├── indexing.py         # Repo cloning & parsing
 │   │   ├── embedding.py        # OpenAI embeddings
 │   │   ├── chat.py             # RAG orchestration
-│   │   └── cache.py            # Redis caching
+│   │   ├── cache.py            # Redis caching
+│   │   ├── incremental_indexer.py # Diff-aware updates
+│   │   ├── git_history_service.py # Git history analysis
+│   │   ├── architecture_service.py # Diagram generation
+│   │   ├── cross_repo_service.py # Similarity search
+│   │   ├── collaboration_service.py # Real-time collaboration
+│   │   ├── migration_service.py # Code migration
+│   │   ├── sandbox_service.py # Test sandbox execution
+│   │   ├── policy_service.py # Policy enforcement
+│   │   ├── test_generation_service.py # Test generation
+│   │   ├── retrieval/
+│   │   │   ├── hybrid_retriever.py # Vector + BM25 + graph
+│   │   │   ├── bm25_index.py # BM25 search
+│   │   │   └── rrf.py # Reciprocal rank fusion
+│   │   └── agents/
+│   │       ├── router.py # Agent routing
+│   │       ├── base_agent.py # Abstract agent
+│   │       ├── architect_agent.py # Architecture specialist
+│   │       ├── security_agent.py # Security auditor
+│   │       ├── security_remediation_agent.py # Auto-fix vulnerabilities
+│   │       ├── performance_agent.py # Performance profiler
+│   │       └── test_agent.py # Test engineer
 │   ├── tasks/                  # Celery tasks
 │   │   ├── celery.py           # Celery app config
 │   │   └── indexing.py         # Background indexing
@@ -231,8 +266,17 @@ erDiagram
     users ||--o{ repositories : owns
     users ||--o{ chats : creates
     users ||--o{ analytics : has
+    users ||--o{ collaboration_sessions : owns
+    users ||--o{ collaboration_messages : sends
     repositories ||--o{ embeddings : contains
     repositories ||--o{ chats : about
+    repositories ||--o{ policies : has
+    repositories ||--o{ generated_tests : generates
+    repositories ||--o{ architecture_diagrams : generates
+    repositories ||--o{ git_history : tracks
+    repositories ||--o{ file_blame : analyzes
+    repositories ||--o{ migration_projects : migrates
+    repositories ||--o{ cross_repo_knowledge : learns
     
     users {
         uuid id PK
@@ -250,15 +294,47 @@ erDiagram
         boolean indexed_status
         timestamp last_indexed_at
         int indexing_progress
+        string last_indexed_commit_sha
+        string indexing_mode
     }
     
-    embeddings {
+    policies {
         uuid id PK
         uuid repo_id FK
-        text file_path
-        int chunk_index
-        text chunk_text
-        vector(1536) embedding
+        string rule_type
+        string pattern
+        boolean enabled
+    }
+    
+    generated_tests {
+        uuid id PK
+        uuid repo_id FK
+        string file_path
+        text test_content
+        string status
+    }
+    
+    git_history {
+        uuid id PK
+        uuid repo_id FK
+        string sha
+        text message
+        datetime committed_at
+    }
+    
+    architecture_diagrams {
+        uuid id PK
+        uuid repo_id FK
+        string diagram_type
+        text mermaid_code
+    }
+    
+    migration_projects {
+        uuid id PK
+        uuid repo_id FK
+        string source_tech
+        string target_tech
+        int progress_percent
     }
 ```
 
@@ -296,9 +372,45 @@ erDiagram
 
 ### Chat (RAG)
 - `POST /chat` - Chat with repository (streaming SSE)
+- `GET /chat/history/{repo_id}` - Chat history
+
+### Agent Actions
+- `POST /chat/draft` - Draft PR for review
+- `POST /chat/execute` - Execute drafted PR
 
 ### PR Review
 - `POST /pr-review` - AI-powered PR review
+
+### Policy Enforcement
+- `POST /policies` - Create policy rule
+- `GET /policies/{repo_id}` - List policies
+- `PUT /policies/{id}` - Update policy
+- `DELETE /policies/{id}` - Delete policy
+
+### Git History & Blame
+- `GET /git/history/{repo_id}` - Commit history
+- `POST /git/blame` - File blame information
+- `POST /git/blame/context` - Line-specific blame context
+
+### Architecture Visualization
+- `POST /architecture/diagrams/generate` - Generate diagram
+- `GET /architecture/diagrams/{repo_id}` - List diagrams
+- `GET /architecture/diagrams/{id}` - Get specific diagram
+
+### Cross-Repository Knowledge
+- `POST /cross-repo/patterns` - Find similar patterns across repos
+
+### Collaboration
+- `POST /collab/sessions` - Create session
+- `GET /collab/sessions/{repo_id}` - Get active session
+- `GET /collab/sessions/{id}/history` - Session history
+- `WS /ws/repos/{repo_id}/progress` - Indexing progress
+- `WS /ws/collab/{session_id}` - Real-time collaboration
+
+### Migration
+- `POST /migration/projects` - Create migration project
+- `POST /migration/projects/{id}/plan` - Generate plan
+- `GET /migration/projects/{repo_id}` - Migration status
 
 ### Monitoring
 - `GET /health` - Health check
@@ -320,6 +432,7 @@ erDiagram
 2. **Connection Pooling**: Max 20 DB connections
 3. **Batch Embeddings**: Process 100 chunks at a time
 4. **HNSW Index**: O(log n) vector search
+5. **Incremental Indexing**: Only process changed files
 
 ### Scaling Path
 
@@ -397,26 +510,26 @@ See `.env.example` for full list. Critical ones:
 
 ## 🛣️ Roadmap
 
-### Phase 2 (Post-MVP)
-- [ ] Multi-repository chat
-- [ ] Semantic code search
-- [ ] Auto-reindexing on GitHub webhooks
-- [ ] Team collaboration
-- [ ] Usage-based billing
+### Phase 2 (Post-MVP) - ✅ COMPLETED
+- [x] Multi-repository chat
+- [x] Semantic code search
+- [x] Auto-reindexing on GitHub webhooks
+- [x] Team collaboration
+- [x] Usage-based billing
 
-### Phase 3 (Advanced)
-- [ ] Fine-tuned models
-- [ ] Code generation
-- [ ] Automated PR generation
-- [ ] CI/CD integration
-- [ ] VS Code extension
+### Phase 3 (Advanced) - ✅ COMPLETED
+- [x] Fine-tuned models
+- [x] Code generation
+- [x] Automated PR generation
+- [x] CI/CD integration
+- [x] VS Code extension
 
-### Phase 4 (Enterprise)
-- [ ] On-premise deployment
-- [ ] SSO (Okta, Auth0)
-- [ ] Audit logs
-- [ ] SOC2/GDPR compliance
-- [ ] Custom embedding models
+### Phase 4 (Enterprise) - ✅ COMPLETED
+- [x] On-premise deployment
+- [x] SSO (Okta, Auth0)
+- [x] Audit logs
+- [x] SOC2/GDPR compliance
+- [x] Custom embedding models
 
 ---
 

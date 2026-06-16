@@ -18,6 +18,7 @@ from app.repositories.embedding import EmbeddingRepository
 from app.repositories.repository import RepositoryRepository
 from app.schemas.pr_review import PullRequestListResponse, PullRequestResponse
 from app.schemas.repository import (
+    IndexingStatusResponse,
     RepositoryCreate,
     RepositoryIndexRequest,
     RepositoryIndexResponse,
@@ -335,7 +336,7 @@ async def get_pull_request_diff(
         )
 
 
-@router.get("/{repository_id}/status", response_model=RepositoryStatusResponse)
+@router.get("/{repository_id}/status", response_model=IndexingStatusResponse)
 async def get_repository_status(
     repository_id: UUID,
     current_user: User = Depends(get_current_user),
@@ -354,11 +355,14 @@ async def get_repository_status(
 
     await check_repo_access(repository, current_user, db)
 
-    return RepositoryStatusResponse(
+    return IndexingStatusResponse(
         id=repository.id,
         indexed_status=repository.indexed_status,
         indexing_progress=repository.indexing_progress,
         indexing_error=repository.indexing_error,
+        last_indexed_at=repository.last_indexed_at,
+        last_indexed_commit_sha=repository.last_indexed_commit_sha,
+        indexing_mode=repository.indexing_mode,
     )
 
 

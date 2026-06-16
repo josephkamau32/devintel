@@ -148,6 +148,7 @@ When using the tool, you must provide the ENTIRE updated content for each file y
     ) -> dict[str, Any]:
         """
         Executes a drafted Pull Request plan on GitHub.
+        Includes optional test generation and verification.
         """
         repo_name = repository.full_name
 
@@ -156,6 +157,30 @@ When using the tool, you must provide the ENTIRE updated content for each file y
         pr_body = draft_payload["pr_body"]
         commit_message = draft_payload["commit_message"]
         file_changes = draft_payload["file_changes"]
+
+        # Optional: Generate and run tests before committing
+        if draft_payload.get("generate_tests", False):
+            from app.services.test_generation_service import TestGenerationService
+            from app.db.session import AsyncSessionLocal
+
+            async with AsyncSessionLocal() as db:
+                test_service = TestGenerationService(db)
+                test_result = await test_service.generate_and_run_tests(
+                    repo=repository,
+                    file_changes=file_changes,
+                    repo_id=repository.id,
+                )
+
+                if not test_result.get("passed", False):
+                    return {
+                        "status": "tests_failed",
+                        "test_id": test_result.get("test_id"),
+                        "output": test_result.get("output"),
+                        "message": "Generated tests failed. Review and fix before merging.",
+                    }
+
+                # Add test results to PR body
+                pr_body += f"\n\n---\n### Auto-Generated Tests\nTests passed successfully. See test run for details."
 
         # 4. Execute GitHub Actions
         logger.info(f"Creating branch {branch_name} from {default_branch}...")

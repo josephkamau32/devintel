@@ -11,10 +11,16 @@ from slowapi.util import get_remote_address
 
 from app.api.v1 import (
     analytics,
+    architecture,
     auth,
     chat,
+    collaboration,
+    cross_repo,
+    git_history,
     health_score,
+    migration,
     organizations,
+    policies,
     pr_review,
     repositories,
     webhooks,
@@ -148,6 +154,12 @@ app.include_router(repositories.router, prefix=settings.api_v1_prefix)
 app.include_router(chat.router, prefix=settings.api_v1_prefix)
 app.include_router(pr_review.router, prefix=settings.api_v1_prefix)
 app.include_router(analytics.router, prefix=settings.api_v1_prefix)
+app.include_router(policies.router, prefix=settings.api_v1_prefix)
+app.include_router(git_history.router, prefix=settings.api_v1_prefix)
+app.include_router(architecture.router, prefix=settings.api_v1_prefix)
+app.include_router(cross_repo.router, prefix=settings.api_v1_prefix)
+app.include_router(collaboration.router, prefix=settings.api_v1_prefix)
+app.include_router(migration.router, prefix=settings.api_v1_prefix)
 app.include_router(
     organizations.router,
     prefix=f"{settings.api_v1_prefix}/organizations",
