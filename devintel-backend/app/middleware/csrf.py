@@ -59,7 +59,7 @@ class CSRFMiddleware(BaseHTTPMiddleware):
             if not hasattr(request.state, "csrf_token"):
                 csrf_token = self._generate_csrf_token()
                 from app.core.config import settings
-                is_production = settings.environment == "production"
+                is_production = settings.ENVIRONMENT == "production"
                 response.set_cookie(
                     key="csrf_token",
                     value=csrf_token,

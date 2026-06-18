@@ -18,6 +18,8 @@ class Settings(BaseSettings):
 
     # Database
     DATABASE_URL: str
+    DATABASE_POOL_SIZE: int = 5
+    DATABASE_MAX_OVERFLOW: int = 10
 
     # JWT
     JWT_SECRET_KEY: str
@@ -38,6 +40,31 @@ class Settings(BaseSettings):
 
     # OpenAI
     OPENAI_API_KEY: str
+    OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
+    OPENAI_MAX_TOKENS: int = 1000
+    OPENAI_CHAT_MODEL: str = "gpt-4o"
+
+    # Environment
+    ENVIRONMENT: str = "development"
+    LOG_LEVEL: str = "INFO"
+    LOG_FORMAT: str = "json"
+
+    # Redis
+    REDIS_URL: str | None = None
+    REDIS_POOL_SIZE: int = 10
+    REDIS_CACHE_TTL: int = 3600
+
+    # Indexing / Chunking
+    CHUNK_SIZE: int = 1000
+    CHUNK_OVERLAP: int = 200
+    RETRIEVAL_MODE: str = "vector"
+    TOP_K_CHUNKS: int = 10
+    IGNORED_DIRECTORIES: List[str] = ["node_modules", ".git", "venv", ".venv", "__pycache__", "build", "dist"]
+    SUPPORTED_FILE_EXTENSIONS: List[str] = [".py", ".js", ".jsx", ".ts", ".tsx", ".md", ".json", ".html", ".css", ".go", ".rs", ".java", ".c", ".cpp", ".h", ".hpp"]
+    MAX_FILE_SIZE_MB: int = 5
+
+    # Webhooks
+    GITHUB_WEBHOOK_SECRET: str = "default_secret"
 
     # CORS — stored as JSON string in env: '["http://localhost:5173"]'
     CORS_ORIGINS: List[str] = ["http://localhost:5173"]

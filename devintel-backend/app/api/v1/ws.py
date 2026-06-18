@@ -56,7 +56,7 @@ async def repo_indexing_progress(
         return
 
     try:
-        payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
+        payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
         user_id = payload.get("sub")
         if not user_id:
             raise JWTError("No subject")
@@ -156,7 +156,7 @@ async def collaboration_ws(
         return
 
     try:
-        payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
+        payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
         user_id = payload.get("sub")
         if not user_id:
             raise JWTError("No subject")

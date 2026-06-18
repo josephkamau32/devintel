@@ -28,12 +28,12 @@ class RedisPool:
     @classmethod
     async def get_pool(cls):
         """Get or create Redis connection pool."""
-        if not _REDIS_AVAILABLE or not settings.redis_url:
+        if not _REDIS_AVAILABLE or not settings.REDIS_URL:
             return None
         if cls._pool is None:
             cls._pool = ConnectionPool.from_url(
-                settings.redis_url,
-                max_connections=settings.redis_pool_size,
+                settings.REDIS_URL,
+                max_connections=settings.REDIS_POOL_SIZE,
                 decode_responses=True,
                 socket_connect_timeout=5,
                 socket_keepalive=True,
@@ -41,8 +41,8 @@ class RedisPool:
             logger.info(
                 "Created Redis connection pool",
                 extra={
-                    "url": settings.redis_url,
-                    "max_connections": settings.redis_pool_size,
+                    "url": settings.REDIS_URL,
+                    "max_connections": settings.REDIS_POOL_SIZE,
                 },
             )
         return cls._pool
@@ -50,7 +50,7 @@ class RedisPool:
     @classmethod
     async def get_client(cls):
         """Get Redis client from pool."""
-        if not _REDIS_AVAILABLE or not settings.redis_url:
+        if not _REDIS_AVAILABLE or not settings.REDIS_URL:
             return None
         if cls._client is None:
             pool = await cls.get_pool()
@@ -72,7 +72,7 @@ class RedisPool:
     @classmethod
     async def health_check(cls) -> bool:
         """Check Redis connection health."""
-        if not _REDIS_AVAILABLE or not settings.redis_url:
+        if not _REDIS_AVAILABLE or not settings.REDIS_URL:
             return False
         try:
             client = await cls.get_client()

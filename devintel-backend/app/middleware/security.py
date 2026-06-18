@@ -41,7 +41,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         }
 
         # Only add HSTS in production (breaks HTTP localhost in dev)
-        if settings.environment == "production":
+        if settings.ENVIRONMENT == "production":
             self.security_headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:

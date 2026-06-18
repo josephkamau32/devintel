@@ -375,11 +375,11 @@ async def exchange_code_for_token(code: str) -> str:
     """Exchange OAuth code for access token."""
     async with httpx.AsyncClient() as client:
         payload = {
-            "client_id": settings.github_client_id,
-            "client_secret": settings.github_client_secret,
+            "client_id": settings.GITHUB_CLIENT_ID,
+            "client_secret": settings.GITHUB_CLIENT_SECRET,
             "code": code,
             # Must match the redirect_uri used in the authorization URL (step 1)
-            "redirect_uri": settings.github_redirect_uri,
+            "redirect_uri": settings.GITHUB_REDIRECT_URI,
         }
 
         logger.debug("Exchanging OAuth code with GitHub")

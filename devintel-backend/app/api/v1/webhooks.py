@@ -24,7 +24,7 @@ def _verify_github_signature(payload: bytes, signature: str) -> bool:
     Returns True if the signature is valid or if webhook secret is not configured
     (development fallback). In production, GITHUB_WEBHOOK_SECRET must be set.
     """
-    secret = settings.github_webhook_secret
+    secret = settings.GITHUB_WEBHOOK_SECRET
     if not secret:
         logger.warning(
             "GITHUB_WEBHOOK_SECRET is not set — webhook signature validation skipped. "

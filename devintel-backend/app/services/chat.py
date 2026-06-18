@@ -131,7 +131,7 @@ Rules:
         repo_id: UUID,
         question: str,
         embedding_repo: EmbeddingRepository,
-        top_k: int = settings.top_k_chunks,
+        top_k: int = settings.TOP_K_CHUNKS,
         expand_context: bool = True,
     ) -> list[tuple[Embedding, float]]:
         """Retrieve relevant chunks using vector similarity search."""

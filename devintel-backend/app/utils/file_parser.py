@@ -14,7 +14,7 @@ def should_ignore_path(path: Path) -> bool:
     # e.g. "build" in ignored_dirs should match "/build/file.py" but not "/my_build_tools/file.py"
     path_parts = set(path.parts)
 
-    for ignored_dir in settings.ignored_directories:
+    for ignored_dir in settings.IGNORED_DIRECTORIES:
         if ignored_dir in path_parts:
             return True
 
@@ -23,7 +23,7 @@ def should_ignore_path(path: Path) -> bool:
 
 def is_supported_file(file_path: Path) -> bool:
     """Check if file extension is supported."""
-    return file_path.suffix in settings.supported_file_extensions
+    return file_path.suffix in settings.SUPPORTED_FILE_EXTENSIONS
 
 
 def get_file_size_mb(file_path: Path) -> float:
@@ -51,7 +51,7 @@ def parse_repository_files(repo_path: str) -> list[tuple[str, str]]:
         if not is_supported_file(file_path):
             continue
 
-        if get_file_size_mb(file_path) > settings.max_file_size_mb:
+        if get_file_size_mb(file_path) > settings.MAX_FILE_SIZE_MB:
             logger.warning(f"Skipping large file: {file_path} ({get_file_size_mb(file_path):.2f}MB)")
             continue
 

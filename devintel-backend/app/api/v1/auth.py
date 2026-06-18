@@ -3,7 +3,7 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 from urllib.parse import urlencode
-from app.core.database import get_db
+from app.db.session import get_db
 from app.core.config import settings
 from app.core.dependencies import get_current_user
 from app.core.exceptions import AuthenticationError

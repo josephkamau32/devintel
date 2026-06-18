@@ -54,7 +54,7 @@ class HybridRetriever:
         Returns:
             List of (ScoredChunk, original_score) tuples
         """
-        mode = mode or RetrievalMode(settings.retrieval_mode if hasattr(settings, 'retrieval_mode') else RetrievalMode.VECTOR)
+        mode = mode or RetrievalMode(settings.RETRIEVAL_MODE if hasattr(settings, 'retrieval_mode') else RetrievalMode.VECTOR)
 
         # Get results from each method in parallel
         vector_results = []

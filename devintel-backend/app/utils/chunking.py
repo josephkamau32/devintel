@@ -17,8 +17,8 @@ def get_token_count(text: str, encoding_name: str = "cl100k_base") -> int:
 
 def chunk_text(
     text: str,
-    chunk_size: int = settings.chunk_size,
-    chunk_overlap: int = settings.chunk_overlap,
+    chunk_size: int = settings.CHUNK_SIZE,
+    chunk_overlap: int = settings.CHUNK_OVERLAP,
     encoding_name: str = "cl100k_base",
 ) -> list[tuple[str, int, int]]:
     """
@@ -68,8 +68,8 @@ def chunk_text(
 def smart_chunk_code(
     code: str,
     file_path: str,
-    chunk_size: int = settings.chunk_size,
-    chunk_overlap: int = settings.chunk_overlap,
+    chunk_size: int = settings.CHUNK_SIZE,
+    chunk_overlap: int = settings.CHUNK_OVERLAP,
 ) -> list[str]:
     """
     Chunk code while trying to preserve structure.

@@ -15,7 +15,7 @@ class EncryptionService:
 
     def __init__(self, key: Optional[str] = None):
         """Initialize encryption service with key from settings or provided key."""
-        enc_key = key or settings.token_encryption_key
+        enc_key = key or settings.TOKEN_ENCRYPTION_KEY
         if not enc_key:
             enc_key = Fernet.generate_key().decode()
             logger.warning("Using auto-generated encryption key")
@@ -77,7 +77,7 @@ def get_encryption_service() -> EncryptionService:
     """Get or create the global encryption service instance."""
     global _encryption_service
     if _encryption_service is None:
-        key = settings.token_encryption_key
+        key = settings.TOKEN_ENCRYPTION_KEY
         if not key:
             # Generate a key for development (WARNING: tokens will be lost on restart)
             logger.warning("TOKEN_ENCRYPTION_KEY not set, using temporary key")

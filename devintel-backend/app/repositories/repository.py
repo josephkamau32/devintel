@@ -17,14 +17,11 @@ class RepositoryRepository(BaseRepository[Repository]):
         super().__init__(Repository, db)
 
     async def get_by_user(
-        self, user_id: UUID, org_id: UUID | None = None, skip: int = 0, limit: int = 100
+        self, user_id: UUID, skip: int = 0, limit: int = 100
     ) -> list[Repository]:
-        """Get repositories by user ID or organization ID."""
+        """Get repositories by user ID."""
         stmt = select(Repository)
-        if org_id:
-            stmt = stmt.where(Repository.org_id == org_id)
-        else:
-            stmt = stmt.where(Repository.user_id == user_id, Repository.org_id.is_(None))
+        stmt = stmt.where(Repository.user_id == user_id)
 
         result = await self.db.execute(
             stmt.offset(skip)
@@ -37,25 +34,18 @@ class RepositoryRepository(BaseRepository[Repository]):
         self,
         full_name: str,
         user_id: UUID | None = None,
-        org_id: UUID | None = None,
     ) -> Repository | None:
-        """Get repository by full name scoped to user or org (for duplicate detection)."""
+        """Get repository by full name scoped to user (for duplicate detection)."""
         stmt = select(Repository).where(Repository.full_name == full_name)
-        if org_id:
-            stmt = stmt.where(Repository.org_id == org_id)
-        else:
-            stmt = stmt.where(Repository.user_id == user_id, Repository.org_id.is_(None))
+        stmt = stmt.where(Repository.user_id == user_id)
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def count_by_user(self, user_id: UUID, org_id: UUID | None = None) -> int:
-        """Count repositories for a user or organization."""
+    async def count_by_user(self, user_id: UUID) -> int:
+        """Count repositories for a user."""
         from sqlalchemy import func
         stmt = select(func.count()).select_from(Repository)
-        if org_id:
-            stmt = stmt.where(Repository.org_id == org_id)
-        else:
-            stmt = stmt.where(Repository.user_id == user_id, Repository.org_id.is_(None))
+        stmt = stmt.where(Repository.user_id == user_id)
 
         result = await self.db.execute(stmt)
         return result.scalar_one()

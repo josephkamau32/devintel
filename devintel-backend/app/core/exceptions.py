@@ -29,6 +29,31 @@ class ForbiddenError(AppException):
         super().__init__(status.HTTP_403_FORBIDDEN, detail)
 
 
+class ExternalServiceError(AppException):
+    def __init__(self, detail: str = "External service unavailable"):
+        super().__init__(status.HTTP_502_BAD_GATEWAY, detail)
+
+
+class EmbeddingError(AppException):
+    def __init__(self, detail: str = "Embedding generation failed"):
+        super().__init__(status.HTTP_500_INTERNAL_SERVER_ERROR, detail)
+
+
+class APIError(AppException):
+    def __init__(self, detail: str = "API request failed"):
+        super().__init__(status.HTTP_500_INTERNAL_SERVER_ERROR, detail)
+
+
+class IndexingError(AppException):
+    def __init__(self, detail: str = "Indexing process failed"):
+        super().__init__(status.HTTP_500_INTERNAL_SERVER_ERROR, detail)
+
+
+class CircuitBreakerError(AppException):
+    def __init__(self, detail: str = "Service circuit breaker open"):
+        super().__init__(status.HTTP_503_SERVICE_UNAVAILABLE, detail)
+
+
 # ── FastAPI exception handlers ────────────────────────────────────────────────
 async def app_exception_handler(request: Request, exc: AppException):
     return JSONResponse(

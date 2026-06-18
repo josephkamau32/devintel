@@ -39,7 +39,7 @@ def setup_logging() -> None:
     """Configure application logging."""
     # Get root logger
     root_logger = logging.getLogger()
-    root_logger.setLevel(getattr(logging, settings.log_level.upper()))
+    root_logger.setLevel(getattr(logging, settings.LOG_LEVEL.upper()))
 
     # Remove existing handlers
     for handler in root_logger.handlers[:]:
@@ -47,10 +47,10 @@ def setup_logging() -> None:
 
     # Create console handler
     console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setLevel(getattr(logging, settings.log_level.upper()))
+    console_handler.setLevel(getattr(logging, settings.LOG_LEVEL.upper()))
 
     # Set formatter based on configuration
-    if settings.log_format == "json":
+    if settings.LOG_FORMAT == "json":
         formatter = JSONFormatter()
     else:
         formatter = logging.Formatter(

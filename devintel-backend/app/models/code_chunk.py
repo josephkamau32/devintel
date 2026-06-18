@@ -4,6 +4,19 @@ from pgvector.sqlalchemy import Vector
 from app.models.base import Base, TimestampMixin
 
 
+from sqlalchemy.types import TypeDecorator
+
+class VectorType(TypeDecorator):
+    impl = String
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == "sqlite":
+            return dialect.type_descriptor(String())
+        else:
+            return dialect.type_descriptor(Vector(1536))
+
+
 class CodeChunk(Base, TimestampMixin):
     __tablename__ = "code_chunks"
 
@@ -14,7 +27,7 @@ class CodeChunk(Base, TimestampMixin):
     content = Column(Text, nullable=False)
     start_line = Column(Integer, nullable=True)
     end_line = Column(Integer, nullable=True)
-    embedding = Column(Vector(1536), nullable=True)
+    embedding = Column(VectorType(), nullable=True)
 
     repository = relationship("Repository", back_populates="chunks")
 

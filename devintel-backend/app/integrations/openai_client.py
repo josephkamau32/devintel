@@ -61,7 +61,7 @@ class OpenAIClient:
 
     def __init__(self):
         """Initialize OpenAI client."""
-        self.client = openai.AsyncOpenAI(api_key=settings.openai_api_key)
+        self.client = openai.AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
 
     @retry(
         stop=stop_after_attempt(3),
@@ -77,7 +77,7 @@ class OpenAIClient:
 
         try:
             response = await self.client.embeddings.create(
-                model=settings.openai_embedding_model,
+                model=settings.OPENAI_EMBEDDING_MODEL,
                 input=text,
             )
             _circuit_breaker.record_success()
@@ -106,7 +106,7 @@ class OpenAIClient:
 
         try:
             response = await self.client.embeddings.create(
-                model=settings.openai_embedding_model,
+                model=settings.OPENAI_EMBEDDING_MODEL,
                 input=texts,
             )
             _circuit_breaker.record_success()
@@ -125,7 +125,7 @@ class OpenAIClient:
         self,
         messages: list[dict],
         temperature: float = 0.7,
-        max_tokens: int = settings.openai_max_tokens,
+        max_tokens: int = settings.OPENAI_MAX_TOKENS,
     ) -> AsyncGenerator[str, None]:
         """Stream chat completion with circuit breaker protection."""
         if not _circuit_breaker.can_execute():
@@ -134,7 +134,7 @@ class OpenAIClient:
 
         try:
             stream = await self.client.chat.completions.create(
-                model=settings.openai_chat_model,
+                model=settings.OPENAI_CHAT_MODEL,
                 messages=messages,
                 temperature=temperature,
                 max_tokens=max_tokens,
@@ -167,7 +167,7 @@ class OpenAIClient:
         self,
         messages: list[dict],
         temperature: float = 0.7,
-        max_tokens: int = settings.openai_max_tokens,
+        max_tokens: int = settings.OPENAI_MAX_TOKENS,
         json_mode: bool = False,
         tools: Optional[list[dict]] = None,
         tool_choice: Optional[str] = None,
@@ -182,7 +182,7 @@ class OpenAIClient:
 
         try:
             kwargs = {
-                "model": settings.openai_chat_model,
+                "model": settings.OPENAI_CHAT_MODEL,
                 "messages": messages,
                 "temperature": temperature,
                 "max_tokens": max_tokens,

@@ -3,7 +3,6 @@
 import asyncio
 import uuid
 from typing import Optional
-from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,7 +11,6 @@ from app.api.deps import check_repo_access, get_current_user
 from app.core.logging import get_logger
 from app.db.session import get_db
 from app.integrations.github_client import GitHubClient
-from app.models.organization import OrganizationRole
 from app.models.user import User
 from app.repositories.embedding import EmbeddingRepository
 from app.repositories.repository import RepositoryRepository
@@ -30,7 +28,6 @@ from app.schemas.repository import (
 )
 from app.services.embedding import EmbeddingService
 from app.services.encryption import encryption_service
-from app.services.organization_service import OrganizationService
 from app.tasks.indexing import index_repository_task
 
 logger = get_logger(__name__)
@@ -39,7 +36,7 @@ router = APIRouter(prefix="/repos", tags=["Repositories"])
 
 @router.get("/{repository_id}/search", response_model=SearchResponse)
 async def search_repository(
-    repository_id: UUID,
+    repository_id: int,
     q: str = Query(..., min_length=1, max_length=500),
     top_k: int = Query(10, ge=1, le=50),
     current_user: User = Depends(get_current_user),
@@ -57,7 +54,7 @@ async def search_repository(
 
     await check_repo_access(repository, current_user, db)
 
-    if not repository.indexed_status:
+    if not repository.indexing_status:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Repository not indexed yet",
@@ -95,12 +92,12 @@ async def search_repository(
 
 def _get_github_token(user: User) -> str:
     """Decrypt and return the user's GitHub access token."""
-    if not user.github_access_token_encrypted:
+    if not user.github_token_encrypted:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="GitHub account not connected. Please log in with GitHub first.",
         )
-    token = encryption_service.decrypt(user.github_access_token_encrypted)
+    token = encryption_service.decrypt(user.github_token_encrypted)
     if not token:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -132,28 +129,21 @@ async def list_github_repositories(
 
 @router.get("", response_model=RepositoryListResponse)
 async def list_repositories(
-    org_id: Optional[UUID] = Query(None, description="Filter by Organization ID"),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """List repositories (personal or organization)."""
-    if org_id:
-        await OrganizationService.check_user_role(
-            db, org_id, current_user.id, [OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.MEMBER]
-        )
-
+    """List repositories (personal)."""
     repo_repo = RepositoryRepository(db)
 
     repositories = await repo_repo.get_by_user(
         user_id=current_user.id,
-        org_id=org_id,
         skip=skip,
         limit=limit,
     )
 
-    total = await repo_repo.count_by_user(current_user.id, org_id)
+    total = await repo_repo.count_by_user(current_user.id)
 
     return RepositoryListResponse(
         repositories=[RepositoryResponse.model_validate(repo) for repo in repositories],
@@ -168,18 +158,12 @@ async def create_repository(
     db: AsyncSession = Depends(get_db),
 ):
     """Add a repository."""
-    if repo_data.org_id:
-        await OrganizationService.check_user_role(
-            db, repo_data.org_id, current_user.id, [OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.MEMBER]
-        )
-
     repo_repo = RepositoryRepository(db)
 
-    # Prevent duplicate repositories for the same user/org
+    # Prevent duplicate repositories for the same user
     existing = await repo_repo.get_by_full_name(
         full_name=repo_data.full_name,
-        user_id=current_user.id if not repo_data.org_id else None,
-        org_id=repo_data.org_id,
+        user_id=current_user.id,
     )
     if existing:
         raise HTTPException(
@@ -189,8 +173,7 @@ async def create_repository(
 
     # Create repository
     repository = await repo_repo.create(
-        user_id=current_user.id if not repo_data.org_id else None,
-        org_id=repo_data.org_id,
+        user_id=current_user.id,
         repo_name=repo_data.repo_name,
         full_name=repo_data.full_name,
         description=repo_data.description,
@@ -232,8 +215,8 @@ async def index_repository(
 
     # Decrypt GitHub token for cloning private repos
     access_token = ""
-    if current_user.github_access_token_encrypted:
-        decrypted = encryption_service.decrypt(current_user.github_access_token_encrypted)
+    if current_user.github_token_encrypted:
+        decrypted = encryption_service.decrypt(current_user.github_token_encrypted)
         if decrypted:
             access_token = decrypted
 
@@ -256,7 +239,7 @@ async def index_repository(
 
 @router.get("/{repository_id}/pulls", response_model=PullRequestListResponse)
 async def list_repository_pulls(
-    repository_id: UUID,
+    repository_id: int,
     state: str = Query("open", pattern="^(open|closed|all)$"),
     page: int = Query(1, ge=1),
     per_page: int = Query(30, ge=1, le=100),
@@ -299,7 +282,7 @@ async def list_repository_pulls(
 
 @router.get("/{repository_id}/pulls/{pr_number}/diff")
 async def get_pull_request_diff(
-    repository_id: UUID,
+    repository_id: int,
     pr_number: int,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -338,7 +321,7 @@ async def get_pull_request_diff(
 
 @router.get("/{repository_id}/status", response_model=IndexingStatusResponse)
 async def get_repository_status(
-    repository_id: UUID,
+    repository_id: int,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -357,7 +340,7 @@ async def get_repository_status(
 
     return IndexingStatusResponse(
         id=repository.id,
-        indexed_status=repository.indexed_status,
+        indexed_status=repository.indexing_status,
         indexing_progress=repository.indexing_progress,
         indexing_error=repository.indexing_error,
         last_indexed_at=repository.last_indexed_at,
@@ -368,7 +351,7 @@ async def get_repository_status(
 
 @router.get("/{repository_id}", response_model=RepositoryResponse)
 async def get_repository(
-    repository_id: UUID,
+    repository_id: int,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -383,11 +366,7 @@ async def get_repository(
             detail="Repository not found",
         )
 
-    if repository.org_id:
-        await OrganizationService.check_user_role(
-            db, repository.org_id, current_user.id, [OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.MEMBER]
-        )
-    elif repository.user_id != current_user.id:
+    if repository.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to access this repository",
@@ -398,7 +377,7 @@ async def get_repository(
 
 @router.delete("/{repository_id}")
 async def delete_repository(
-    repository_id: UUID,
+    repository_id: int,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):

@@ -5,7 +5,7 @@ from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
 from app.main import app
-from app.core.database import get_db
+from app.db.session import get_db
 from app.models.base import Base
 
 TEST_DB_URL = "sqlite+aiosqlite:///:memory:"
@@ -13,8 +13,8 @@ TEST_DB_URL = "sqlite+aiosqlite:///:memory:"
 
 def pytest_ignore_collect(collection_path, config):
     if collection_path.is_dir():
-        return collection_path.name not in {"tests", "__pycache__"}
-    return collection_path.name not in {"test_auth.py"}
+        return collection_path.name not in {"tests", "test_api", "test_integration", "test_repositories", "test_services", "__pycache__"}
+    return not collection_path.name.startswith("test_") or not collection_path.name.endswith(".py")
 
 
 @pytest.fixture(scope="session")

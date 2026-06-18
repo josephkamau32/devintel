@@ -57,11 +57,11 @@ class CacheService:
         self._redis: Any = None
         self._mem: Optional[_InMemoryCache] = None
 
-        if settings.redis_url:
+        if settings.REDIS_URL:
             try:
                 import redis.asyncio as aioredis
                 self._redis = aioredis.from_url(
-                    settings.redis_url,
+                    settings.REDIS_URL,
                     encoding="utf-8",
                     decode_responses=True,
                 )
@@ -92,7 +92,7 @@ class CacheService:
         self,
         key: str,
         value: Any,
-        ttl: int = settings.redis_cache_ttl,
+        ttl: int = settings.REDIS_CACHE_TTL,
     ) -> bool:
         """Set value in cache with TTL."""
         if self._mem is not None:
