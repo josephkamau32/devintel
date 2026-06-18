@@ -1,10 +1,7 @@
-"""Models package."""
-
-from app.models.analytics import Analytics
-from app.models.chat import Chat
-from app.models.embedding import Embedding
-from app.models.organization import Organization, OrganizationMember
-from app.models.repository import Repository
+# Import all models here so Alembic can detect them
+from app.models.base import Base
 from app.models.user import User
+from app.models.repository import Repository
+from app.models.code_chunk import CodeChunk
 
-__all__ = ["User", "Repository", "Embedding", "Chat", "Analytics", "Organization", "OrganizationMember"]
+__all__ = ["Base", "User", "Repository", "CodeChunk"]

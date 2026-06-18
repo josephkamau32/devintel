@@ -1,99 +1,48 @@
-"""Custom exceptions for the application."""
+from fastapi import Request, status
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 
-from typing import Any, Optional
 
-
-class DevIntelException(Exception):
-    """Base exception for DevIntel application."""
-
-    def __init__(
-        self,
-        message: str,
-        status_code: int = 500,
-        details: Optional[dict[str, Any]] = None,
-    ) -> None:
-        """Initialize exception."""
-        self.message = message
+class AppException(Exception):
+    def __init__(self, status_code: int, detail: str):
         self.status_code = status_code
-        self.details = details or {}
-        super().__init__(self.message)
+        self.detail = detail
 
 
-class AuthenticationError(DevIntelException):
-    """Authentication failed."""
-
-    def __init__(self, message: str = "Authentication failed", details: Optional[dict[str, Any]] = None) -> None:
-        """Initialize exception."""
-        super().__init__(message, status_code=401, details=details)
+class AuthenticationError(AppException):
+    def __init__(self, detail: str = "Authentication failed"):
+        super().__init__(status.HTTP_401_UNAUTHORIZED, detail)
 
 
-class AuthorizationError(DevIntelException):
-    """User not authorized."""
-
-    def __init__(self, message: str = "Not authorized", details: Optional[dict[str, Any]] = None) -> None:
-        """Initialize exception."""
-        super().__init__(message, status_code=403, details=details)
+class NotFoundError(AppException):
+    def __init__(self, detail: str = "Resource not found"):
+        super().__init__(status.HTTP_404_NOT_FOUND, detail)
 
 
-class NotFoundError(DevIntelException):
-    """Resource not found."""
-
-    def __init__(self, message: str = "Resource not found", details: Optional[dict[str, Any]] = None) -> None:
-        """Initialize exception."""
-        super().__init__(message, status_code=404, details=details)
+class ConflictError(AppException):
+    def __init__(self, detail: str = "Resource already exists"):
+        super().__init__(status.HTTP_409_CONFLICT, detail)
 
 
-class ValidationError(DevIntelException):
-    """Validation failed."""
-
-    def __init__(self, message: str = "Validation failed", details: Optional[dict[str, Any]] = None) -> None:
-        """Initialize exception."""
-        super().__init__(message, status_code=422, details=details)
+class ForbiddenError(AppException):
+    def __init__(self, detail: str = "Access forbidden"):
+        super().__init__(status.HTTP_403_FORBIDDEN, detail)
 
 
-class RateLimitError(DevIntelException):
-    """Rate limit exceeded."""
-
-    def __init__(self, message: str = "Rate limit exceeded", details: Optional[dict[str, Any]] = None) -> None:
-        """Initialize exception."""
-        super().__init__(message, status_code=429, details=details)
-
-
-class ExternalServiceError(DevIntelException):
-    """External service error."""
-
-    def __init__(self, message: str = "External service error", details: Optional[dict[str, Any]] = None) -> None:
-        """Initialize exception."""
-        super().__init__(message, status_code=502, details=details)
+# ── FastAPI exception handlers ────────────────────────────────────────────────
+async def app_exception_handler(request: Request, exc: AppException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+    )
 
 
-class IndexingError(DevIntelException):
-    """Repository indexing error."""
-
-    def __init__(self, message: str = "Indexing failed", details: Optional[dict[str, Any]] = None) -> None:
-        """Initialize exception."""
-        super().__init__(message, status_code=500, details=details)
-
-
-class EmbeddingError(DevIntelException):
-    """Embedding generation error."""
-
-    def __init__(self, message: str = "Embedding generation failed", details: Optional[dict[str, Any]] = None) -> None:
-        """Initialize exception."""
-        super().__init__(message, status_code=500, details=details)
-
-
-class APIError(DevIntelException):
-    """Generic API error."""
-
-    def __init__(self, message: str = "API error", status_code: int = 500, details: Optional[dict[str, Any]] = None) -> None:
-        """Initialize exception."""
-        super().__init__(message, status_code=status_code, details=details)
-
-
-class CircuitBreakerError(DevIntelException):
-    """Circuit breaker is open, service temporarily unavailable."""
-
-    def __init__(self, message: str = "Service temporarily unavailable", details: Optional[dict[str, Any]] = None) -> None:
-        """Initialize exception."""
-        super().__init__(message, status_code=503, details=details)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    errors = []
+    for error in exc.errors():
+        field = " -> ".join(str(loc) for loc in error["loc"])
+        errors.append({"field": field, "message": error["msg"]})
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={"detail": "Validation error", "errors": errors},
+    )

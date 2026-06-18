@@ -1,31 +1,34 @@
 {
-  "files": [],
-  "references": [
-    {
-      "path": "./tsconfig.app.json"
-    },
-    {
-      "path": "./tsconfig.node.json"
-    }
-  ],
   "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
     "strict": true,
-    "strictNullChecks": true,
-    "strictFunctionTypes": true,
-    "strictBindCallApply": true,
-    "strictPropertyInitialization": true,
-    "noImplicitThis": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true,
-    "baseUrl": ".",
-    "paths": {
-      "@/*": [
-        "./src/*"
-      ]
-    },
-    "skipLibCheck": true,
-    "allowJs": true
-  }
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": [
+    "src/main.tsx",
+    "src/App.tsx",
+    "src/router.tsx",
+    "src/lib",
+    "src/hooks",
+    "src/store",
+    "src/pages",
+    "src/components/AuthGuard.tsx",
+    "src/components/Navbar.tsx",
+    "src/components/ui/Button.tsx",
+    "src/components/ui/Input.tsx",
+    "src/components/ui/ErrorMessage.tsx"
+  ],
+  "references": [{ "path": "./tsconfig.node.json" }]
 }

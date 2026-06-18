@@ -1,278 +1,139 @@
-"""Authentication routes."""
-
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from slowapi import Limiter
-from slowapi.util import get_remote_address
+from fastapi import APIRouter, Depends, Response, Request, Cookie
+from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.api.deps import get_current_user
-from app.core.constants import AUTH_RATE_LIMIT
-from app.core.logging import get_logger
-from app.core.security import (
-    create_access_token,
-    create_refresh_token,
-    get_password_hash,
-    hash_token,
-    verify_password,
-    verify_token,
-    verify_token_hash,
+from typing import Optional
+from urllib.parse import urlencode
+from app.core.database import get_db
+from app.core.config import settings
+from app.core.dependencies import get_current_user
+from app.core.exceptions import AuthenticationError
+from app.services.auth_service import AuthService
+from app.services.github_service import GitHubService
+from app.schemas.auth import (
+    SignupRequest,
+    LoginRequest,
+    TokenResponse,
+    RefreshResponse,
+    UserPublic,
 )
-from app.db.session import get_db
-from app.integrations.github_client import GitHubClient, exchange_code_for_token
 from app.models.user import User
-from app.repositories.user import UserRepository
-from app.schemas.user import RefreshTokenRequest, TokenResponse, UserResponse, UserUpdate, UserCreate, UserLogin
-from app.services.encryption import encryption_service
+import secrets
 
-logger = get_logger(__name__)
-router = APIRouter(prefix="/auth", tags=["Authentication"])
-limiter = Limiter(key_func=get_remote_address)
+router = APIRouter(prefix="/auth", tags=["auth"])
+
+REFRESH_COOKIE_NAME = "refresh_token"
+COOKIE_SETTINGS = {
+    "httponly": True,
+    "secure": not settings.DEBUG,
+    "samesite": "lax",
+    "max_age": settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400,
+}
 
 
-@router.get("/github")
-@limiter.limit(AUTH_RATE_LIMIT)
-async def github_login(request: Request):
-    """Redirect to GitHub OAuth."""
-    from app.core.config import settings
-
-    github_auth_url = (
-        f"https://github.com/login/oauth/authorize"
-        f"?client_id={settings.github_client_id}"
-        f"&redirect_uri={settings.github_redirect_uri}"
-        f"&scope=read:user,user:email,repo"
+def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
+    response.set_cookie(
+        key=REFRESH_COOKIE_NAME,
+        value=refresh_token,
+        **COOKIE_SETTINGS,
     )
 
-    return {"url": github_auth_url}
+
+def _clear_refresh_cookie(response: Response) -> None:
+    response.delete_cookie(
+        key=REFRESH_COOKIE_NAME,
+        secure=COOKIE_SETTINGS["secure"],
+        samesite=COOKIE_SETTINGS["samesite"],
+        max_age=0,
+    )
 
 
-@router.get("/github/callback", response_model=TokenResponse)
-@limiter.limit(AUTH_RATE_LIMIT)
-async def github_callback(
-    request: Request,
-    code: str = Query(..., description="OAuth code from GitHub"),
-    db: AsyncSession = Depends(get_db),
-):
-    """Handle GitHub OAuth callback."""
-    try:
-        # Exchange code for access token
-        github_access_token = await exchange_code_for_token(code)
-
-        # Get user info from GitHub
-        github_client = GitHubClient(github_access_token)
-        user_info = await github_client.get_user_info()
-
-        # Encrypt GitHub token for storage
-        encrypted_token = encryption_service.encrypt(github_access_token)
-
-        # Create or update user with encrypted token
-        user_repo = UserRepository(db)
-        user = await user_repo.create_or_update_from_github(
-            github_id=user_info["github_id"],
-            email=user_info.get("email"),
-            name=user_info.get("name"),
-            username=user_info.get("login"),
-            avatar_url=user_info.get("avatar_url"),
-            github_token_encrypted=encrypted_token,
-        )
-
-        # Create JWT tokens
-        jwt_access_token = create_access_token({"sub": str(user.id)})
-        jwt_refresh_token = create_refresh_token({"sub": str(user.id)})
-
-        # Store hashed refresh token (prevents theft from DB compromise)
-        user.refresh_token = hash_token(jwt_refresh_token)
-        await db.commit()
-
-        return TokenResponse(
-            access_token=jwt_access_token,
-            refresh_token=jwt_refresh_token,
-            token_type="bearer",
-            user=UserResponse.model_validate(user),
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        # Log the full error so we can diagnose GitHub OAuth issues
-        logger.error(f"GitHub OAuth callback error: {type(e).__name__}: {e}")
-        # Surface the real reason to the caller (visible in browser console)
-        detail = str(e) if str(e) else "Authentication failed"
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=detail,
-        )
-
-
-@router.post("/refresh", response_model=TokenResponse)
-@limiter.limit(AUTH_RATE_LIMIT)
-async def refresh_access_token(
-    request: Request,
-    refresh_request: RefreshTokenRequest,
-    db: AsyncSession = Depends(get_db),
-):
-    """Refresh access token using refresh token."""
-    try:
-        # Verify refresh token
-        payload = verify_token(refresh_request.refresh_token)
-
-        # Check token type
-        if payload.get("type") != "refresh":
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token type",
-            )
-
-        user_id = payload.get("sub")
-        if not user_id:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token payload",
-            )
-
-        # Verify refresh token matches stored token
-        user_repo = UserRepository(db)
-        from uuid import UUID
-        user = await user_repo.get_by_id(UUID(user_id))
-
-        if not user or not verify_token_hash(refresh_request.refresh_token, user.refresh_token or ""):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid refresh token",
-            )
-
-        # Create new access token AND rotate refresh token
-        new_access_token = create_access_token({"sub": str(user.id)})
-        new_refresh_token = create_refresh_token({"sub": str(user.id)})
-
-        # Store hashed new refresh token (invalidates old one)
-        user.refresh_token = hash_token(new_refresh_token)
-        await db.commit()
-
-        return TokenResponse(
-            access_token=new_access_token,
-            refresh_token=new_refresh_token,
-            token_type="bearer",
-            user=UserResponse.model_validate(user),
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Token refresh error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token refresh failed",
-        )
-
-
-@router.post("/signup", response_model=TokenResponse)
-@limiter.limit(AUTH_RATE_LIMIT)
+@router.post("/signup", response_model=TokenResponse, status_code=201)
 async def signup(
-    request: Request,
-    user_in: UserCreate,
+    data: SignupRequest,
+    response: Response,
     db: AsyncSession = Depends(get_db),
 ):
-    """Register a new user with email and password."""
-    user_repo = UserRepository(db)
-    existing_user = await user_repo.get_by_email(user_in.email)
-    if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="Email already registered"
-        )
-        
-    hashed_password = get_password_hash(user_in.password)
-    user = await user_repo.create_with_password(
-        email=user_in.email,
-        hashed_password=hashed_password,
-        name=user_in.name
-    )
-    
-    # Create JWT tokens
-    jwt_access_token = create_access_token({"sub": str(user.id)})
-    jwt_refresh_token = create_refresh_token({"sub": str(user.id)})
-    
-    user.refresh_token = hash_token(jwt_refresh_token)
-    await db.commit()
-    
+    service = AuthService(db)
+    user, access_token, refresh_token = await service.signup(data)
+    _set_refresh_cookie(response, refresh_token)
     return TokenResponse(
-        access_token=jwt_access_token,
-        refresh_token=jwt_refresh_token,
+        access_token=access_token,
         token_type="bearer",
-        user=UserResponse.model_validate(user),
+        user=UserPublic.model_validate(user),
     )
 
 
 @router.post("/login", response_model=TokenResponse)
-@limiter.limit(AUTH_RATE_LIMIT)
 async def login(
-    request: Request,
-    user_in: UserLogin,
+    data: LoginRequest,
+    response: Response,
     db: AsyncSession = Depends(get_db),
 ):
-    """Authenticate user with email and password."""
-    user_repo = UserRepository(db)
-    user = await user_repo.get_by_email(user_in.email)
-    if not user or not user.hashed_password:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, 
-            detail="Invalid email or password"
-        )
-        
-    if not verify_password(user_in.password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, 
-            detail="Invalid email or password"
-        )
-        
-    # Create JWT tokens
-    jwt_access_token = create_access_token({"sub": str(user.id)})
-    jwt_refresh_token = create_refresh_token({"sub": str(user.id)})
-    
-    user.refresh_token = hash_token(jwt_refresh_token)
-    await db.commit()
-    
+    service = AuthService(db)
+    user, access_token, refresh_token = await service.login(data)
+    _set_refresh_cookie(response, refresh_token)
     return TokenResponse(
-        access_token=jwt_access_token,
-        refresh_token=jwt_refresh_token,
+        access_token=access_token,
         token_type="bearer",
-        user=UserResponse.model_validate(user),
+        user=UserPublic.model_validate(user),
     )
 
 
-@router.post("/logout")
-async def logout(
-    current_user: User = Depends(get_current_user),
+@router.post("/refresh", response_model=RefreshResponse)
+async def refresh_token(
+    response: Response,
+    refresh_token: Optional[str] = Cookie(None, alias=REFRESH_COOKIE_NAME),
     db: AsyncSession = Depends(get_db),
 ):
-    """Invalidate the user's refresh token (server-side logout)."""
-    current_user.refresh_token = None
-    await db.commit()
+    if not refresh_token:
+        raise AuthenticationError("No refresh token provided")
+
+    service = AuthService(db)
+    new_access, new_refresh = await service.refresh(refresh_token)
+    _set_refresh_cookie(response, new_refresh)
+    return RefreshResponse(access_token=new_access, token_type="bearer")
+
+
+@router.post("/logout")
+async def logout(response: Response):
+    _clear_refresh_cookie(response)
     return {"message": "Logged out successfully"}
 
 
-@router.get("/me", response_model=UserResponse)
-async def get_current_user_info(
-    current_user: User = Depends(get_current_user),
-):
-    """Get current user information."""
-    return UserResponse.model_validate(current_user)
+@router.get("/me", response_model=UserPublic)
+async def get_me(current_user: User = Depends(get_current_user)):
+    return UserPublic.model_validate(current_user)
 
 
-@router.put("/me", response_model=UserResponse)
-async def update_current_user_profile(
-    user_update: UserUpdate,
-    current_user: User = Depends(get_current_user),
+@router.get("/github")
+async def github_login():
+    """Redirect to GitHub for OAuth authorization."""
+    state = secrets.token_urlsafe(16)
+    params = urlencode(
+        {
+            "client_id": settings.GITHUB_CLIENT_ID,
+            "redirect_uri": settings.GITHUB_REDIRECT_URI,
+            "scope": "repo,user:email",
+            "state": state,
+        }
+    )
+    return RedirectResponse(url=f"https://github.com/login/oauth/authorize?{params}")
+
+
+@router.get("/github/callback")
+async def github_callback(
+    code: str,
+    response: Response,
+    state: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
 ):
-    """Update current user profile."""
-    user_repo = UserRepository(db)
+    """Handle GitHub OAuth callback."""
+    service = GitHubService(db)
+    user, access_token, refresh_token = await service.authenticate(code)
+    _set_refresh_cookie(response, refresh_token)
 
-    # Filter out None values
-    update_data = {k: v for k, v in user_update.model_dump().items() if v is not None}
-
-    if not update_data:
-        return UserResponse.model_validate(current_user)
-
-    updated_user = await user_repo.update(current_user.id, **update_data)
-    return UserResponse.model_validate(updated_user)
+    frontend_url = settings.CORS_ORIGINS[0]
+    return RedirectResponse(
+        url=f"{frontend_url}/oauth/callback#access_token={access_token}",
+        status_code=302,
+    )

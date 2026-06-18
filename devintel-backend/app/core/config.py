@@ -1,140 +1,72 @@
-"""Application configuration using Pydantic Settings."""
-
-from functools import lru_cache
-from typing import Optional
-
-from pydantic import ConfigDict, Field, field_validator
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import AnyHttpUrl, field_validator
+from typing import List
+import json
 
 
 class Settings(BaseSettings):
-    """Application settings."""
-
-    # Application
-    app_name: str = Field(default="DevIntel AI", alias="APP_NAME")
-    environment: str = Field(default="development", alias="ENVIRONMENT")
-    debug: bool = Field(default=False, alias="DEBUG")
-    secret_key: str = Field(default="dev-secret-key-change-in-production", alias="SECRET_KEY")
-    api_v1_prefix: str = Field(default="/api/v1", alias="API_V1_PREFIX")
-
-    # Server
-    host: str = Field(default="0.0.0.0", alias="HOST")
-    port: int = Field(default=8000, alias="PORT")
-    workers: int = Field(default=4, alias="WORKERS")
-
-    # Database
-    database_url: str = Field(default="sqlite+aiosqlite:///:memory:", alias="DATABASE_URL")
-    database_pool_size: int = Field(default=50, alias="DATABASE_POOL_SIZE")
-    database_max_overflow: int = Field(default=10, alias="DATABASE_MAX_OVERFLOW")
-
-    # Redis and Cache (optional — if empty, falls back to in-memory cache)
-    redis_url: str = Field(default="", alias="REDIS_URL")
-    redis_cache_ttl: int = Field(default=3600, alias="REDIS_CACHE_TTL")
-    redis_pool_size: int = Field(default=10, alias="REDIS_POOL_SIZE")
-
-    # Celery (optional — if empty, background tasks run in-process via asyncio)
-    celery_broker_url: str = Field(default="", alias="CELERY_BROKER_URL")
-    celery_result_backend: str = Field(default="", alias="CELERY_RESULT_BACKEND")
-
-    # GitHub OAuth
-    github_client_id: str = Field(default="", alias="GITHUB_CLIENT_ID")
-    github_client_secret: str = Field(default="", alias="GITHUB_CLIENT_SECRET")
-    github_redirect_uri: str = Field(default="https://devintel.vercel.app/auth/callback", alias="GITHUB_REDIRECT_URI")
-    # Optional: set to a random secret in GitHub webhook settings for HMAC validation
-    github_webhook_secret: str = Field(default="", alias="GITHUB_WEBHOOK_SECRET")
-
-
-    # OpenAI
-    openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
-    openai_embedding_model: str = Field(
-        default="text-embedding-3-small", alias="OPENAI_EMBEDDING_MODEL"
-    )
-    openai_chat_model: str = Field(default="gpt-4o", alias="OPENAI_CHAT_MODEL")
-    openai_max_tokens: int = Field(default=4096, alias="OPENAI_MAX_TOKENS")
-
-    # Security
-    jwt_secret_key: str = Field(default="dev-jwt-secret-key-change-in-production", alias="JWT_SECRET_KEY")
-    jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
-    jwt_access_token_expire_minutes: int = Field(
-        default=15, alias="JWT_ACCESS_TOKEN_EXPIRE_MINUTES"  # Reduced from 1440 to 15 minutes
-    )
-    jwt_refresh_token_expire_days: int = Field(
-        default=7, alias="JWT_REFRESH_TOKEN_EXPIRE_DAYS"
-    )
-
-    # Token Encryption (for storing GitHub tokens)
-    token_encryption_key: str = Field(
-        default="Z2Vudi1wYXJ0bmVyLWVuY3J5cHRpb24ta2V5LWZvci1kZXZzLWludGVybmFs",
-        alias="TOKEN_ENCRYPTION_KEY"
-    )
-
-    # CORS
-    cors_origins: list[str] | str = Field(
-        default=["http://localhost:3000", "http://localhost:5173", "http://localhost:8000", "https://devintel.vercel.app"],
-        alias="CORS_ORIGINS"
-    )
-    cors_allow_credentials: bool = Field(default=True, alias="CORS_ALLOW_CREDENTIALS")
-
-    @field_validator("cors_origins", mode="before")
-    @classmethod
-    def parse_cors_origins(cls, v):
-        """Parse CORS origins from string or list."""
-        if isinstance(v, str):
-            if v.startswith("["):
-                import json
-                try:
-                    return json.loads(v)
-                except json.JSONDecodeError:
-                    pass
-            return [origin.strip() for origin in v.split(",")]
-        return v
-
-    # Rate Limiting
-    rate_limit_per_minute: int = Field(default=100, alias="RATE_LIMIT_PER_MINUTE")
-
-    # RAG Configuration
-    chunk_size: int = Field(default=700, alias="CHUNK_SIZE")
-    chunk_overlap: int = Field(default=120, alias="CHUNK_OVERLAP")
-    top_k_chunks: int = Field(default=6, alias="TOP_K_CHUNKS")
-    embedding_dimensions: int = Field(default=1536, alias="EMBEDDING_DIMENSIONS")
-
-    # Retrieval mode: vector, bm25, or hybrid
-    retrieval_mode: str = Field(default="hybrid", alias="RETRIEVAL_MODE")
-
-    # Indexing
-    supported_file_extensions: str = Field(
-        default=".py,.js,.ts,.tsx,.jsx,.java,.go,.rs,.rb,.md,.json,.yaml,.yml",
-        alias="SUPPORTED_FILE_EXTENSIONS",
-    )
-    ignored_directories: str = Field(
-        default="node_modules,.git,dist,build,venv,.venv,__pycache__,.pytest_cache",
-        alias="IGNORED_DIRECTORIES",
-    )
-    max_file_size_mb: int = Field(default=10, alias="MAX_FILE_SIZE_MB")
-
-    # Logging
-    log_level: str = Field(default="INFO", alias="LOG_LEVEL")
-    log_format: str = Field(default="json", alias="LOG_FORMAT")
-
-    # Monitoring & Observability
-    sentry_dsn: Optional[str] = Field(default=None, alias="SENTRY_DSN")
-    enable_metrics: bool = Field(default=True, alias="ENABLE_METRICS")
-    metrics_port: int = Field(default=9090, alias="METRICS_PORT")
-
-    # Redis Connection Pool (only used when redis_url is set)
-    redis_pool_min_size: int = Field(default=10, alias="REDIS_POOL_MIN_SIZE")
-    redis_pool_max_size: int = Field(default=50, alias="REDIS_POOL_MAX_SIZE")
-
-    model_config = ConfigDict(
+    model_config = SettingsConfigDict(
         env_file=".env",
+        env_file_encoding="utf-8",
         case_sensitive=False,
     )
 
+    # App
+    APP_NAME: str = "DevIntel AI"
+    DEBUG: bool = False
+    API_V1_PREFIX: str = "/api/v1"
 
-@lru_cache
-def get_settings() -> Settings:
-    """Get cached settings instance."""
-    return Settings()
+    # Database
+    DATABASE_URL: str
+
+    # JWT
+    JWT_SECRET_KEY: str
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+
+    # Encryption (Fernet key for GitHub tokens)
+    TOKEN_ENCRYPTION_KEY: str
+
+    # CSRF
+    SECRET_KEY: str
+
+    # GitHub OAuth
+    GITHUB_CLIENT_ID: str
+    GITHUB_CLIENT_SECRET: str
+    GITHUB_REDIRECT_URI: str
+
+    # OpenAI
+    OPENAI_API_KEY: str
+
+    # CORS — stored as JSON string in env: '["http://localhost:5173"]'
+    CORS_ORIGINS: List[str] = ["http://localhost:5173"]
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def parse_cors(cls, v):
+        if isinstance(v, str):
+            return json.loads(v)
+        return v
+
+    @field_validator("DATABASE_URL")
+    @classmethod
+    def validate_db_url(cls, v):
+        if not v.startswith("postgresql+asyncpg://"):
+            raise ValueError(
+                "DATABASE_URL must use postgresql+asyncpg:// driver. "
+                "Example: postgresql+asyncpg://user:pass@host/dbname"
+            )
+        return v
+
+    @field_validator("CORS_ORIGINS")
+    @classmethod
+    def validate_cors_origins(cls, v: List[str]) -> List[str]:
+        if not v:
+            raise ValueError("CORS_ORIGINS must contain at least one origin")
+        if "*" in v:
+            raise ValueError("Wildcard CORS origins are forbidden")
+        return [origin.rstrip("/") for origin in v]
 
 
-settings = get_settings()
+settings = Settings()
