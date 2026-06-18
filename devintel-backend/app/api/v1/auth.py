@@ -43,7 +43,6 @@ def _clear_refresh_cookie(response: Response) -> None:
         key=REFRESH_COOKIE_NAME,
         secure=COOKIE_SETTINGS["secure"],
         samesite=COOKIE_SETTINGS["samesite"],
-        max_age=0,
     )
 
 

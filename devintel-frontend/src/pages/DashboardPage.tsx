@@ -1,6 +1,6 @@
 import { useAuthStore } from '../store/authStore';
 import { useLogout } from '../hooks/useAuth';
-import { Button } from '../components/ui/Button';
+import { Button } from '../components/ui/button';
 
 export function DashboardPage() {
   const user = useAuthStore((s) => s.user);

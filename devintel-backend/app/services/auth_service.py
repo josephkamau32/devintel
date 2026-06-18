@@ -49,7 +49,7 @@ class AuthService:
 
         password_ok = verify_password(
             data.password,
-            user.hashed_password if user and user.hashed_password else "$2b$12$invalidhashpadding",
+            user.hashed_password if user and user.hashed_password else "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW",
         )
 
         if not user or not password_ok:

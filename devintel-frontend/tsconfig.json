@@ -16,19 +16,6 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": [
-    "src/main.tsx",
-    "src/App.tsx",
-    "src/router.tsx",
-    "src/lib",
-    "src/hooks",
-    "src/store",
-    "src/pages",
-    "src/components/AuthGuard.tsx",
-    "src/components/Navbar.tsx",
-    "src/components/ui/Button.tsx",
-    "src/components/ui/Input.tsx",
-    "src/components/ui/ErrorMessage.tsx"
-  ],
+  "include": ["src"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
