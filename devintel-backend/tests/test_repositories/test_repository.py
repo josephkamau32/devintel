@@ -1,9 +1,9 @@
 """Test repository layer functionality."""
 
-
 import pytest
 
 from app.repositories.repository import RepositoryRepository
+from app.models.repository import IndexingStatus
 
 
 @pytest.mark.asyncio
@@ -17,12 +17,15 @@ async def test_create_repository(db_session, test_user):
         "full_name": "testowner/testrepo",
         "description": "Test repository",
         "url": "https://github.com/testowner/testrepo",
+        "default_branch": "main",
     }
 
     repo = await repo_repo.create(**repo_data)
 
     assert repo.id is not None
     assert repo.repo_name == "testrepo"
+    assert repo.full_name == "testowner/testrepo"
+    assert repo.indexing_status == IndexingStatus.PENDING
 
 
 @pytest.mark.asyncio
@@ -58,11 +61,11 @@ async def test_update_indexing_status(db_session, test_repository):
 
     updated = await repo_repo.update(
         test_repository.id,
-        indexed_status=True,
+        indexing_status=IndexingStatus.INDEXING,
         indexing_progress=50
     )
 
-    assert updated.indexed_status is True
+    assert updated.indexing_status == IndexingStatus.INDEXING
     assert updated.indexing_progress == 50
 
 
@@ -78,3 +81,44 @@ async def test_delete_repository(db_session, test_repository):
     # Verify deletion
     deleted = await repo_repo.get_by_id(test_repository.id)
     assert deleted is None
+
+
+@pytest.mark.asyncio
+async def test_count_by_user(db_session, test_user, test_repository):
+    """Test counting repositories for a user."""
+    repo_repo = RepositoryRepository(db_session)
+
+    count = await repo_repo.count_by_user(test_user.id)
+
+    assert count >= 1
+
+
+@pytest.mark.asyncio
+async def test_get_by_id(db_session, test_repository):
+    """Test getting repository by ID."""
+    repo_repo = RepositoryRepository(db_session)
+
+    repo = await repo_repo.get_by_id(test_repository.id)
+
+    assert repo is not None
+    assert repo.id == test_repository.id
+
+
+@pytest.mark.asyncio
+async def test_duplicate_detection(db_session, test_user, test_repository):
+    """Test that duplicate repository detection works correctly."""
+    repo_repo = RepositoryRepository(db_session)
+
+    # Should find the existing repo
+    existing = await repo_repo.get_by_full_name(
+        full_name=test_repository.full_name,
+        user_id=test_user.id
+    )
+    assert existing is not None
+
+    # Should not find for a different user_id (simulate another user)
+    not_found = await repo_repo.get_by_full_name(
+        full_name=test_repository.full_name,
+        user_id=test_user.id + 999
+    )
+    assert not_found is None

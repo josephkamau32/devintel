@@ -7,13 +7,19 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 from app.main import app
 from app.db.session import get_db
 from app.models.base import Base
+from app.models.user import User
+from app.models.repository import Repository
+from app.core.security import create_access_token, hash_password
 
 TEST_DB_URL = "sqlite+aiosqlite:///:memory:"
 
 
 def pytest_ignore_collect(collection_path, config):
     if collection_path.is_dir():
-        return collection_path.name not in {"tests", "test_api", "test_integration", "test_repositories", "test_services", "__pycache__"}
+        return collection_path.name not in {
+            "tests", "test_api", "test_integration",
+            "test_repositories", "test_services", "__pycache__"
+        }
     return not collection_path.name.startswith("test_") or not collection_path.name.endswith(".py")
 
 
@@ -53,3 +59,59 @@ async def client(db_session: AsyncSession):
         yield ac
 
     app.dependency_overrides.clear()
+
+
+# Alias: some tests use 'async_client', others use 'client'
+@pytest_asyncio.fixture(scope="function")
+async def async_client(db_session: AsyncSession):
+    async def override_get_db():
+        yield db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        yield ac
+
+    app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture(scope="function")
+async def test_user(db_session: AsyncSession) -> User:
+    """Create a test user in the database."""
+    user = User(
+        email="test@example.com",
+        hashed_password=hash_password("testpassword123"),
+        full_name="Test User",
+        is_active=True,
+        is_verified=True,
+    )
+    db_session.add(user)
+    await db_session.flush()
+    await db_session.refresh(user)
+    return user
+
+
+@pytest_asyncio.fixture(scope="function")
+async def test_user_token(test_user: User) -> str:
+    """Create a valid JWT access token for the test user."""
+    token = create_access_token(test_user.id)
+    return token
+
+
+@pytest_asyncio.fixture(scope="function")
+async def test_repository(db_session: AsyncSession, test_user: User) -> Repository:
+    """Create a test repository in the database."""
+    repo = Repository(
+        user_id=test_user.id,
+        repo_name="testrepo",
+        full_name="testowner/testrepo",
+        description="Test repository",
+        url="https://github.com/testowner/testrepo",
+        default_branch="main",
+    )
+    db_session.add(repo)
+    await db_session.flush()
+    await db_session.refresh(repo)
+    return repo

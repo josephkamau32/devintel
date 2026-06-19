@@ -41,6 +41,12 @@ def chunk_text(
 
     chunks = []
     start_idx = 0
+    # Track cumulative char position for each token to avoid O(n²) re-decoding
+    token_char_positions = [0]
+    running_len = 0
+    for tok in tokens:
+        running_len += len(encoding.decode([tok]))
+        token_char_positions.append(running_len)
 
     while start_idx < len(tokens):
         # Get chunk tokens
@@ -50,9 +56,8 @@ def chunk_text(
         # Decode back to text
         chunk_text = encoding.decode(chunk_tokens)
 
-        # Find character positions (approximate)
-        start_char = len(encoding.decode(tokens[:start_idx]))
-        end_char = len(encoding.decode(tokens[:end_idx]))
+        start_char = token_char_positions[start_idx]
+        end_char = token_char_positions[end_idx]
 
         chunks.append((chunk_text, start_char, end_char))
 

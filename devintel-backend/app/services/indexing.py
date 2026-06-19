@@ -43,8 +43,7 @@ class IndexingService:
         except Exception as e:
             logger.error(f"Failed to clone repository: {e}")
             raise IndexingError(
-                message="Failed to clone repository",
-                details={"error": str(e)},
+                detail=f"Failed to clone repository: {str(e)}",
             )
 
     @staticmethod
@@ -72,8 +71,7 @@ class IndexingService:
         except Exception as e:
             logger.error(f"Failed to parse and chunk repository: {e}")
             raise IndexingError(
-                message="Failed to parse repository",
-                details={"error": str(e)},
+                detail=f"Failed to parse repository: {str(e)}",
             )
 
     @staticmethod
