@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator
 from typing import Optional
 import re
@@ -44,12 +46,12 @@ class GitHubCallbackRequest(BaseModel):
 class UserPublic(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: int
-    email: Optional[str]
-    full_name: Optional[str]
-    github_username: Optional[str]
-    avatar_url: Optional[str]
-    is_verified: bool
+    id: UUID
+    email: Optional[str] = None
+    full_name: Optional[str] = None
+    github_username: Optional[str] = None
+    avatar_url: Optional[str] = None
+    is_verified: bool = False
 
 
 TokenResponse.model_rebuild()

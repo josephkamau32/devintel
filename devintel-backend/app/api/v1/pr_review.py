@@ -50,13 +50,13 @@ async def review_pull_request(
     diff_content = request.pull_request_diff
 
     if request.pr_number:
-        if not current_user.github_access_token_encrypted:
+        if not current_user.github_token_encrypted:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="GitHub token not found. Please re-authenticate.",
             )
 
-        token = encryption_service.decrypt(current_user.github_access_token_encrypted)
+        token = encryption_service.decrypt(current_user.github_token_encrypted)
         github_client = GitHubClient(token)
         try:
             diff_content = await github_client.get_pull_request_diff(

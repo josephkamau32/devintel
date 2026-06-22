@@ -82,9 +82,9 @@ async def list_organization_members(
     result = []
     for m in members:
         # Pydantic will serialize this directly if we assign it
-        m.username = m.user.username if m.user else None
+        m.username = m.user.github_username if m.user else None
         m.email = m.user.email if m.user else None
-        m.name = m.user.name if m.user else None
+        m.name = m.user.full_name if m.user else None
         m.avatar_url = m.user.avatar_url if m.user else None
         result.append(m)
 
@@ -109,9 +109,9 @@ async def add_organization_member(
     members = await OrganizationService.get_organization_members(db, org_id, current_user.id)
     for m in members:
         if m.user_id == member_in.user_id:
-            m.username = m.user.username if m.user else None
+            m.username = m.user.github_username if m.user else None
             m.email = m.user.email if m.user else None
-            m.name = m.user.name if m.user else None
+            m.name = m.user.full_name if m.user else None
             m.avatar_url = m.user.avatar_url if m.user else None
             return m
     return member

@@ -263,8 +263,8 @@ async def _get_repo_access_token(repository, db) -> str:
         from app.repositories.user import UserRepository
         user_repo = UserRepository(db)
         user = await user_repo.get_by_id(repository.user_id)
-        if user and user.github_access_token_encrypted:
-            token = encryption_service.decrypt(user.github_access_token_encrypted)
+        if user and user.github_token_encrypted:
+            token = encryption_service.decrypt(user.github_token_encrypted)
             if token:
                 return token
 
@@ -279,14 +279,14 @@ async def _get_repo_access_token(repository, db) -> str:
             .join(OrganizationMember, OrganizationMember.user_id == User.id)
             .where(
                 OrganizationMember.organization_id == repository.org_id,
-                User.github_access_token_encrypted.isnot(None),
+                User.github_token_encrypted.isnot(None),
             )
             .limit(1)
         )
         result = await db.execute(stmt)
         user = result.scalar_one_or_none()
-        if user and user.github_access_token_encrypted:
-            token = encryption_service.decrypt(user.github_access_token_encrypted)
+        if user and user.github_token_encrypted:
+            token = encryption_service.decrypt(user.github_token_encrypted)
             if token:
                 return token
 

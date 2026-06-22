@@ -1,5 +1,5 @@
 export interface User {
-  id: number;
+  id: string;
   email: string | null;
   full_name: string | null;
   github_username: string | null;

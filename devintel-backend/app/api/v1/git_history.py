@@ -38,10 +38,10 @@ async def get_file_blame(
 
     await check_repo_access(repository, current_user, db)
 
-    if not current_user.github_access_token_encrypted:
+    if not current_user.github_token_encrypted:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="GitHub token not configured")
 
-    token = encryption_service.decrypt(current_user.github_access_token_encrypted)
+    token = encryption_service.decrypt(current_user.github_token_encrypted)
     git_service = GitHistoryService(db, github_token=token)
 
     try:

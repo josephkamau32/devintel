@@ -45,10 +45,10 @@ class AutoFixService:
         logger.info(f"Starting auto-fix for {repository.full_name}: {issue_description}")
 
         # Ensure we have a GitHub token for the user
-        if not user.github_access_token_encrypted:
+        if not user.github_token_encrypted:
             raise APIError("GitHub access token required for auto-fix.", status_code=400)
 
-        token = encryption_service.decrypt(user.github_access_token_encrypted)
+        token = encryption_service.decrypt(user.github_token_encrypted)
         github_client = GitHubClient(token)
 
         # 1. Search for relevant files using embeddings

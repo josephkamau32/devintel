@@ -220,3 +220,15 @@ devintel-frontend/*.log
 devintel-frontend/lint_*.txt
 devintel-frontend/err.*
 
+# ==========================================
+# SCRATCH / PLANNING FILES
+# ==========================================
+phase2_only.txt
+phase2_spec.txt
+phase2_spec_utf8.txt
+prompt.txt
+
+# Bun lockfiles (project uses npm)
+bun.lock
+bun.lockb
+devintel-frontend/bun.lockb

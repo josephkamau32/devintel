@@ -1,49 +1,11 @@
 """API dependencies."""
 
-from uuid import UUID
-
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import AuthenticationError
-from app.core.security import decode_access_token
+from app.core.dependencies import get_current_user, get_current_user_optional  # noqa: F401
 from app.db.session import get_db
 from app.models.user import User
-from app.repositories.user import UserRepository
-
-
-async def get_current_user(
-    authorization: str = Header(...),
-    db: AsyncSession = Depends(get_db),
-) -> User:
-    """Dependency to get current authenticated user."""
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authorization header",
-        )
-
-    token = authorization.replace("Bearer ", "")
-
-    try:
-        user_id = decode_access_token(token)
-
-        if not user_id:
-            raise AuthenticationError("Invalid token payload")
-
-        user_repo = UserRepository(db)
-        user = await user_repo.get_by_id(user_id)
-
-        if not user:
-            raise AuthenticationError("User not found")
-
-        return user
-
-    except AuthenticationError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-        )
 
 
 async def check_repo_access(
@@ -69,4 +31,3 @@ async def check_repo_access(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to access this repository",
         )
-

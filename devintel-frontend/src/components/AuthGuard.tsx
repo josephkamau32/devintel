@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { useRestoreSession } from '../hooks/useAuth';
@@ -6,12 +6,15 @@ import { useRestoreSession } from '../hooks/useAuth';
 export function AuthGuard() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated());
   const restoreSession = useRestoreSession();
+  const hasAttemptedRestore = useRef(false);
 
   useEffect(() => {
-    if (!isAuthenticated && restoreSession.isIdle) {
+    if (!isAuthenticated && !hasAttemptedRestore.current) {
+      hasAttemptedRestore.current = true;
       restoreSession.mutate();
     }
-  }, [isAuthenticated, restoreSession]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
 
   if (!isAuthenticated && restoreSession.isPending) {
     return (

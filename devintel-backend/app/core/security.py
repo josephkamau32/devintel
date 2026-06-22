@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Tuple
+from typing import Optional
+from uuid import UUID
+
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from cryptography.fernet import Fernet, InvalidToken
@@ -30,22 +32,22 @@ def _create_token(data: dict, expires_delta: timedelta) -> str:
     )
 
 
-def create_access_token(user_id: int) -> str:
+def create_access_token(user_id: UUID) -> str:
     return _create_token(
         {"sub": str(user_id), "type": "access"},
         timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     )
 
 
-def create_refresh_token(user_id: int) -> str:
+def create_refresh_token(user_id: UUID) -> str:
     return _create_token(
         {"sub": str(user_id), "type": "refresh"},
         timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
     )
 
 
-def decode_access_token(token: str) -> Optional[int]:
-    """Returns user_id on success, None on any failure."""
+def decode_access_token(token: str) -> Optional[UUID]:
+    """Returns user_id (UUID) on success, None on any failure."""
     try:
         payload = jwt.decode(
             token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM]
@@ -55,13 +57,13 @@ def decode_access_token(token: str) -> Optional[int]:
         sub = payload.get("sub")
         if sub is None:
             return None
-        return int(sub)
+        return UUID(sub)
     except (JWTError, ValueError):
         return None
 
 
-def decode_refresh_token(token: str) -> Optional[int]:
-    """Returns user_id on success, None on any failure."""
+def decode_refresh_token(token: str) -> Optional[UUID]:
+    """Returns user_id (UUID) on success, None on any failure."""
     try:
         payload = jwt.decode(
             token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM]
@@ -71,7 +73,7 @@ def decode_refresh_token(token: str) -> Optional[int]:
         sub = payload.get("sub")
         if sub is None:
             return None
-        return int(sub)
+        return UUID(sub)
     except (JWTError, ValueError):
         return None
 
