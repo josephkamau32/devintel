@@ -66,8 +66,8 @@ class Settings(BaseSettings):
     # Webhooks
     GITHUB_WEBHOOK_SECRET: str = "default_secret"
 
-    # CORS — stored as JSON string in env: '["http://localhost:5173"]'
-    CORS_ORIGINS: List[str] = ["http://localhost:5173"]
+    # CORS — stored as JSON string in env: '["http://localhost:5173"]' or comma-separated string
+    CORS_ORIGINS: str | List[str] = ["http://localhost:5173"]
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
