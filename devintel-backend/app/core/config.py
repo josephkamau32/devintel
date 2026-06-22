@@ -82,6 +82,16 @@ class Settings(BaseSettings):
     @field_validator("DATABASE_URL")
     @classmethod
     def validate_db_url(cls, v):
+        # Render provides postgres://, we need postgresql+asyncpg://
+        if v.startswith("postgres://"):
+            v = v.replace("postgres://", "postgresql+asyncpg://", 1)
+        elif v.startswith("postgresql://"):
+            v = v.replace("postgresql://", "postgresql+asyncpg://", 1)
+            
+        # asyncpg doesn't support sslmode=, it uses ssl=
+        if "sslmode=" in v:
+            v = v.replace("sslmode=", "ssl=")
+            
         if not v.startswith("postgresql+asyncpg://"):
             raise ValueError(
                 "DATABASE_URL must use postgresql+asyncpg:// driver. "
