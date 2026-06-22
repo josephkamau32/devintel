@@ -17,6 +17,7 @@ email-validator==2.1.1
 
 # HTTP client (for GitHub API calls)
 httpx==0.26.0
+PyGithub==2.2.0
 
 # AI
 openai==1.12.0
