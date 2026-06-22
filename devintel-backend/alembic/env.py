@@ -24,6 +24,13 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection):
+    # Widen version_num column — our revision IDs exceed the default varchar(32)
+    from sqlalchemy import text, inspect
+    inspector = inspect(connection)
+    if "alembic_version" in inspector.get_table_names():
+        connection.execute(
+            text("ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(128)")
+        )
     context.configure(connection=connection, target_metadata=target_metadata)
     with context.begin_transaction():
         context.run_migrations()
