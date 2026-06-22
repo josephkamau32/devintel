@@ -32,6 +32,12 @@ redis==5.0.1
 
 # Utilities
 structlog==24.1.0
+tenacity==8.2.3
+tiktoken==0.6.0
+GitPython==3.1.41
+tree-sitter==0.21.3
+tree-sitter-language-pack==0.21.0
+prometheus-client==0.20.0
 
 # Testing
 pytest==7.4.4
