@@ -19,31 +19,38 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    existing_cols = [c["name"] for c in inspector.get_columns("users")]
+
     # Add username column (mapped as github_username in the model)
-    op.add_column(
-        "users",
-        sa.Column("username", sa.String(length=100), nullable=True),
-    )
+    if "username" not in existing_cols:
+        op.add_column(
+            "users",
+            sa.Column("username", sa.String(length=100), nullable=True),
+        )
     # Add is_active with a default so existing rows get a value
-    op.add_column(
-        "users",
-        sa.Column(
-            "is_active",
-            sa.Boolean(),
-            nullable=False,
-            server_default=sa.text("true"),
-        ),
-    )
+    if "is_active" not in existing_cols:
+        op.add_column(
+            "users",
+            sa.Column(
+                "is_active",
+                sa.Boolean(),
+                nullable=False,
+                server_default=sa.text("true"),
+            ),
+        )
     # Add is_verified with a default
-    op.add_column(
-        "users",
-        sa.Column(
-            "is_verified",
-            sa.Boolean(),
-            nullable=False,
-            server_default=sa.text("false"),
-        ),
-    )
+    if "is_verified" not in existing_cols:
+        op.add_column(
+            "users",
+            sa.Column(
+                "is_verified",
+                sa.Boolean(),
+                nullable=False,
+                server_default=sa.text("false"),
+            ),
+        )
 
 
 def downgrade() -> None:
