@@ -88,7 +88,7 @@ def upgrade() -> None:
     sa.Column('file_path', sa.Text(), nullable=False),
     sa.Column('chunk_index', sa.Integer(), nullable=False),
     sa.Column('chunk_text', sa.Text(), nullable=False),
-    sa.Column('embedding', pgvector.sqlalchemy.vector.VECTOR(dim=1536), nullable=False),
+    sa.Column('embedding', pgvector.sqlalchemy.Vector(1536), nullable=False),
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
