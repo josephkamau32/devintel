@@ -19,6 +19,9 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    # Widen alembic_version column — revision IDs exceed default varchar(32)
+    op.execute("ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(128)")
+
     # Add last_indexed_commit_sha column
     op.add_column(
         "repositories",
