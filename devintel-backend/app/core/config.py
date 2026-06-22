@@ -82,15 +82,24 @@ class Settings(BaseSettings):
     @field_validator("DATABASE_URL")
     @classmethod
     def validate_db_url(cls, v):
+        from urllib.parse import urlparse, urlunparse, parse_qsl, urlencode
+        
         # Render provides postgres://, we need postgresql+asyncpg://
         if v.startswith("postgres://"):
             v = v.replace("postgres://", "postgresql+asyncpg://", 1)
         elif v.startswith("postgresql://"):
             v = v.replace("postgresql://", "postgresql+asyncpg://", 1)
             
-        # asyncpg doesn't support sslmode=, it uses ssl=
-        if "sslmode=" in v:
-            v = v.replace("sslmode=", "ssl=")
+        parsed = urlparse(v)
+        if parsed.query:
+            query = dict(parse_qsl(parsed.query))
+            if "sslmode" in query:
+                query["ssl"] = query.pop("sslmode")
+            query.pop("channel_binding", None)
+            
+            new_query = urlencode(query)
+            parsed = parsed._replace(query=new_query)
+            v = urlunparse(parsed)
             
         if not v.startswith("postgresql+asyncpg://"):
             raise ValueError(
