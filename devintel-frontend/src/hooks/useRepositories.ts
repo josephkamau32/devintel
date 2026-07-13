@@ -4,7 +4,7 @@ import { RepositoryListResponse, GitHubRepository } from '../types/repository';
 
 export function useRepositories(page: number = 1, limit: number = 50) {
   const { data, error, mutate, isLoading } = useSWR<RepositoryListResponse>(
-    `/api/v1/repos?skip=${(page - 1) * limit}&limit=${limit}`,
+    `/repos?skip=${(page - 1) * limit}&limit=${limit}`,
     async (url: string) => {
       const res = await api.get(url);
       return res.data;
@@ -22,7 +22,7 @@ export function useRepositories(page: number = 1, limit: number = 50) {
 
 export function useGitHubRepositories(page: number = 1, perPage: number = 30) {
   const { data, error, mutate, isLoading } = useSWR<{ repositories: GitHubRepository[], page: number, per_page: number }>(
-    `/api/v1/repos/github?page=${page}&per_page=${perPage}`,
+    `/repos/github?page=${page}&per_page=${perPage}`,
     async (url: string) => {
       const res = await api.get(url);
       return res.data;
@@ -38,7 +38,7 @@ export function useGitHubRepositories(page: number = 1, perPage: number = 30) {
 }
 
 export async function connectRepository(repo: GitHubRepository) {
-  const response = await api.post('/api/v1/repos', {
+  const response = await api.post('/repos', {
     repo_name: repo.name,
     full_name: repo.full_name,
     url: repo.html_url,
@@ -51,8 +51,9 @@ export async function connectRepository(repo: GitHubRepository) {
 }
 
 export async function indexRepository(repositoryId: number) {
-  const response = await api.post('/api/v1/repos/index', {
+  const response = await api.post('/repos/index', {
     repository_id: repositoryId
   });
   return response.data;
 }
+

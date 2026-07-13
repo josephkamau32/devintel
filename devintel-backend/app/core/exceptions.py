@@ -30,13 +30,32 @@ class ForbiddenError(AppException):
 
 
 class ExternalServiceError(AppException):
-    def __init__(self, detail: str = "External service unavailable"):
-        super().__init__(status.HTTP_502_BAD_GATEWAY, detail)
+    def __init__(
+        self,
+        detail: str = "External service unavailable",
+        *,
+        message: str | None = None,
+        details: dict | None = None,
+    ):
+        msg = message or detail
+        if details:
+            msg = f"{msg}: {details}"
+        super().__init__(status.HTTP_502_BAD_GATEWAY, msg)
 
 
 class EmbeddingError(AppException):
-    def __init__(self, detail: str = "Embedding generation failed"):
-        super().__init__(status.HTTP_500_INTERNAL_SERVER_ERROR, detail)
+    def __init__(
+        self,
+        detail: str = "Embedding generation failed",
+        *,
+        message: str | None = None,
+        details: dict | None = None,
+    ):
+        # Support both `detail=` (direct) and `message=`/`details=` (openai_client) call styles
+        msg = message or detail
+        if details:
+            msg = f"{msg}: {details}"
+        super().__init__(status.HTTP_500_INTERNAL_SERVER_ERROR, msg)
 
 
 class APIError(AppException):

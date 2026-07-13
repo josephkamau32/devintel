@@ -6,12 +6,18 @@ from app.core.security import (
     create_access_token,
     create_refresh_token,
 )
-from app.core.exceptions import AuthenticationError, ConflictError
+from app.core.config import settings
+from app.core.exceptions import AuthenticationError, ConflictError, ForbiddenError
 from app.schemas.auth import SignupRequest, LoginRequest
 from app.models.user import User
 import logging
 
 logger = logging.getLogger(__name__)
+
+# Demo user constants
+DEMO_EMAIL = "demo@devintel.dev"
+DEMO_PASSWORD = "DemoUser1!"
+DEMO_FULL_NAME = "Demo User"
 
 
 class AuthService:
@@ -64,6 +70,27 @@ class AuthService:
         refresh_token = create_refresh_token(user.id)
         return user, access_token, refresh_token
 
+    async def demo_login(self) -> tuple[User, str, str]:
+        """
+        Creates or retrieves the demo user and issues tokens.
+        Raises ForbiddenError if DEMO_MODE is disabled.
+        """
+        if not settings.DEMO_MODE:
+            raise ForbiddenError("Demo mode is disabled")
+
+        hashed = hash_password(DEMO_PASSWORD)
+        user = await self.user_repo.get_or_create_demo_user(
+            email=DEMO_EMAIL,
+            hashed_password=hashed,
+            full_name=DEMO_FULL_NAME,
+        )
+
+        logger.info("Demo user login: id=%s", user.id)
+
+        access_token = create_access_token(user.id)
+        refresh_token = create_refresh_token(user.id)
+        return user, access_token, refresh_token
+
     async def refresh(self, refresh_token: str) -> tuple[str, str]:
         """
         Validates a refresh token and issues new access + refresh tokens.
@@ -82,3 +109,4 @@ class AuthService:
         new_access = create_access_token(user.id)
         new_refresh = create_refresh_token(user.id)
         return new_access, new_refresh
+

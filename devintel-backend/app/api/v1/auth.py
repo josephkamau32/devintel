@@ -78,6 +78,22 @@ async def login(
     )
 
 
+@router.post("/demo", response_model=TokenResponse)
+async def demo_login(
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+):
+    """One-click demo login — creates or retrieves a demo user for portfolio demos."""
+    service = AuthService(db)
+    user, access_token, refresh_token = await service.demo_login()
+    _set_refresh_cookie(response, refresh_token)
+    return TokenResponse(
+        access_token=access_token,
+        token_type="bearer",
+        user=UserPublic.model_validate(user),
+    )
+
+
 @router.post("/refresh", response_model=RefreshResponse)
 async def refresh_token(
     response: Response,
@@ -105,34 +121,55 @@ async def get_me(current_user: User = Depends(get_current_user)):
 
 
 @router.get("/github")
-async def github_login():
+async def github_login(response: Response):
     """Redirect to GitHub for OAuth authorization."""
-    state = secrets.token_urlsafe(16)
-    params = urlencode(
-        {
-            "client_id": settings.GITHUB_CLIENT_ID,
-            "redirect_uri": settings.GITHUB_REDIRECT_URI,
-            "scope": "repo,user:email",
-            "state": state,
-        }
+    state = secrets.token_urlsafe(32)
+    # Store the state in a short-lived httponly cookie for validation on callback
+    response = RedirectResponse(
+        url="https://github.com/login/oauth/authorize?"
+        + urlencode(
+            {
+                "client_id": settings.GITHUB_CLIENT_ID,
+                "redirect_uri": settings.GITHUB_REDIRECT_URI,
+                "scope": "repo,user:email",
+                "state": state,
+            }
+        )
     )
-    return RedirectResponse(url=f"https://github.com/login/oauth/authorize?{params}")
+    response.set_cookie(
+        key="oauth_state",
+        value=state,
+        httponly=True,
+        secure=not settings.DEBUG,
+        samesite="lax",
+        max_age=600,  # 10 minutes
+    )
+    return response
 
 
 @router.get("/github/callback")
 async def github_callback(
     code: str,
+    request: Request,
     response: Response,
     state: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
 ):
-    """Handle GitHub OAuth callback."""
+    """Handle GitHub OAuth callback with state validation."""
+    # Validate OAuth state parameter to prevent CSRF
+    stored_state = request.cookies.get("oauth_state")
+    if not state or not stored_state or not secrets.compare_digest(state, stored_state):
+        raise AuthenticationError("Invalid OAuth state — possible CSRF attack")
+
     service = GitHubService(db)
     user, access_token, refresh_token = await service.authenticate(code)
-    _set_refresh_cookie(response, refresh_token)
 
     frontend_url = settings.CORS_ORIGINS[0]
-    return RedirectResponse(
+    redirect = RedirectResponse(
         url=f"{frontend_url}/oauth/callback#access_token={access_token}",
         status_code=302,
     )
+    _set_refresh_cookie(redirect, refresh_token)
+    # Clear the one-time state cookie
+    redirect.delete_cookie("oauth_state")
+    return redirect

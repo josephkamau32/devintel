@@ -74,6 +74,26 @@ export function useLogout() {
   });
 }
 
+export function useDemoLogin() {
+  const { setAuth } = useAuthStore();
+  const navigate = useNavigate();
+
+  return useMutation({
+    mutationFn: async () => {
+      const { data } = await api.post<TokenResponse>('/auth/demo');
+      return data;
+    },
+    onSuccess: (data) => {
+      setAuth(data.access_token, data.user);
+      toast.success('Welcome to the demo! Explore DevIntel AI.');
+      navigate('/dashboard');
+    },
+    onError: (error) => {
+      toast.error(extractErrorMessage(error));
+    },
+  });
+}
+
 export function useRestoreSession() {
   const { setAuth, clearAuth } = useAuthStore();
 

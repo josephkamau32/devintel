@@ -21,6 +21,9 @@ from app.services.encryption import encryption_service
 logger = get_logger(__name__)
 router = APIRouter(prefix="/pr-review", tags=["PR Review"])
 
+# Also mount under /repos for the pulls listing
+pulls_router = APIRouter(prefix="/repos", tags=["PR Review"])
+
 # Maximum diff size to prevent context window overflow and runaway API costs
 MAX_DIFF_CHARS = 100_000  # ~30K tokens
 REVIEW_TIMEOUT_SECONDS = 60
@@ -160,3 +163,57 @@ Provide a review as a JSON object with these exact keys:
             security_warnings=[],
             performance_notes=[],
         )
+
+
+from uuid import UUID
+from app.schemas.pr_review import PullRequestListResponse
+
+
+@pulls_router.get("/{repository_id}/pulls", response_model=PullRequestListResponse)
+async def list_pull_requests(
+    repository_id: UUID,
+    state: str = "open",
+    page: int = 1,
+    per_page: int = 30,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """List pull requests for a repository from GitHub."""
+    repo_repo = RepositoryRepository(db)
+    repository = await repo_repo.get_by_id(repository_id)
+
+    if not repository:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Repository not found",
+        )
+
+    await check_repo_access(repository, current_user, db)
+
+    if not current_user.github_token_encrypted:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="GitHub token not found. Please re-authenticate with GitHub.",
+        )
+
+    token = encryption_service.decrypt(current_user.github_token_encrypted)
+    github_client = GitHubClient(token)
+
+    try:
+        pulls_data = await github_client.get_repository_pull_requests(
+            full_name=repository.full_name,
+            state=state,
+            page=page,
+            per_page=per_page,
+        )
+    except Exception as e:
+        logger.error(f"Failed to fetch PRs for {repository.full_name}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Failed to fetch pull requests from GitHub: {str(e)}",
+        )
+
+    return PullRequestListResponse(
+        pulls=pulls_data,
+        repository_id=repository_id,
+    )

@@ -90,3 +90,20 @@ class UserRepository(BaseRepository[User]):
         await self.db.flush()
         await self.db.refresh(user)
         return user
+
+    async def get_or_create_demo_user(
+        self,
+        email: str,
+        hashed_password: str,
+        full_name: str,
+    ) -> User:
+        """Find the demo user by email, or create one if it doesn't exist."""
+        user = await self.get_by_email(email)
+        if user is not None:
+            return user
+        return await self.create_email_user(
+            email=email,
+            hashed_password=hashed_password,
+            full_name=full_name,
+        )
+

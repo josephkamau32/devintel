@@ -5,6 +5,12 @@ from fastapi.exceptions import RequestValidationError
 from app.core.config import settings
 from app.core.exceptions import AppException, app_exception_handler, validation_exception_handler
 from app.api.v1.router import api_router
+from app.middleware.security import (
+    SecurityHeadersMiddleware,
+    RequestIDMiddleware,
+    RequestSizeLimitMiddleware,
+    AuditLoggingMiddleware,
+)
 
 logging.basicConfig(
     level=logging.DEBUG if settings.DEBUG else logging.INFO,
@@ -22,6 +28,7 @@ def create_app() -> FastAPI:
         redoc_url="/redoc" if settings.DEBUG else None,
     )
 
+    # ── CORS ──────────────────────────────────────────────────────────────
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.CORS_ORIGINS,
@@ -30,9 +37,21 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    # ── Security middleware (order matters: outermost runs first) ──────────
+    # Request ID tracing — adds X-Request-ID to every request/response
+    app.add_middleware(RequestIDMiddleware)
+    # OWASP security headers (X-Content-Type-Options, X-Frame-Options, CSP, etc.)
+    app.add_middleware(SecurityHeadersMiddleware)
+    # Reject oversized request bodies (10 MB default) to prevent DoS
+    app.add_middleware(RequestSizeLimitMiddleware)
+    # Audit logging for sensitive paths (/auth, /repos, /admin)
+    app.add_middleware(AuditLoggingMiddleware)
+
+    # ── Exception handlers ────────────────────────────────────────────────
     app.add_exception_handler(AppException, app_exception_handler)
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
 
+    # ── Routes ────────────────────────────────────────────────────────────
     app.include_router(api_router)
 
     @app.get("/health")

@@ -49,6 +49,9 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     LOG_FORMAT: str = "json"
 
+    # Demo mode — allows one-click demo login for portfolio demos
+    DEMO_MODE: bool = True
+
     # Redis
     REDIS_URL: str | None = None
     REDIS_POOL_SIZE: int = 10
@@ -64,7 +67,8 @@ class Settings(BaseSettings):
     MAX_FILE_SIZE_MB: int = 5
 
     # Webhooks
-    GITHUB_WEBHOOK_SECRET: str = "default_secret"
+    # Default empty → webhook validation will reject requests unless explicitly configured
+    GITHUB_WEBHOOK_SECRET: str = ""
 
     # CORS — stored as JSON string in env: '["http://localhost:5173"]' or comma-separated string
     CORS_ORIGINS: str | List[str] = ["http://localhost:5173"]
