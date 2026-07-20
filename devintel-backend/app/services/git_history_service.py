@@ -2,13 +2,12 @@
 
 from datetime import datetime
 from typing import Optional
-from uuid import UUID
 
 from app.core.logging import get_logger
 from app.integrations.github_client import GitHubClient
-from app.models.git_history import GitHistory, FileBlame
+from app.models.git_history import FileBlame, GitHistory
 from app.models.repository import Repository
-from app.repositories.git_history import GitHistoryRepository, FileBlameRepository
+from app.repositories.git_history import FileBlameRepository, GitHistoryRepository
 
 logger = get_logger(__name__)
 

@@ -116,3 +116,91 @@ async def stream_chat(
             "Connection": "keep-alive",
         },
     )
+
+
+from app.core.security import decrypt_token
+from app.schemas.chat import (
+    AgentDraftRequest,
+    AgentDraftResponse,
+    AgentExecuteRequest,
+    AgentExecuteResponse,
+    AgentExecuteWithTestsResponse,
+)
+from app.services.agent import AgentService
+
+
+@router.post("/draft", response_model=AgentDraftResponse)
+async def agent_draft(
+    request: AgentDraftRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Generate a draft PR proposal for user review."""
+    repo_repo = RepositoryRepository(db)
+    repository = await repo_repo.get_by_id(request.repository_id)
+
+    if not repository:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Repository not found")
+
+    await check_repo_access(repository, current_user, db)
+
+    if not current_user.github_token_encrypted:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="GitHub token not found. Please re-authenticate.")
+
+    if repository.indexing_status != "complete":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Repository must be indexed.")
+
+    token = decrypt_token(current_user.github_token_encrypted)
+    agent_service = AgentService(token)
+    embedding_repo = EmbeddingRepository(db)
+
+    try:
+        draft_payload = await agent_service.draft_pr_plan(
+            repository=repository,
+            instruction=request.instruction,
+            embedding_repo=embedding_repo,
+        )
+        return AgentDraftResponse(draft=draft_payload)
+    except ValueError as ve:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ve))
+    except Exception as e:
+        logger.error(f"Failed to generate agent draft: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred while drafting the PR.")
+
+
+@router.post("/execute", response_model=AgentExecuteResponse | AgentExecuteWithTestsResponse)
+async def agent_execute(
+    request: AgentExecuteRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Execute an approved draft PR on GitHub. Optionally generates tests first."""
+    repo_repo = RepositoryRepository(db)
+    repository = await repo_repo.get_by_id(request.repository_id)
+
+    if not repository:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Repository not found")
+
+    await check_repo_access(repository, current_user, db)
+
+    if not current_user.github_token_encrypted:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="GitHub token not found. Please re-authenticate.")
+
+    token = decrypt_token(current_user.github_token_encrypted)
+    agent_service = AgentService(token)
+
+    try:
+        draft_dict = request.draft.model_dump()
+        result = await agent_service.execute_pr(
+            repository=repository,
+            draft_payload=draft_dict,
+            default_branch=repository.default_branch
+        )
+
+        if result.get("status") == "tests_failed":
+            return AgentExecuteWithTestsResponse(**result)
+
+        return AgentExecuteResponse(**result)
+    except Exception as e:
+        logger.error(f"Failed to execute agent PR: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred while executing the PR on GitHub.")

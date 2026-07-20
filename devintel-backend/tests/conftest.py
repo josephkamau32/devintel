@@ -86,6 +86,7 @@ async def test_user(db_session: AsyncSession) -> User:
         full_name="Test User",
         is_active=True,
         is_verified=True,
+        github_token_encrypted="some_encrypted_token_here",
     )
     db_session.add(user)
     await db_session.flush()
@@ -98,6 +99,13 @@ async def test_user_token(test_user: User) -> str:
     """Create a valid JWT access token for the test user."""
     token = create_access_token(test_user.id)
     return token
+
+
+@pytest_asyncio.fixture(scope="function")
+async def authenticated_client(client: AsyncClient, test_user_token: str) -> AsyncClient:
+    """Return an authenticated test client."""
+    client.headers = {"Authorization": f"Bearer {test_user_token}"}
+    return client
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -115,3 +123,57 @@ async def test_repository(db_session: AsyncSession, test_user: User) -> Reposito
     await db_session.flush()
     await db_session.refresh(repo)
     return repo
+
+
+@pytest_asyncio.fixture(scope="function")
+async def indexed_repository(db_session: AsyncSession, test_user: User) -> Repository:
+    """Create a test repository that is fully indexed in the database."""
+    from app.models.repository import IndexingStatus
+    repo = Repository(
+        user_id=test_user.id,
+        repo_name="indexedrepo",
+        full_name="testowner/indexedrepo",
+        description="Indexed test repository",
+        url="https://github.com/testowner/indexedrepo",
+        default_branch="main",
+        indexing_status=IndexingStatus.COMPLETE
+    )
+    db_session.add(repo)
+    await db_session.flush()
+    await db_session.refresh(repo)
+    return repo
+
+
+@pytest_asyncio.fixture(scope="function")
+async def auth_headers(test_user_token: str) -> dict:
+    """Return auth headers for the test user."""
+    return {"Authorization": f"Bearer {test_user_token}"}
+
+
+@pytest_asyncio.fixture(scope="function")
+async def active_user(db_session: AsyncSession) -> User:
+    """Create a secondary active test user in the database."""
+    user = User(
+        email="active@example.com",
+        hashed_password=hash_password("testpassword123"),
+        full_name="Active User",
+        is_active=True,
+        is_verified=True,
+    )
+    db_session.add(user)
+    await db_session.flush()
+    await db_session.refresh(user)
+    return user
+
+
+@pytest_asyncio.fixture(scope="function")
+async def active_user_token(active_user: User) -> str:
+    """Create a valid JWT access token for the active user."""
+    return create_access_token(active_user.id)
+
+
+@pytest_asyncio.fixture(scope="function")
+async def active_user_auth_headers(active_user_token: str) -> dict:
+    """Return auth headers for the active user."""
+    return {"Authorization": f"Bearer {active_user_token}"}
+

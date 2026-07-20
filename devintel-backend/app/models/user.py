@@ -1,6 +1,6 @@
 from uuid import uuid4
 
-from sqlalchemy import Column, String, Boolean, Text
+from sqlalchemy import Boolean, Column, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -27,6 +27,8 @@ class User(Base, TimestampMixin):
     is_verified = Column(Boolean, default=False, nullable=False, server_default="false")
 
     repositories = relationship("Repository", back_populates="user", cascade="all, delete-orphan")
-
+    organizations = relationship("OrganizationMember", back_populates="user", cascade="all, delete-orphan")
+    analytics = relationship("Analytics", back_populates="user", cascade="all, delete-orphan")
+    chats = relationship("Chat", back_populates="user", cascade="all, delete-orphan")
     def __repr__(self):
         return f"<User id={self.id} email={self.email} github={self.github_username}>"

@@ -1,7 +1,7 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import AnyHttpUrl, field_validator
-from typing import List
 import json
+
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -57,13 +57,16 @@ class Settings(BaseSettings):
     REDIS_POOL_SIZE: int = 10
     REDIS_CACHE_TTL: int = 3600
 
+    # Rate limiting (per-user, per-minute)
+    RATE_LIMIT_PER_MINUTE: int = 100
+
     # Indexing / Chunking
     CHUNK_SIZE: int = 1000
     CHUNK_OVERLAP: int = 200
     RETRIEVAL_MODE: str = "vector"
     TOP_K_CHUNKS: int = 10
-    IGNORED_DIRECTORIES: List[str] = ["node_modules", ".git", "venv", ".venv", "__pycache__", "build", "dist"]
-    SUPPORTED_FILE_EXTENSIONS: List[str] = [".py", ".js", ".jsx", ".ts", ".tsx", ".md", ".json", ".html", ".css", ".go", ".rs", ".java", ".c", ".cpp", ".h", ".hpp"]
+    IGNORED_DIRECTORIES: list[str] = ["node_modules", ".git", "venv", ".venv", "__pycache__", "build", "dist"]
+    SUPPORTED_FILE_EXTENSIONS: list[str] = [".py", ".js", ".jsx", ".ts", ".tsx", ".md", ".json", ".html", ".css", ".go", ".rs", ".java", ".c", ".cpp", ".h", ".hpp"]
     MAX_FILE_SIZE_MB: int = 5
 
     # Webhooks
@@ -71,7 +74,7 @@ class Settings(BaseSettings):
     GITHUB_WEBHOOK_SECRET: str = ""
 
     # CORS — stored as JSON string in env: '["http://localhost:5173"]' or comma-separated string
-    CORS_ORIGINS: str | List[str] = ["http://localhost:5173"]
+    CORS_ORIGINS: str | list[str] = ["http://localhost:5173"]
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
@@ -86,25 +89,25 @@ class Settings(BaseSettings):
     @field_validator("DATABASE_URL")
     @classmethod
     def validate_db_url(cls, v):
-        from urllib.parse import urlparse, urlunparse, parse_qsl, urlencode
-        
+        from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
+
         # Render provides postgres://, we need postgresql+asyncpg://
         if v.startswith("postgres://"):
             v = v.replace("postgres://", "postgresql+asyncpg://", 1)
         elif v.startswith("postgresql://"):
             v = v.replace("postgresql://", "postgresql+asyncpg://", 1)
-            
+
         parsed = urlparse(v)
         if parsed.query:
             query = dict(parse_qsl(parsed.query))
             if "sslmode" in query:
                 query["ssl"] = query.pop("sslmode")
             query.pop("channel_binding", None)
-            
+
             new_query = urlencode(query)
             parsed = parsed._replace(query=new_query)
             v = urlunparse(parsed)
-            
+
         if not v.startswith("postgresql+asyncpg://"):
             raise ValueError(
                 "DATABASE_URL must use postgresql+asyncpg:// driver. "
@@ -114,7 +117,7 @@ class Settings(BaseSettings):
 
     @field_validator("CORS_ORIGINS")
     @classmethod
-    def validate_cors_origins(cls, v: List[str]) -> List[str]:
+    def validate_cors_origins(cls, v: list[str]) -> list[str]:
         if not v:
             raise ValueError("CORS_ORIGINS must contain at least one origin")
         if "*" in v:

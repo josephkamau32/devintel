@@ -88,7 +88,7 @@ class OrganizationService:
             org = await OrganizationService.get_organization(db, member.org_id)
             if org:
                 # Add a custom attribute that will be matched by `OrganizationWithRole` schema
-                setattr(org, "my_role", member.role)
+                org.my_role = member.role
                 orgs.append(org)
 
         return orgs

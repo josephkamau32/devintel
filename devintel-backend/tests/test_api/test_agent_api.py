@@ -33,8 +33,8 @@ class TestAgentDraftEndpoint:
         }
 
         with patch("app.api.v1.chat.AgentService") as MockAgent, \
-             patch("app.api.v1.chat.encryption_service") as mock_enc:
-            mock_enc.decrypt.return_value = "fake_gh_token"
+             patch("app.api.v1.chat.decrypt_token") as mock_dec:
+            mock_dec.return_value = "fake_gh_token"
             instance = MockAgent.return_value
             instance.draft_pr_plan = AsyncMock(return_value=draft_payload)
 
@@ -88,7 +88,7 @@ class TestAgentDraftEndpoint:
     ):
         """Returns 400 when user has no encrypted GitHub token."""
         # Remove the token
-        test_user.github_access_token_encrypted = None
+        test_user.github_token_encrypted = None
         db_session.add(test_user)
         await db_session.commit()
 
@@ -110,8 +110,8 @@ class TestAgentDraftEndpoint:
     ):
         """Returns 400 when AgentService raises ValueError."""
         with patch("app.api.v1.chat.AgentService") as MockAgent, \
-             patch("app.api.v1.chat.encryption_service") as mock_enc:
-            mock_enc.decrypt.return_value = "fake_gh_token"
+             patch("app.api.v1.chat.decrypt_token") as mock_dec:
+            mock_dec.return_value = "fake_gh_token"
             instance = MockAgent.return_value
             instance.draft_pr_plan = AsyncMock(
                 side_effect=ValueError("The AI failed to generate a Pull Request instruction.")
@@ -162,8 +162,8 @@ class TestAgentExecuteEndpoint:
         }
 
         with patch("app.api.v1.chat.AgentService") as MockAgent, \
-             patch("app.api.v1.chat.encryption_service") as mock_enc:
-            mock_enc.decrypt.return_value = "fake_gh_token"
+             patch("app.api.v1.chat.decrypt_token") as mock_dec:
+            mock_dec.return_value = "fake_gh_token"
             instance = MockAgent.return_value
             instance.execute_pr = AsyncMock(return_value={
                 "pr_url": "https://github.com/test-user/test-repo/pull/42",
@@ -217,8 +217,8 @@ class TestAgentExecuteEndpoint:
         }
 
         with patch("app.api.v1.chat.AgentService") as MockAgent, \
-             patch("app.api.v1.chat.encryption_service") as mock_enc:
-            mock_enc.decrypt.return_value = "fake_gh_token"
+             patch("app.api.v1.chat.decrypt_token") as mock_dec:
+            mock_dec.return_value = "fake_gh_token"
             instance = MockAgent.return_value
             instance.execute_pr = AsyncMock(
                 side_effect=Exception("GitHub API 422: branch already exists")

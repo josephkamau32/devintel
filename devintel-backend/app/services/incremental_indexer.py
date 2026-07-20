@@ -15,7 +15,6 @@ from git import Repo
 
 from app.core.exceptions import IndexingError
 from app.core.logging import get_logger
-from app.core.config import settings
 from app.db.session import AsyncSessionLocal
 from app.repositories.embedding import EmbeddingRepository
 from app.repositories.repository import RepositoryRepository
@@ -140,7 +139,7 @@ async def process_push_event(
 
                 # Store embeddings
                 embeddings_data = []
-                for (file_path, chunk_index, chunk_text), embedding in zip(chunks, embeddings):
+                for (file_path, chunk_index, chunk_text), embedding in zip(chunks, embeddings, strict=False):
                     embeddings_data.append({
                         "repo_id": UUID(repo_id),
                         "file_path": file_path,
@@ -270,7 +269,7 @@ class IncrementalIndexer:
                 continue
 
             try:
-                with open(full_path, "r", encoding="utf-8") as f:
+                with open(full_path, encoding="utf-8") as f:
                     content = f.read()
 
                 chunks = smart_chunk_code(content, file_path)

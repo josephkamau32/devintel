@@ -2,7 +2,60 @@
 name = "devintel-backend"
 version = "1.0.0"
 description = "Production-grade backend for DevIntel AI - RAG-powered developer productivity platform"
+readme = "README.md"
+license = {text = "MIT"}
 requires-python = ">=3.11"
+authors = [
+    {name = "Joseph Kamau", email = "josephkamau32@users.noreply.github.com"},
+]
+
+dependencies = [
+    # Web framework
+    "fastapi==0.109.2",
+    "uvicorn[standard]==0.27.1",
+    # Database
+    "sqlalchemy==2.0.27",
+    "asyncpg==0.29.0",
+    "alembic==1.13.1",
+    "pgvector==0.2.4",
+    # Auth & Security
+    "python-jose[cryptography]==3.3.0",
+    "passlib[bcrypt]==1.7.4",
+    "cryptography==42.0.2",
+    "python-multipart==0.0.9",
+    "email-validator==2.1.1",
+    # HTTP client (for GitHub API calls)
+    "httpx==0.26.0",
+    "PyGithub==2.2.0",
+    # AI
+    "openai==1.12.0",
+    # Config
+    "pydantic==2.6.1",
+    "pydantic-settings==2.1.0",
+    "python-dotenv==1.0.1",
+    # Caching
+    "redis==5.0.1",
+    # Utilities
+    "structlog==24.1.0",
+    "tenacity==8.2.3",
+    "tiktoken==0.6.0",
+    "GitPython==3.1.41",
+    "tree-sitter==0.25.2",
+    "tree-sitter-language-pack==0.13.0",
+    "prometheus-client==0.20.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0,<9.0",
+    "pytest-asyncio>=0.25.0,<1.0",
+    "pytest-cov>=5.0,<6.0",
+    "pytest-mock>=3.12.0",
+    "aiosqlite>=0.20.0",
+    "httpx[http2]>=0.26.0",
+    "ruff>=0.4.0",
+    "mypy>=1.9.0",
+]
 
 [tool.ruff]
 line-length = 100
@@ -10,7 +63,28 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM"]
-ignore = ["E501"]
+ignore = [
+    "E402",   # Module-level import not at top — circular import avoidance pattern
+    "E501",   # line too long (handled by formatter)
+    "E712",   # Comparison to True — SQLAlchemy filter pattern
+    "E722",   # Bare except — intentional in WebSocket handlers
+    "UP007",  # Use X | Y — existing codebase uses Optional[X] consistently
+    "UP006",  # Use list instead of List — existing codebase pattern
+    "UP035",  # typing.List deprecated — existing codebase pattern
+    "UP015",  # Unnecessary open mode — style preference
+    "B007",   # Unused loop variable — common in unpacking patterns
+    "B008",   # Depends() in defaults — FastAPI pattern (false positive)
+    "B023",   # Function does not bind loop var — false positive in async batching
+    "B904",   # raise from — existing exception re-raise pattern
+    "N818",   # Exception naming — AppException is an established name
+    "F841",   # Unused local variable — false positives in debugging code
+    "SIM102", # Nested if → single if — reduces readability in some cases
+    "SIM105", # suppress() vs try/except — style preference
+    "SIM108", # Ternary operator — style preference
+    "SIM110", # any() vs for loop — style preference
+    "C416",   # Unnecessary list comprehension — style preference
+    "C414",   # Unnecessary list() in sorted() — style preference
+]
 
 [tool.black]
 line-length = 100
@@ -22,6 +96,22 @@ strict = true
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
+# Ignore missing stubs for third-party libs
+[[tool.mypy.overrides]]
+module = [
+    "redis.*",
+    "celery.*",
+    "pgvector.*",
+    "tree_sitter.*",
+    "tree_sitter_language_pack.*",
+    "tiktoken.*",
+    "github.*",
+    "structlog.*",
+    "tenacity.*",
+    "git.*",
+    "prometheus_client.*",
+]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

@@ -30,7 +30,7 @@ def mock_repository(mock_user):
         full_name="josephkamau32/devintel",
         url="https://github.com/josephkamau32/devintel",
         user_id=mock_user.id,
-        indexed_status=True,
+        indexing_status="complete",
     )
 
 

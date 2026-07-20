@@ -1,32 +1,40 @@
 from fastapi import Request, status
-from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 
 
 class AppException(Exception):
-    def __init__(self, status_code: int, detail: str):
+    """Base application exception with structured error information."""
+
+    def __init__(
+        self,
+        status_code: int,
+        detail: str,
+        error_code: str = "INTERNAL_ERROR",
+    ):
         self.status_code = status_code
         self.detail = detail
+        self.error_code = error_code
 
 
 class AuthenticationError(AppException):
     def __init__(self, detail: str = "Authentication failed"):
-        super().__init__(status.HTTP_401_UNAUTHORIZED, detail)
+        super().__init__(status.HTTP_401_UNAUTHORIZED, detail, error_code="AUTH_ERROR")
 
 
 class NotFoundError(AppException):
     def __init__(self, detail: str = "Resource not found"):
-        super().__init__(status.HTTP_404_NOT_FOUND, detail)
+        super().__init__(status.HTTP_404_NOT_FOUND, detail, error_code="NOT_FOUND")
 
 
 class ConflictError(AppException):
     def __init__(self, detail: str = "Resource already exists"):
-        super().__init__(status.HTTP_409_CONFLICT, detail)
+        super().__init__(status.HTTP_409_CONFLICT, detail, error_code="CONFLICT")
 
 
 class ForbiddenError(AppException):
     def __init__(self, detail: str = "Access forbidden"):
-        super().__init__(status.HTTP_403_FORBIDDEN, detail)
+        super().__init__(status.HTTP_403_FORBIDDEN, detail, error_code="FORBIDDEN")
 
 
 class ExternalServiceError(AppException):
@@ -40,7 +48,7 @@ class ExternalServiceError(AppException):
         msg = message or detail
         if details:
             msg = f"{msg}: {details}"
-        super().__init__(status.HTTP_502_BAD_GATEWAY, msg)
+        super().__init__(status.HTTP_502_BAD_GATEWAY, msg, error_code="EXTERNAL_SERVICE_ERROR")
 
 
 class EmbeddingError(AppException):
@@ -55,38 +63,58 @@ class EmbeddingError(AppException):
         msg = message or detail
         if details:
             msg = f"{msg}: {details}"
-        super().__init__(status.HTTP_500_INTERNAL_SERVER_ERROR, msg)
+        super().__init__(status.HTTP_500_INTERNAL_SERVER_ERROR, msg, error_code="EMBEDDING_ERROR")
 
 
 class APIError(AppException):
     def __init__(self, detail: str = "API request failed"):
-        super().__init__(status.HTTP_500_INTERNAL_SERVER_ERROR, detail)
+        super().__init__(status.HTTP_500_INTERNAL_SERVER_ERROR, detail, error_code="API_ERROR")
 
 
 class IndexingError(AppException):
     def __init__(self, detail: str = "Indexing process failed"):
-        super().__init__(status.HTTP_500_INTERNAL_SERVER_ERROR, detail)
+        super().__init__(status.HTTP_500_INTERNAL_SERVER_ERROR, detail, error_code="INDEXING_ERROR")
 
 
 class CircuitBreakerError(AppException):
     def __init__(self, detail: str = "Service circuit breaker open"):
-        super().__init__(status.HTTP_503_SERVICE_UNAVAILABLE, detail)
+        super().__init__(status.HTTP_503_SERVICE_UNAVAILABLE, detail, error_code="CIRCUIT_BREAKER_OPEN")
+
+
+class RateLimitError(AppException):
+    def __init__(self, detail: str = "Rate limit exceeded"):
+        super().__init__(status.HTTP_429_TOO_MANY_REQUESTS, detail, error_code="RATE_LIMIT_EXCEEDED")
 
 
 # ── FastAPI exception handlers ────────────────────────────────────────────────
-async def app_exception_handler(request: Request, exc: AppException):
+async def app_exception_handler(request: Request, exc: AppException) -> JSONResponse:
+    """Return structured error envelope with error_code and request_id."""
+    request_id = getattr(request.state, "request_id", None) or "unknown"
     return JSONResponse(
         status_code=exc.status_code,
-        content={"detail": exc.detail},
+        content={
+            "detail": exc.detail,
+            "error_code": exc.error_code,
+            "request_id": request_id,
+        },
     )
 
 
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
+async def validation_exception_handler(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
+    """Return structured validation error envelope with request_id."""
+    request_id = getattr(request.state, "request_id", None) or "unknown"
     errors = []
     for error in exc.errors():
         field = " -> ".join(str(loc) for loc in error["loc"])
         errors.append({"field": field, "message": error["msg"]})
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content={"detail": "Validation error", "errors": errors},
+        content={
+            "detail": "Validation error",
+            "error_code": "VALIDATION_ERROR",
+            "request_id": request_id,
+            "errors": errors,
+        },
     )

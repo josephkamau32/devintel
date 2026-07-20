@@ -1,7 +1,7 @@
 """Architecture diagram models for storing Mermaid/C4 diagrams."""
 
 import enum
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from sqlalchemy import ForeignKey, String, Text
@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from app.models.repository import Repository
 
 
-class DiagramType(str, enum):
+class DiagramType(str, enum.Enum):
     """Types of architecture diagrams."""
 
     MERMAID = "mermaid"

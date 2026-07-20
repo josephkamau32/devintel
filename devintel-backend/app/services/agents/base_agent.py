@@ -1,7 +1,6 @@
 """Base agent class for specialized AI agents."""
 
 from typing import Any, Optional
-from uuid import UUID
 
 from pydantic import BaseModel
 

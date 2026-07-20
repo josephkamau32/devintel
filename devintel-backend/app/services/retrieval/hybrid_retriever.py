@@ -2,7 +2,7 @@
 
 import asyncio
 from enum import Enum
-from typing import List, Tuple, Optional
+from typing import Optional
 from uuid import UUID
 
 from app.core.config import settings
@@ -41,7 +41,7 @@ class HybridRetriever:
         query: str,
         top_k: int = 10,
         mode: Optional[RetrievalMode] = None,
-    ) -> List[Tuple[ScoredChunk, float]]:
+    ) -> list[tuple[ScoredChunk, float]]:
         """
         Perform hybrid search across multiple retrieval methods.
 
@@ -76,7 +76,7 @@ class HybridRetriever:
         repo_id: UUID,
         query: str,
         top_k: int,
-    ) -> List[Tuple[ScoredChunk, float]]:
+    ) -> list[tuple[ScoredChunk, float]]:
         """Perform vector similarity search."""
         query_embedding = await self.embedding_service.generate_embedding(query)
 
@@ -94,10 +94,10 @@ class HybridRetriever:
     def _fuse_and_expand(
         self,
         repo_id: UUID,
-        vector_results: List[Tuple[ScoredChunk, float]],
-        bm25_results: List[ScoredChunk],
+        vector_results: list[tuple[ScoredChunk, float]],
+        bm25_results: list[ScoredChunk],
         top_k: int,
-    ) -> List[Tuple[ScoredChunk, float]]:
+    ) -> list[tuple[ScoredChunk, float]]:
         """
         Fuse vector and BM25 results, then expand via call graph.
         """
@@ -129,8 +129,8 @@ class HybridRetriever:
     async def _expand_via_call_graph(
         self,
         repo_id: UUID,
-        chunks: List[ScoredChunk],
-    ) -> List[ScoredChunk]:
+        chunks: list[ScoredChunk],
+    ) -> list[ScoredChunk]:
         """
         Expand results by traversing call graph edges.
         """
@@ -161,7 +161,7 @@ class HybridRetriever:
         query: str,
         repo_ids: list[UUID],
         top_k: int = 20,
-    ) -> list[Tuple[ScoredChunk, float]]:
+    ) -> list[tuple[ScoredChunk, float]]:
         """
         Search across multiple repositories for cross-repo knowledge.
 

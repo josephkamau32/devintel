@@ -1,13 +1,13 @@
 """Reciprocal Rank Fusion for combining multiple ranked result lists."""
 
-from typing import List
+
 from app.services.retrieval.bm25_index import ScoredChunk
 
 
 def reciprocal_rank_fusion(
-    ranked_lists: List[List[ScoredChunk]],
+    ranked_lists: list[list[ScoredChunk]],
     k: int = 60,
-) -> List[ScoredChunk]:
+) -> list[ScoredChunk]:
     """
     Combine multiple ranked lists using Reciprocal Rank Fusion.
 

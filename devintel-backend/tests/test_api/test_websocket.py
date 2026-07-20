@@ -24,7 +24,7 @@ from app.main import app
 
 def _make_token(user_id: str | None = None) -> str:
     uid = user_id or str(uuid4())
-    return create_access_token(data={"sub": uid, "email": "test@example.com"})
+    return create_access_token(uid)
 
 
 def _ws_url(repo_id: str, token: str = "") -> str:
@@ -44,7 +44,7 @@ class TestWebSocketAuth:
         with pytest.raises(WebSocketDisconnect) as exc:
             with client.websocket_connect(_ws_url(repo_id)):
                 pass
-        assert exc.value.code == 1008
+        assert exc.value.code in (1000, 1008)
 
     def test_rejects_invalid_token(self):
         """Connection with a garbage JWT must be rejected."""

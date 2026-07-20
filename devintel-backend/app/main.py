@@ -1,15 +1,18 @@
 import logging
+
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.exceptions import AppException, app_exception_handler, validation_exception_handler
-from app.api.v1.router import api_router
+from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.security import (
-    SecurityHeadersMiddleware,
+    AuditLoggingMiddleware,
     RequestIDMiddleware,
     RequestSizeLimitMiddleware,
-    AuditLoggingMiddleware,
+    SecurityHeadersMiddleware,
 )
 
 logging.basicConfig(
@@ -44,6 +47,8 @@ def create_app() -> FastAPI:
     app.add_middleware(SecurityHeadersMiddleware)
     # Reject oversized request bodies (10 MB default) to prevent DoS
     app.add_middleware(RequestSizeLimitMiddleware)
+    # Per-user rate limiting (Redis sliding window, fails open without Redis)
+    app.add_middleware(RateLimitMiddleware, default_limit=settings.RATE_LIMIT_PER_MINUTE)
     # Audit logging for sensitive paths (/auth, /repos, /admin)
     app.add_middleware(AuditLoggingMiddleware)
 

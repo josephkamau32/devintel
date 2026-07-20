@@ -4,7 +4,7 @@ import enum
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
-from sqlalchemy import ForeignKey, String, Text, Enum
+from sqlalchemy import ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from app.models.repository import Repository
 
 
-class TestStatus(str, enum):
+class TestStatus(str, enum.Enum):
     """Test generation status."""
 
     PENDING = "pending"

@@ -1,7 +1,6 @@
 """Agent router for dispatching queries to specialized agents."""
 
 from typing import Optional
-from uuid import UUID
 
 from app.core.logging import get_logger
 from app.models.repository import Repository

@@ -2,7 +2,6 @@
 
 import asyncio
 import uuid
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,7 +21,6 @@ from app.schemas.repository import (
     RepositoryIndexResponse,
     RepositoryListResponse,
     RepositoryResponse,
-    RepositoryStatusResponse,
     SearchResponse,
     SearchResult,
 )

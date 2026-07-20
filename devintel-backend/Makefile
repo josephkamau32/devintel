@@ -1,4 +1,4 @@
-.PHONY: help dev build up down logs shell test lint format typecheck migrate migration clean
+.PHONY: help dev build up down logs shell test lint format typecheck migrate migration openapi clean
 
 help:
 	@echo "DevIntel AI Backend - Available Commands"
@@ -60,6 +60,11 @@ migration:
 		exit 1; \
 	fi
 	docker-compose exec api alembic revision --autogenerate -m "$(name)"
+
+openapi:		## Export OpenAPI schema to docs/openapi.json
+	@mkdir -p docs
+	python -c "import json; from app.main import app; f=open('docs/openapi.json','w',encoding='utf-8'); json.dump(app.openapi(),f,indent=2); f.close()"
+	@echo "OpenAPI schema exported to docs/openapi.json"
 
 clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true

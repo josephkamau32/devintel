@@ -1,6 +1,5 @@
 """Collaboration API routes."""
 
-from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -9,11 +8,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import check_repo_access, get_current_user
 from app.db.session import get_db
 from app.models.user import User
-from app.repositories.collaboration import CollaborationSessionRepository, CollaborationMessageRepository
+from app.repositories.collaboration import (
+    CollaborationMessageRepository,
+    CollaborationSessionRepository,
+)
 from app.repositories.repository import RepositoryRepository
 from app.schemas.collaboration import (
     CollaborationHistoryResponse,
-    CollaborationMessageCreate,
     CollaborationMessageResponse,
     CollaborationSessionCreate,
     CollaborationSessionResponse,

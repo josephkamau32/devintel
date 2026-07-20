@@ -1,13 +1,9 @@
 """Cross-repository knowledge service."""
 
-from typing import Any, Optional
-from uuid import UUID
+from typing import Any
 
 from app.core.logging import get_logger
-from app.models.cross_repo import CrossRepoKnowledge
 from app.models.repository import Repository
-from app.repositories.cross_repo import CrossRepoKnowledgeRepository
-from app.repositories.repository import RepositoryRepository
 from app.services.retrieval.hybrid_retriever import HybridRetriever
 
 logger = get_logger(__name__)

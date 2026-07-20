@@ -4,10 +4,13 @@ from typing import Optional
 from uuid import UUID
 
 from app.core.logging import get_logger
-from app.models.collaboration import CollaborationSession, CollaborationMessage
+from app.models.collaboration import CollaborationMessage, CollaborationSession
 from app.models.repository import Repository
 from app.models.user import User
-from app.repositories.collaboration import CollaborationSessionRepository, CollaborationMessageRepository
+from app.repositories.collaboration import (
+    CollaborationMessageRepository,
+    CollaborationSessionRepository,
+)
 
 logger = get_logger(__name__)
 

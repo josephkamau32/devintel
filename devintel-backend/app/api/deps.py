@@ -1,10 +1,9 @@
 """API dependencies."""
 
-from fastapi import Depends, HTTPException, status
+from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user, get_current_user_optional  # noqa: F401
-from app.db.session import get_db
 from app.models.user import User
 
 

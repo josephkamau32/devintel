@@ -30,7 +30,7 @@ jobs:
         run: npm ci
       
       - name: Lint code
-        run: npm run lint || echo "Linting issues found"
+        run: npm run lint
       
       - name: Setup environment variables
         run: |
@@ -39,8 +39,8 @@ jobs:
       - name: Build Frontend
         run: npm run build
       
-      - name: Run tests (if any)
-        run: npm run test --if-present || echo "No tests configured yet"
+      - name: Run tests
+        run: npm run test -- --run
 
   # ==========================================
   # Backend Validation
@@ -130,11 +130,17 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
       
-      - name: Run tests
+      - name: Lint with Ruff
         working-directory: ./devintel-backend
-        run: |
-          pip install pytest pytest-asyncio pytest-cov
-          pytest tests/ --cov=app --cov-report=term || echo "Some tests may require full environment"
+        run: ruff check app/
+
+      - name: Type check with mypy
+        working-directory: ./devintel-backend
+        run: mypy app/ --ignore-missing-imports
+
+      - name: Run tests with coverage
+        working-directory: ./devintel-backend
+        run: pytest tests/ -v --cov=app --cov-report=term-missing --cov-fail-under=60
 
   # ==========================================
   # Project Health Check
@@ -150,15 +156,12 @@ jobs:
       - name: Verify project structure
         run: |
           echo "✅ Checking project structure..."
-          test -d devintel-backend && echo "✅ Backend directory exists" || echo "❌ Backend missing"
-          test -d devintel-frontend && echo "✅ Frontend directory exists" || echo "❌ Frontend missing"
-          test -f README.md && echo "✅ README exists" || echo "❌ README missing"
-          test -f LICENSE && echo "✅ LICENSE exists" || echo "❌ LICENSE missing"
-          test -f CONTRIBUTING.md && echo "✅ CONTRIBUTING.md exists" || echo "❌ CONTRIBUTING.md missing"
+          test -d devintel-backend && echo "✅ Backend directory exists" || (echo "❌ Backend missing" && exit 1)
+          test -d devintel-frontend && echo "✅ Frontend directory exists" || (echo "❌ Frontend missing" && exit 1)
+          test -f README.md && echo "✅ README exists" || (echo "❌ README missing" && exit 1)
+          test -f LICENSE && echo "✅ LICENSE exists" || (echo "❌ LICENSE missing" && exit 1)
+          test -f CONTRIBUTING.md && echo "✅ CONTRIBUTING.md exists" || (echo "❌ CONTRIBUTING.md missing" && exit 1)
 
-  # ==========================================
-  # Security Scanning
-  # ==========================================
   # ==========================================
   # Security Scanning
   # ==========================================

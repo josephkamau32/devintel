@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from app.core.logging import get_logger
 from app.integrations.openai_client import OpenAIClient
-from app.models.policy import Policy, PolicyRuleType, PolicySeverity
+from app.models.policy import Policy, PolicyRuleType
 from app.repositories.policy import PolicyRepository
 
 logger = get_logger(__name__)

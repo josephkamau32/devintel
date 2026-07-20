@@ -1,10 +1,8 @@
 """Security Remediation Agent for auto-fixing vulnerabilities."""
 
 from typing import Any, Optional
-from uuid import UUID
 
 from app.core.logging import get_logger
-from app.integrations.openai_client import OpenAIClient
 from app.models.repository import Repository
 from app.repositories.embedding import EmbeddingRepository
 from app.services.agents.base_agent import AgentResponse, BaseAgent

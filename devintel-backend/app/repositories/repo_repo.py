@@ -1,6 +1,8 @@
-from typing import Optional, List
-from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Optional
+
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.models.repository import Repository
 from app.repositories.base_repo import BaseRepository
 
@@ -9,7 +11,7 @@ class RepositoryRepository(BaseRepository[Repository]):
     def __init__(self, db: AsyncSession):
         super().__init__(Repository, db)
 
-    async def list_by_user(self, user_id: int) -> List[Repository]:
+    async def list_by_user(self, user_id: int) -> list[Repository]:
         result = await self.db.execute(
             select(Repository).where(Repository.user_id == user_id).order_by(Repository.created_at.desc())
         )

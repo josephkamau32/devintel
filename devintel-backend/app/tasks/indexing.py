@@ -152,7 +152,7 @@ async def _index_repository_async(
             # Store embeddings in database
             logger.info("Storing embeddings in database")
             embeddings_data = []
-            for (file_path, chunk_index, chunk_text), embedding in zip(chunks, embeddings):
+            for (file_path, chunk_index, chunk_text), embedding in zip(chunks, embeddings, strict=False):
                 embeddings_data.append({
                     "repo_id": UUID(repo_id),
                     "file_path": file_path,

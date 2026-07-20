@@ -114,7 +114,7 @@ def extract_calls_from_directory(repo_path: str) -> list[tuple[str, str, str]]:
                 continue
 
             try:
-                with open(file_path, "r", encoding="utf-8") as f:
+                with open(file_path, encoding="utf-8") as f:
                     content = f.read()
 
                 calls = extract_call_graph(content, file_path)

@@ -1,10 +1,10 @@
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, Index
-from sqlalchemy.orm import relationship
 from pgvector.sqlalchemy import Vector
+from sqlalchemy import Column, ForeignKey, Index, Integer, String, Text
+from sqlalchemy.orm import relationship
+from sqlalchemy.types import TypeDecorator
+
 from app.models.base import Base, TimestampMixin
 
-
-from sqlalchemy.types import TypeDecorator
 
 class VectorType(TypeDecorator):
     impl = String

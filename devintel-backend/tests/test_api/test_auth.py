@@ -72,7 +72,7 @@ async def test_signup_weak_password(async_client: AsyncClient):
 async def test_login_success(async_client: AsyncClient, test_user: User):
     """Test successful login with valid credentials."""
     # First create user with password
-    from app.core.security import get_password_hash
+    from app.core.security import hash_password
     from app.repositories.user import UserRepository
     from app.db.session import AsyncSessionLocal
 

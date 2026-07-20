@@ -4,11 +4,8 @@ import asyncio
 import json
 import os
 import tempfile
-from typing import Optional
-from uuid import UUID
 
 from app.core.logging import get_logger
-from app.core.exceptions import APIError
 
 logger = get_logger(__name__)
 

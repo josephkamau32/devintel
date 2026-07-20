@@ -1,14 +1,13 @@
 """Code migration service for AI-powered migration."""
 
-from typing import Any, Optional
 from uuid import UUID
 
 from app.core.logging import get_logger
 from app.integrations.openai_client import OpenAIClient
-from app.models.migration import MigrationProject, MigratedFile
+from app.models.migration import MigratedFile, MigrationProject
 from app.models.repository import Repository
 from app.repositories.embedding import EmbeddingRepository
-from app.repositories.migration import MigrationProjectRepository, MigratedFileRepository
+from app.repositories.migration import MigratedFileRepository, MigrationProjectRepository
 from app.services.retrieval.hybrid_retriever import HybridRetriever
 
 logger = get_logger(__name__)
@@ -150,7 +149,7 @@ Provide the fully migrated code for {project.target_tech}."""
 # Add get_distinct_file_paths method to EmbeddingRepository
 def get_distinct_file_paths(self, repo_id: UUID) -> list[str]:
     """Get distinct file paths for a repository."""
-    from sqlalchemy import select, distinct
+    from sqlalchemy import distinct, select
     result = self.db.execute(
         select(distinct(self.model.file_path)).where(self.model.repo_id == repo_id)
     )

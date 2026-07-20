@@ -1,6 +1,5 @@
 """Git history API routes."""
 
-from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -9,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import check_repo_access, get_current_user
 from app.db.session import get_db
 from app.models.user import User
-from app.repositories.git_history import GitHistoryRepository, FileBlameRepository
+from app.repositories.git_history import GitHistoryRepository
 from app.repositories.repository import RepositoryRepository
 from app.schemas.git_history import (
     BlameContextResponse,
@@ -17,8 +16,8 @@ from app.schemas.git_history import (
     FileBlameResponse,
     GitHistoryResponse,
 )
-from app.services.git_history_service import GitHistoryService
 from app.services.encryption import encryption_service
+from app.services.git_history_service import GitHistoryService
 
 router = APIRouter(prefix="/git", tags=["Git History"])
 

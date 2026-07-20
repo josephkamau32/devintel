@@ -10,19 +10,12 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 from jose import JWTError, jwt
 
 from app.core.config import settings
-
 from app.core.logging import get_logger
-
 from app.db.session import AsyncSessionLocal
-
-from app.repositories.repository import RepositoryRepository
-
-from app.repositories.user import UserRepository
-
 from app.repositories.collaboration import CollaborationSessionRepository
-
+from app.repositories.repository import RepositoryRepository
+from app.repositories.user import UserRepository
 from app.services.collaboration_service import CollaborationService
-
 from app.services.progress_bus import progress_bus
 
 logger = get_logger(__name__)

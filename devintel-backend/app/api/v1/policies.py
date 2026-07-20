@@ -6,16 +6,16 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import check_repo_access, get_current_user
+from app.db.session import get_db
 from app.models.user import User
-from app.models.policy import PolicyRuleType, PolicySeverity
 from app.repositories.policy import PolicyRepository
 from app.repositories.repository import RepositoryRepository
 from app.schemas.policy import (
-    PolicyCreate,
-    PolicyResponse,
-    PolicyListResponse,
     PolicyCheckRequest,
     PolicyCheckResponse,
+    PolicyCreate,
+    PolicyListResponse,
+    PolicyResponse,
 )
 
 router = APIRouter(prefix="/repos", tags=["Policies"])

@@ -62,7 +62,7 @@ class MigratedFile(Base, UUIDMixin, TimestampMixin):
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="pending")
 
     # Relationships
-    project: Mapped["MigrationProject"] = relationship("MigrationProject", backref="migrated_files")
+    project: Mapped["MigrationProject"] = relationship("MigrationProject", backref="files")
 
     def __repr__(self) -> str:
         return f"<MigratedFile(project={self.project_id}, original={self.original_path})>"

@@ -33,7 +33,7 @@ def sample_repo() -> Repository:
         full_name="acme/my-service",
         url="https://github.com/acme/my-service",
         user_id=uuid4(),
-        indexed_status=True,
+        indexing_status="complete",
     )
 
 

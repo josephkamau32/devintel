@@ -6,7 +6,7 @@ from uuid import UUID
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.migration import MigrationProject, MigratedFile
+from app.models.migration import MigratedFile, MigrationProject
 from app.repositories.base import BaseRepository
 
 

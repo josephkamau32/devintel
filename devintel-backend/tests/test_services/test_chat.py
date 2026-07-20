@@ -20,7 +20,7 @@ async def test_chat_service_retrieve_chunks():
         full_name="test/repo",
         user_id=uuid4(), # required field
         url="https://github.com/test/repo", # required field
-        indexed_status=True,
+        indexing_status="complete",
     )
 
     # Mock embeddings

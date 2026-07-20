@@ -32,7 +32,7 @@ def sample_repo() -> Repository:
         full_name="acme/backend",
         url="https://github.com/acme/backend",
         user_id=uuid4(),
-        indexed_status=True,
+        indexing_status="complete",
         language="Python",
     )
 

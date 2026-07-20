@@ -4,7 +4,7 @@ import enum
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
-from sqlalchemy import ForeignKey, String, JSON
+from sqlalchemy import JSON, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -14,14 +14,14 @@ if TYPE_CHECKING:
     from app.models.repository import Repository
 
 
-class PolicySeverity(str, enum):
+class PolicySeverity(str, enum.Enum):
     """Policy violation severity levels."""
 
     ERROR = "error"
     WARNING = "warning"
 
 
-class PolicyRuleType(str, enum):
+class PolicyRuleType(str, enum.Enum):
     """Policy rule types."""
 
     MAX_COMPLEXITY = "max_complexity"
@@ -49,7 +49,7 @@ class Policy(Base, UUIDMixin, TimestampMixin):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     rule_type: Mapped[str] = mapped_column(String(50), nullable=False)
-    config: Mapped[dict] = mapped_column(JSON, nullable=False, default_factory=dict)
+    config: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     severity: Mapped[str] = mapped_column(
         String(20),
         nullable=False,

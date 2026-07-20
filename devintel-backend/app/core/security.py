@@ -1,12 +1,13 @@
-from datetime import datetime, timedelta, timezone
+import logging
+from datetime import UTC, datetime, timedelta
 from typing import Optional
 from uuid import UUID
 
+from cryptography.fernet import Fernet, InvalidToken
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from cryptography.fernet import Fernet, InvalidToken
+
 from app.core.config import settings
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -25,8 +26,8 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 # ── JWT tokens ────────────────────────────────────────────────────────────────
 def _create_token(data: dict, expires_delta: timedelta) -> str:
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + expires_delta
-    to_encode.update({"exp": expire, "iat": datetime.now(timezone.utc)})
+    expire = datetime.now(UTC) + expires_delta
+    to_encode.update({"exp": expire, "iat": datetime.now(UTC)})
     return jwt.encode(
         to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM
     )

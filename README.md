@@ -1,12 +1,23 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
-  <img src="https://img.shields.io/badge/FastAPI-0.109-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" />
-  <img src="https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React" />
-  <img src="https://img.shields.io/badge/TypeScript-5.x-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/PostgreSQL-pgvector-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" />
-  <img src="https://img.shields.io/badge/OpenAI-GPT--4o-412991?style=for-the-badge&logo=openai&logoColor=white" alt="OpenAI" />
-  <img src="https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" />
+  <a href="https://devintel.vercel.app/"><img src="https://img.shields.io/badge/🚀_Live_Demo-devintel.vercel.app-8B5CF6?style=for-the-badge" alt="Live Demo" /></a>
+  <a href="https://github.com/josephkamau32/devintel/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/josephkamau32/devintel/ci.yml?branch=main&style=for-the-badge&logo=githubactions&logoColor=white&label=CI" alt="CI Status" /></a>
+  <img src="https://img.shields.io/badge/Coverage-60%25+-4DC71F?style=for-the-badge&logo=codecov&logoColor=white" alt="Coverage" />
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT License" />
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Ruff-checked-D7FF64?style=flat-square&logo=ruff&logoColor=black" alt="Ruff" />
+  <img src="https://img.shields.io/badge/mypy-strict-blue?style=flat-square&logo=python&logoColor=white" alt="mypy" />
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python" />
+  <img src="https://img.shields.io/badge/FastAPI-0.109-009688?style=flat-square&logo=fastapi&logoColor=white" alt="FastAPI" />
+  <img src="https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React" />
+  <img src="https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/PostgreSQL-pgvector-4169E1?style=flat-square&logo=postgresql&logoColor=white" alt="PostgreSQL" />
+  <img src="https://img.shields.io/badge/OpenAI-GPT--4o-412991?style=flat-square&logo=openai&logoColor=white" alt="OpenAI" />
+  <img src="https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker" />
 </p>
 
 <h1 align="center">🧠 DevIntel AI</h1>
@@ -39,6 +50,10 @@ DevIntel AI is a **production-grade AI coding assistant platform** built as a mo
 | **[`devintel-frontend`](./devintel-frontend)** | Dashboard for repository management, chat, code health analytics, and PR reviews | React 18, TypeScript 5, Vite, TanStack Query, Recharts |
 | **[`devintel-vscode`](./devintel-vscode)** | VS Code extension with integrated AI chat sidebar, code review, and secure token management | TypeScript, VS Code Extension API, Webpack |
 
+### 📸 Screenshots
+
+> **Coming soon** — screenshots of the RAG chat, code health dashboard, and auto-generated PR review comments will be added here. Visit the [Live Demo](https://devintel.vercel.app/) to see the app in action.
+
 ### What makes this different from a ChatGPT wrapper?
 
 This project implements **the full engineering depth** that production AI systems require:
@@ -48,7 +63,7 @@ This project implements **the full engineering depth** that production AI system
 - **Production resilience** — Circuit breaker pattern (CLOSED → OPEN → HALF_OPEN) on all external API calls, exponential backoff retries, retry queues for failed tasks, and Redis-backed caching.
 - **Enterprise security** — JWT + HttpOnly refresh cookies with SHA-256 hashing, Fernet AES-256 encryption for tokens at rest, OWASP security headers, CSRF protection, SQL injection detection, prompt injection defense, and audit logging.
 - **Multi-agent architecture** — Specialized agents (security, performance, architecture, test generation) with a common base, routed to the appropriate agent based on task type.
-- **Full CI/CD** — GitHub Actions for lint, test, build, security scanning (Trivy + Safety + npm audit), and automated VPS deployment via SSH.
+- **Full CI/CD** — GitHub Actions for lint (Ruff), type check (mypy --strict), test with coverage threshold, security scanning (Trivy + Safety + npm audit), and automated VPS deployment via SSH.
 
 ---
 
@@ -94,6 +109,46 @@ This project implements **the full engineering depth** that production AI system
 ---
 
 ## 🏗 System Architecture
+
+```mermaid
+graph TD
+    subgraph Clients
+        A["React SPA (Vite)"] 
+        B["VS Code Extension"]
+        C["GitHub Webhooks"]
+    end
+
+    A --> N["Nginx Reverse Proxy<br/>SSL · Static Assets · Rate Limiting"]
+    B --> N
+    C --> N
+    N --> F["FastAPI Application Server"]
+
+    subgraph F["FastAPI Application Server"]
+        direction TB
+        MW["Middleware Stack<br/>Auth (JWT) · Security Headers (OWASP)<br/>Metrics (Prometheus) · Rate Limiting (Redis)<br/>CSRF · SQLi Detection · Audit Logging"]
+        MW --> ROUTES["API v1 Routes<br/>/auth · /repos · /chat · /health-score<br/>/pr-review · /webhooks · /ws · /agent"]
+        ROUTES --> SVC["Service Layer (24 modules)"]
+        
+        subgraph SVC["Service Layer"]
+            CS["ChatService<br/>(RAG + SSE)"]
+            AS["AgentService<br/>(Tool-Use)"]
+            PR["PRReviewSvc<br/>(AI Reviews)"]
+            CH["CodeHealth<br/>Scoring"]
+            AF["AutoFixSvc<br/>(Self-Heal)"]
+            II["Incremental<br/>Indexer"]
+            MA["Multi-Agent Framework<br/>Security · Performance · Architect · Test"]
+        end
+
+        SVC --> REPO["Repository Layer<br/>18 modules · Async SQLAlchemy 2.0"]
+    end
+
+    REPO --> PG[("PostgreSQL 16<br/>+ pgvector<br/>20 migrations · 17+ tables")]
+    REPO --> RD[("Redis 7<br/>Cache / Queue<br/>Celery · LRU 512MB")]
+    SVC --> OAI["OpenAI API<br/>Circuit Breaker + Retry"]
+```
+
+<details>
+<summary>📋 ASCII Architecture Diagram (text fallback)</summary>
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -159,6 +214,8 @@ This project implements **the full engineering depth** that production AI system
 │  (17+ tables)    │  │  (LRU 512MB)   │  │                   │
 └──────────────────┘  └────────────────┘  └───────────────────┘
 ```
+
+</details>
 
 ### Layered Architecture
 
@@ -616,7 +673,9 @@ This project includes extensive documentation beyond this README:
 
 | Document | Description |
 |----------|-------------|
+| [Technical Deep Dive](./docs/TECHNICAL_DEEP_DIVE.md) | Architecture deep dive — design trade-offs, scaling strategies, and system internals |
 | [API Reference](./docs/API.md) | Full OpenAPI specification with request/response examples |
+| [OpenAPI Schema](./devintel-backend/docs/openapi.json) | Machine-readable OpenAPI 3.1 spec (auto-generated) |
 | [Architecture Decision Records](./docs/ADR.md) | Rationale for key technical decisions |
 | [Security Documentation](./docs/SECURITY.md) | Security model, threat mitigation, and hardening guide |
 | [Deployment Guide](./docs/DEPLOYMENT.md) | Step-by-step production deployment instructions |

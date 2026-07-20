@@ -1,6 +1,5 @@
 """Code migration API routes."""
 
-from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -9,13 +8,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import check_repo_access, get_current_user
 from app.db.session import get_db
 from app.models.user import User
-from app.repositories.migration import MigrationProjectRepository, MigratedFileRepository
+from app.repositories.migration import MigratedFileRepository, MigrationProjectRepository
 from app.repositories.repository import RepositoryRepository
 from app.schemas.migration import (
+    MigratedFileResponse,
     MigrationProjectCreate,
     MigrationProjectResponse,
     MigrationStatusResponse,
-    MigratedFileResponse,
 )
 from app.services.migration_service import CodeMigrationService
 

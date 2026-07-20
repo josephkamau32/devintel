@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, Index, ARRAY
+from sqlalchemy import JSON, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -20,7 +20,7 @@ class GitHistory(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "git_history"
 
     __table_args__ = (
-        Index("ix_git_history_repo_committed_at", "repo_id", "committed_at.desc()"),
+        Index("ix_git_history_repo_committed_at", "repo_id", "committed_at"),
     )
 
     # Foreign keys
@@ -44,7 +44,7 @@ class GitHistory(Base, UUIDMixin, TimestampMixin):
     files_changed: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     additions: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     deletions: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    changed_files: Mapped[Optional[list[str]]] = mapped_column(ARRAY(String), nullable=True)
+    changed_files: Mapped[Optional[list[str]]] = mapped_column(JSON, nullable=True)
 
     # Relationships
     repository: Mapped["Repository"] = relationship("Repository", backref="git_history")

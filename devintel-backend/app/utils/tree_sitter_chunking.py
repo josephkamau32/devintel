@@ -4,7 +4,6 @@ import tiktoken
 import tree_sitter_language_pack as tslp
 from tree_sitter import Language, Node, Parser
 
-
 # Global tokenizer for consistent token counting
 _encoding = tiktoken.get_encoding("cl100k_base")
 

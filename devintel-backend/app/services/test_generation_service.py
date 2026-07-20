@@ -1,12 +1,12 @@
 """Test generation service for autonomous PR workflow."""
 
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
 
 from app.core.exceptions import APIError
 from app.core.logging import get_logger
 from app.integrations.openai_client import OpenAIClient
-from app.models.generated_test import GeneratedTest, TestStatus
+from app.models.generated_test import TestStatus
 from app.models.repository import Repository
 from app.repositories.generated_test import GeneratedTestRepository
 from app.services.sandbox_service import SandboxService
@@ -45,7 +45,7 @@ class TestGenerationService:
 
         # Generate test code
         system_prompt = f"""You are a test engineer. Generate pytest unit tests for the following code changes.
-        
+
 Repository: {repo.full_name}
 Language: {repo.language or 'unknown'}
 

@@ -8,8 +8,9 @@ from app.main import app
 
 
 @pytest.mark.asyncio
-async def test_full_repository_workflow(async_client: AsyncClient, auth_headers: dict):
+async def test_full_repository_workflow(async_client: AsyncClient, test_user_token: str):
     """Test complete repository lifecycle: add, index, query, delete."""
+    auth_headers = {"Authorization": f"Bearer {test_user_token}"}
     # Step 1: Add repository
     add_response = await async_client.post(
         "/api/v1/repos",
@@ -36,15 +37,15 @@ async def test_authentication_flow():
     """Test GitHub OAuth authentication flow."""
     async with AsyncClient(app=app, base_url="http://test") as client:
         # Step 1: Get GitHub OAuth URL
-        auth_response = await client.get("/api/v1/auth/github")
-        assert auth_response.status_code == status.HTTP_200_OK
-        assert "url" in auth_response.json()
-        assert "github.com" in auth_response.json()["url"]
+        auth_response = await client.get("/api/v1/auth/github", follow_redirects=False)
+        assert auth_response.status_code == status.HTTP_307_TEMPORARY_REDIRECT
+        assert "github.com" in auth_response.headers["location"]
 
 
 @pytest.mark.asyncio
-async def test_chat_without_repository(async_client: AsyncClient, auth_headers: dict):
+async def test_chat_without_repository(async_client: AsyncClient, test_user_token: str):
     """Test chat endpoint validation."""
+    auth_headers = {"Authorization": f"Bearer {test_user_token}"}
     response = await async_client.post(
         "/api/v1/chat",
         headers=auth_headers,
@@ -69,12 +70,12 @@ async def test_rate_limiting():
         # Make multiple rapid requests
         responses = []
         for _ in range(10):
-            response = await client.get("/api/v1/auth/github")
+            response = await client.get("/api/v1/auth/github", follow_redirects=False)
             responses.append(response.status_code)
 
         # Should eventually hit rate limit
         assert status.HTTP_429_TOO_MANY_REQUESTS in responses or \
-               all(code == status.HTTP_200_OK for code in responses)
+               all(code == status.HTTP_307_TEMPORARY_REDIRECT for code in responses)
 
 
 @pytest.mark.asyncio

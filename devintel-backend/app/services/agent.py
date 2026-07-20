@@ -160,8 +160,8 @@ When using the tool, you must provide the ENTIRE updated content for each file y
 
         # Optional: Generate and run tests before committing
         if draft_payload.get("generate_tests", False):
-            from app.services.test_generation_service import TestGenerationService
             from app.db.session import AsyncSessionLocal
+            from app.services.test_generation_service import TestGenerationService
 
             async with AsyncSessionLocal() as db:
                 test_service = TestGenerationService(db)
@@ -180,7 +180,7 @@ When using the tool, you must provide the ENTIRE updated content for each file y
                     }
 
                 # Add test results to PR body
-                pr_body += f"\n\n---\n### Auto-Generated Tests\nTests passed successfully. See test run for details."
+                pr_body += "\n\n---\n### Auto-Generated Tests\nTests passed successfully. See test run for details."
 
         # 4. Execute GitHub Actions
         logger.info(f"Creating branch {branch_name} from {default_branch}...")

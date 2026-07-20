@@ -3,7 +3,7 @@
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
-from sqlalchemy import ForeignKey, String, Float, Index
+from sqlalchemy import Float, ForeignKey, Index, String
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -19,7 +19,7 @@ class CrossRepoKnowledge(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "cross_repo_knowledge"
 
     __table_args__ = (
-        Index("ix_cross_repo_similarity", "repo_id", "similarity_score.desc()"),
+        Index("ix_cross_repo_similarity", "repo_id", "similarity_score"),
     )
 
     # Foreign keys

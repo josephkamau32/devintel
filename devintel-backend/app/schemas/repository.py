@@ -1,6 +1,7 @@
+from typing import Optional
+
 from pydantic import BaseModel, ConfigDict
-from typing import Optional, List
-from datetime import datetime
+
 from app.models.repository import IndexingStatus
 
 
@@ -51,7 +52,7 @@ class RepositoryIndexResponse(BaseModel):
 
 
 class RepositoryListResponse(BaseModel):
-    repositories: List[RepositoryResponse]
+    repositories: list[RepositoryResponse]
     total: int
 
 
@@ -73,7 +74,7 @@ class SearchResult(BaseModel):
 
 
 class SearchResponse(BaseModel):
-    results: List[SearchResult]
+    results: list[SearchResult]
     repository_id: int
     query: str
 

@@ -166,7 +166,7 @@ class TestRepositoryEndpoints:
             repo_name="repo",
             full_name="other/repo",
             url="https://github.com/other/repo.git",
-            indexed_status=False,
+            indexing_status="pending",
         )
         db_session.add(other_repo)
         await db_session.commit()

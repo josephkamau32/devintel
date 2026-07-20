@@ -1,6 +1,10 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Text, Enum
-from sqlalchemy.orm import relationship
 import enum
+from uuid import uuid4
+
+from sqlalchemy import Boolean, Column, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
+
 from app.models.base import Base, TimestampMixin
 
 
@@ -14,8 +18,9 @@ class IndexingStatus(str, enum.Enum):
 class Repository(Base, TimestampMixin):
     __tablename__ = "repositories"
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=True, index=True)
     github_repo_id = Column(String(100), nullable=True)
     full_name = Column(String(255), nullable=False)
     repo_name = Column(String(255), nullable=False)
@@ -34,7 +39,13 @@ class Repository(Base, TimestampMixin):
     indexing_mode = Column(String(50), nullable=True)
 
     user = relationship("User", back_populates="repositories")
+    organization = relationship("Organization", back_populates="repositories")
     chunks = relationship("CodeChunk", back_populates="repository", cascade="all, delete-orphan")
+    embeddings = relationship("Embedding", back_populates="repository", cascade="all, delete-orphan")
+    policies = relationship("Policy", back_populates="repository", cascade="all, delete-orphan")
+    generated_tests = relationship("GeneratedTest", back_populates="repository", cascade="all, delete-orphan")
+    code_graphs = relationship("CodeGraph", back_populates="repository", cascade="all, delete-orphan")
+    chats = relationship("Chat", back_populates="repository", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Repository id={self.id} full_name={self.full_name}>"

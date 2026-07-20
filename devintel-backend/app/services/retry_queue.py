@@ -3,10 +3,8 @@
 import asyncio
 import time
 from dataclasses import dataclass
-from typing import Optional
 
 from app.core.logging import get_logger
-from app.core.exceptions import IndexingError
 
 logger = get_logger(__name__)
 

@@ -1,6 +1,5 @@
 """Architecture visualization API routes."""
 
-from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
