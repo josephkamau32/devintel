@@ -118,3 +118,28 @@ async def validation_exception_handler(
             "errors": errors,
         },
     )
+
+
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Catch-all for unhandled exceptions — ensures CORS headers are still applied.
+
+    Without this, raw 500 responses from uncaught errors (e.g. database
+    connection failures) bypass the structured response pipeline and may
+    be returned without CORS headers, causing the browser to report a
+    misleading CORS error instead of the real server error.
+    """
+    import logging
+
+    logging.getLogger(__name__).exception(
+        "Unhandled exception on %s %s", request.method, request.url.path
+    )
+    request_id = getattr(request.state, "request_id", None) or "unknown"
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={
+            "detail": "Internal server error",
+            "error_code": "INTERNAL_ERROR",
+            "request_id": request_id,
+        },
+    )
+

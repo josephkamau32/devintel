@@ -204,12 +204,16 @@ backups/
 # Catch-all patterns for test/debug output
 *_out.txt
 *_out_*.txt
-err*.txt
+*_output.txt
+*_output_*.txt
+*error*.txt
+*err*.txt
 api_logs.txt
 lint-results*.json
 lint_out*.txt
 pytest_*.txt
 test_output*.txt
+*test_output*.txt
 
 # Backend specifics
 devintel-backend/test_result*.log

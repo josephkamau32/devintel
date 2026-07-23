@@ -27,7 +27,7 @@ REFRESH_COOKIE_NAME = "refresh_token"
 COOKIE_SETTINGS = {
     "httponly": True,
     "secure": not settings.DEBUG,
-    "samesite": "lax",
+    "samesite": "none" if not settings.DEBUG else "lax",
     "max_age": settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400,
 }
 

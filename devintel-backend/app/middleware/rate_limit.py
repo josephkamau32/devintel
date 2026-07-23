@@ -21,7 +21,7 @@ logger = get_logger(__name__)
 # Per-endpoint rate limits (requests per minute)
 # More expensive endpoints get stricter limits
 ENDPOINT_RATE_LIMITS: dict[str, int] = {
-    "/api/v1/auth": 5,
+    "/api/v1/auth": 30,
     "/api/v1/chat": 20,
     "/api/v1/repos": 30,
     "/api/v1/health-score": 10,

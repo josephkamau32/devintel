@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.router import api_router
 from app.core.config import settings
-from app.core.exceptions import AppException, app_exception_handler, validation_exception_handler
+from app.core.exceptions import AppException, app_exception_handler, unhandled_exception_handler, validation_exception_handler
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.security import (
     AuditLoggingMiddleware,
@@ -31,16 +31,12 @@ def create_app() -> FastAPI:
         redoc_url="/redoc" if settings.DEBUG else None,
     )
 
-    # ── CORS ──────────────────────────────────────────────────────────────
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.CORS_ORIGINS,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
 
-    # ── Security middleware (order matters: outermost runs first) ──────────
+    # ── Security middleware ────────────────────────────────────────────────
+    # NOTE: add_middleware uses a stack — the LAST middleware added wraps
+    # everything and runs FIRST.  We add CORS *after* all other middleware
+    # so it is the outermost layer and always injects CORS headers, even
+    # when an inner middleware returns an error response.
     # Request ID tracing — adds X-Request-ID to every request/response
     app.add_middleware(RequestIDMiddleware)
     # OWASP security headers (X-Content-Type-Options, X-Frame-Options, CSP, etc.)
@@ -52,9 +48,19 @@ def create_app() -> FastAPI:
     # Audit logging for sensitive paths (/auth, /repos, /admin)
     app.add_middleware(AuditLoggingMiddleware)
 
+    # ── CORS (must be outermost = added LAST) ─────────────────────────────
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.CORS_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
     # ── Exception handlers ────────────────────────────────────────────────
     app.add_exception_handler(AppException, app_exception_handler)
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
+    app.add_exception_handler(Exception, unhandled_exception_handler)
 
     # ── Routes ────────────────────────────────────────────────────────────
     app.include_router(api_router)
