@@ -121,14 +121,29 @@ async def demo_login(
     db: AsyncSession = Depends(get_db),
 ):
     """One-click demo login — creates or retrieves a demo user for portfolio demos."""
-    service = AuthService(db)
-    user, access_token, refresh_token = await service.demo_login()
-    _set_refresh_cookie(response, refresh_token)
-    return TokenResponse(
-        access_token=access_token,
-        token_type="bearer",
-        user=UserPublic.model_validate(user),
-    )
+    import logging as _logging
+    import traceback
+    try:
+        service = AuthService(db)
+        user, access_token, refresh_token = await service.demo_login()
+        _set_refresh_cookie(response, refresh_token)
+        return TokenResponse(
+            access_token=access_token,
+            token_type="bearer",
+            user=UserPublic.model_validate(user),
+        )
+    except Exception as exc:
+        tb = traceback.format_exc()
+        _logging.getLogger(__name__).error("Demo login failed:\n%s", tb)
+        # Surface the real error so we can debug without Render log access
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=500,
+            content={
+                "detail": f"Demo login error: {type(exc).__name__}: {exc}",
+                "traceback": tb.split("\n")[-5:],
+            },
+        )
 
 
 @router.post("/refresh", response_model=RefreshResponse)
