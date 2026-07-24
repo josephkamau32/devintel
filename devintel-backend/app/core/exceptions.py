@@ -87,10 +87,28 @@ class RateLimitError(AppException):
 
 
 # ── FastAPI exception handlers ────────────────────────────────────────────────
+
+def _add_cors_headers(request: Request, response: JSONResponse) -> JSONResponse:
+    """Inject CORS headers directly into error responses.
+
+    Starlette's BaseHTTPMiddleware subclasses break the CORSMiddleware
+    send_wrapper pipeline on error responses — the CORS headers are
+    silently dropped.  This helper ensures they are always present.
+    """
+    from app.core.config import settings
+
+    origin = request.headers.get("origin")
+    if origin and origin in settings.CORS_ORIGINS:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers.setdefault("Vary", "Origin")
+    return response
+
+
 async def app_exception_handler(request: Request, exc: AppException) -> JSONResponse:
     """Return structured error envelope with error_code and request_id."""
     request_id = getattr(request.state, "request_id", None) or "unknown"
-    return JSONResponse(
+    response = JSONResponse(
         status_code=exc.status_code,
         content={
             "detail": exc.detail,
@@ -98,6 +116,7 @@ async def app_exception_handler(request: Request, exc: AppException) -> JSONResp
             "request_id": request_id,
         },
     )
+    return _add_cors_headers(request, response)
 
 
 async def validation_exception_handler(
@@ -109,7 +128,7 @@ async def validation_exception_handler(
     for error in exc.errors():
         field = " -> ".join(str(loc) for loc in error["loc"])
         errors.append({"field": field, "message": error["msg"]})
-    return JSONResponse(
+    response = JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={
             "detail": "Validation error",
@@ -118,6 +137,7 @@ async def validation_exception_handler(
             "errors": errors,
         },
     )
+    return _add_cors_headers(request, response)
 
 
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
@@ -134,7 +154,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
         "Unhandled exception on %s %s", request.method, request.url.path
     )
     request_id = getattr(request.state, "request_id", None) or "unknown"
-    return JSONResponse(
+    response = JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
             "detail": "Internal server error",
@@ -142,4 +162,6 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
             "request_id": request_id,
         },
     )
+    return _add_cors_headers(request, response)
+
 

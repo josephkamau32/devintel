@@ -166,7 +166,7 @@ async def github_callback(
     service = GitHubService(db)
     user, access_token, refresh_token = await service.authenticate(code)
 
-    frontend_url = settings.CORS_ORIGINS[0]
+    frontend_url = settings.FRONTEND_URL
     redirect = RedirectResponse(
         url=f"{frontend_url}/oauth/callback#access_token={access_token}",
         status_code=302,
