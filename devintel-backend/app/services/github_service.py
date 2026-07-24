@@ -40,6 +40,14 @@ class GitHubService:
             data = response.json()
 
         if "error" in data:
+            logger.error(
+                "GitHub token exchange failed: error=%s desc=%s "
+                "redirect_uri=%s client_id=%s",
+                data.get("error"),
+                data.get("error_description"),
+                settings.GITHUB_REDIRECT_URI,
+                settings.GITHUB_CLIENT_ID[:8] + "...",
+            )
             raise AuthenticationError(f"GitHub OAuth error: {data.get('error_description', data['error'])}")
 
         access_token = data.get("access_token")
