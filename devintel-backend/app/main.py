@@ -1,4 +1,5 @@
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
@@ -23,12 +24,26 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Ensure database tables exist on startup (safety net for Render free tier)."""
+    from app.db.session import engine
+    from app.models import Base
+
+    async with engine.begin() as conn:
+        # create_all is idempotent — only creates tables that don't exist
+        await conn.run_sync(Base.metadata.create_all)
+        logger.info("Database tables verified/created.")
+    yield
+
+
 def create_app() -> FastAPI:
     app = FastAPI(
         title=settings.APP_NAME,
         version="1.0.0",
         docs_url="/docs" if settings.DEBUG else None,
         redoc_url="/redoc" if settings.DEBUG else None,
+        lifespan=lifespan,
     )
 
 
@@ -74,3 +89,4 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
+
