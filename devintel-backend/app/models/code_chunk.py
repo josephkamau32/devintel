@@ -1,5 +1,8 @@
+from uuid import uuid4
+
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import Column, ForeignKey, Index, Integer, String, Text
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.types import TypeDecorator
 
@@ -20,8 +23,8 @@ class VectorType(TypeDecorator):
 class CodeChunk(Base, TimestampMixin):
     __tablename__ = "code_chunks"
 
-    id = Column(Integer, primary_key=True, index=True)
-    repository_id = Column(Integer, ForeignKey("repositories.id", ondelete="CASCADE"), nullable=False, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    repository_id = Column(UUID(as_uuid=True), ForeignKey("repositories.id", ondelete="CASCADE"), nullable=False, index=True)
     file_path = Column(String(500), nullable=False)
     chunk_type = Column(String(50), nullable=False)
     content = Column(Text, nullable=False)
@@ -34,3 +37,4 @@ class CodeChunk(Base, TimestampMixin):
     __table_args__ = (
         Index("ix_code_chunks_repo_file", "repository_id", "file_path"),
     )
+
