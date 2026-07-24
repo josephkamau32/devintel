@@ -1,4 +1,7 @@
+import hashlib
+import hmac
 import secrets
+import time
 from typing import Optional
 from urllib.parse import urlencode
 
@@ -30,6 +33,38 @@ COOKIE_SETTINGS = {
     "samesite": "none" if not settings.DEBUG else "lax",
     "max_age": settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400,
 }
+
+# ── HMAC-signed OAuth state (stateless CSRF protection) ───────────────────
+_STATE_MAX_AGE = 600  # 10 minutes
+
+
+def _sign(payload: str) -> str:
+    """Create an HMAC-SHA256 signature of *payload* using SECRET_KEY."""
+    return hmac.new(
+        settings.SECRET_KEY.encode(), payload.encode(), hashlib.sha256
+    ).hexdigest()[:32]
+
+
+def _create_oauth_state() -> str:
+    """Build a self-validating state: ``nonce.timestamp.signature``."""
+    nonce = secrets.token_urlsafe(16)
+    ts = str(int(time.time()))
+    sig = _sign(f"{nonce}.{ts}")
+    return f"{nonce}.{ts}.{sig}"
+
+
+def _verify_oauth_state(state: str) -> bool:
+    """Verify the HMAC signature and ensure the state hasn't expired."""
+    try:
+        nonce, ts, sig = state.rsplit(".", 2)
+    except ValueError:
+        return False
+    expected = _sign(f"{nonce}.{ts}")
+    if not hmac.compare_digest(sig, expected):
+        return False
+    if abs(time.time() - int(ts)) > _STATE_MAX_AGE:
+        return False
+    return True
 
 
 def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
@@ -123,11 +158,13 @@ async def get_me(current_user: User = Depends(get_current_user)):
 
 
 @router.get("/github")
-async def github_login(response: Response):
+async def github_login():
     """Redirect to GitHub for OAuth authorization."""
-    state = secrets.token_urlsafe(32)
-    # Store the state in a short-lived httponly cookie for validation on callback
-    response = RedirectResponse(
+    # Use an HMAC-signed state token instead of a cookie.
+    # Cookies are unreliable across the multi-hop redirect chain
+    # (backend → GitHub → backend) due to SameSite restrictions.
+    state = _create_oauth_state()
+    return RedirectResponse(
         url="https://github.com/login/oauth/authorize?"
         + urlencode(
             {
@@ -138,15 +175,6 @@ async def github_login(response: Response):
             }
         )
     )
-    response.set_cookie(
-        key="oauth_state",
-        value=state,
-        httponly=True,
-        secure=not settings.DEBUG,
-        samesite="lax",
-        max_age=600,  # 10 minutes
-    )
-    return response
 
 
 @router.get("/github/callback")
@@ -158,9 +186,8 @@ async def github_callback(
     db: AsyncSession = Depends(get_db),
 ):
     """Handle GitHub OAuth callback with state validation."""
-    # Validate OAuth state parameter to prevent CSRF
-    stored_state = request.cookies.get("oauth_state")
-    if not state or not stored_state or not secrets.compare_digest(state, stored_state):
+    # Validate the HMAC-signed state token (no cookie needed)
+    if not state or not _verify_oauth_state(state):
         raise AuthenticationError("Invalid OAuth state — possible CSRF attack")
 
     service = GitHubService(db)
@@ -172,6 +199,4 @@ async def github_callback(
         status_code=302,
     )
     _set_refresh_cookie(redirect, refresh_token)
-    # Clear the one-time state cookie
-    redirect.delete_cookie("oauth_state")
     return redirect
