@@ -26,14 +26,37 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Ensure database tables exist on startup (safety net for Render free tier)."""
+    """Verify database connectivity on startup.
+
+    Schema management is handled by Alembic (run in start.sh before uvicorn).
+    We attempt create_all as a safety net for truly fresh databases only,
+    but never crash if tables already exist — the asyncpg dialect does not
+    reliably support CREATE TABLE IF NOT EXISTS via checkfirst introspection.
+    """
+    from sqlalchemy.exc import ProgrammingError
+
     from app.db.session import engine
     from app.models import Base
 
-    async with engine.begin() as conn:
-        # create_all is idempotent — only creates tables that don't exist
-        await conn.run_sync(Base.metadata.create_all)
-        logger.info("Database tables verified/created.")
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(
+                Base.metadata.create_all, checkfirst=True
+            )
+            logger.info("Database tables verified/created.")
+    except ProgrammingError as exc:
+        # DuplicateTableError is expected when Alembic has already created
+        # the schema — log and continue, don't crash the app.
+        if "already exists" in str(exc):
+            logger.info(
+                "Tables already exist (managed by Alembic) — skipping create_all."
+            )
+        else:
+            logger.error("Unexpected DB error during startup: %s", exc)
+            raise
+    except Exception as exc:
+        logger.error("Database startup check failed: %s", exc)
+        raise
     yield
 
 
