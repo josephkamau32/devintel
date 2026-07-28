@@ -24,20 +24,31 @@ class GitHubService:
 
     async def exchange_code_for_token(self, code: str) -> str:
         """Exchange GitHub OAuth code for an access token."""
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                GITHUB_TOKEN_URL,
-                data={
-                    "client_id": settings.GITHUB_CLIENT_ID,
-                    "client_secret": settings.GITHUB_CLIENT_SECRET,
-                    "code": code,
-                    "redirect_uri": settings.GITHUB_REDIRECT_URI,
-                },
-                headers={"Accept": "application/json"},
-                timeout=10.0,
-            )
-            response.raise_for_status()
-            data = response.json()
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    GITHUB_TOKEN_URL,
+                    data={
+                        "client_id": settings.GITHUB_CLIENT_ID,
+                        "client_secret": settings.GITHUB_CLIENT_SECRET,
+                        "code": code,
+                        "redirect_uri": settings.GITHUB_REDIRECT_URI,
+                    },
+                    headers={"Accept": "application/json"},
+                    timeout=10.0,
+                )
+                response.raise_for_status()
+                data = response.json()
+        except httpx.HTTPStatusError as exc:
+            logger.error("GitHub token exchange HTTP error: %s", exc)
+            raise AuthenticationError(
+                f"GitHub returned HTTP {exc.response.status_code} during token exchange"
+            ) from exc
+        except httpx.RequestError as exc:
+            logger.error("GitHub token exchange network error: %s", exc)
+            raise AuthenticationError(
+                "Could not connect to GitHub — please try again"
+            ) from exc
 
         if "error" in data:
             logger.error(
@@ -58,17 +69,28 @@ class GitHubService:
 
     async def get_github_user(self, github_token: str) -> dict:
         """Fetch user profile from GitHub API."""
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                GITHUB_USER_URL,
-                headers={
-                    "Authorization": f"Bearer {github_token}",
-                    "Accept": "application/vnd.github+json",
-                },
-                timeout=10.0,
-            )
-            response.raise_for_status()
-            return response.json()
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    GITHUB_USER_URL,
+                    headers={
+                        "Authorization": f"Bearer {github_token}",
+                        "Accept": "application/vnd.github+json",
+                    },
+                    timeout=10.0,
+                )
+                response.raise_for_status()
+                return response.json()
+        except httpx.HTTPStatusError as exc:
+            logger.error("GitHub user fetch HTTP error: %s", exc)
+            raise AuthenticationError(
+                "Failed to fetch your GitHub profile — token may be invalid"
+            ) from exc
+        except httpx.RequestError as exc:
+            logger.error("GitHub user fetch network error: %s", exc)
+            raise AuthenticationError(
+                "Could not connect to GitHub — please try again"
+            ) from exc
 
     async def get_primary_email(self, github_token: str) -> Optional[str]:
         """Fetch the user's primary, verified email from GitHub."""
@@ -105,7 +127,7 @@ class GitHubService:
         github_id = str(github_user["id"])
         encrypted_token = encrypt_token(github_token)
 
-        user = await self.user_repo.get_by_github_id(github_id)
+        user: User | None = await self.user_repo.get_by_github_id(github_id)
 
         if user:
             user = await self.user_repo.update_github_token(user, encrypted_token)

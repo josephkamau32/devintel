@@ -201,17 +201,38 @@ async def github_callback(
     db: AsyncSession = Depends(get_db),
 ):
     """Handle GitHub OAuth callback with state validation."""
-    # Validate the HMAC-signed state token (no cookie needed)
-    if not state or not _verify_oauth_state(state):
-        raise AuthenticationError("Invalid OAuth state — possible CSRF attack")
-
-    service = GitHubService(db)
-    user, access_token, refresh_token = await service.authenticate(code)
+    import logging as _logging
+    import traceback
 
     frontend_url = settings.FRONTEND_URL
-    redirect = RedirectResponse(
-        url=f"{frontend_url}/oauth/callback#access_token={access_token}",
-        status_code=302,
-    )
-    _set_refresh_cookie(redirect, refresh_token)
-    return redirect
+
+    # Validate the HMAC-signed state token (no cookie needed)
+    if not state or not _verify_oauth_state(state):
+        _logging.getLogger(__name__).warning(
+            "OAuth state validation failed — redirecting to login"
+        )
+        return RedirectResponse(
+            url=f"{frontend_url}/login?error=oauth_failed", status_code=302
+        )
+
+    try:
+        service = GitHubService(db)
+        user, access_token, refresh_token = await service.authenticate(code)
+
+        redirect = RedirectResponse(
+            url=f"{frontend_url}/oauth/callback#access_token={access_token}",
+            status_code=302,
+        )
+        _set_refresh_cookie(redirect, refresh_token)
+        return redirect
+
+    except Exception as exc:
+        _logging.getLogger(__name__).error(
+            "GitHub OAuth callback failed: %s\n%s",
+            exc,
+            traceback.format_exc(),
+        )
+        # Redirect to frontend login with error — never show a raw error page
+        return RedirectResponse(
+            url=f"{frontend_url}/login?error=oauth_failed", status_code=302
+        )
