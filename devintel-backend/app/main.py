@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 from app.api.v1.router import api_router
 from app.core.config import settings
@@ -28,32 +29,18 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """Verify database connectivity on startup.
 
-    Schema management is handled by Alembic (run in start.sh before uvicorn).
-    We attempt create_all as a safety net for truly fresh databases only,
-    but never crash if tables already exist — the asyncpg dialect does not
-    reliably support CREATE TABLE IF NOT EXISTS via checkfirst introspection.
+    Schema management is handled entirely by Alembic (run in start.sh
+    before uvicorn).  We only verify connectivity here — never call
+    create_all, because the asyncpg dialect does not reliably support
+    ``CREATE TABLE IF NOT EXISTS`` via checkfirst introspection and
+    will crash with DuplicateTableError.
     """
-    from sqlalchemy.exc import ProgrammingError
-
     from app.db.session import engine
-    from app.models import Base
 
     try:
-        async with engine.begin() as conn:
-            await conn.run_sync(
-                Base.metadata.create_all, checkfirst=True
-            )
-            logger.info("Database tables verified/created.")
-    except ProgrammingError as exc:
-        # DuplicateTableError is expected when Alembic has already created
-        # the schema — log and continue, don't crash the app.
-        if "already exists" in str(exc):
-            logger.info(
-                "Tables already exist (managed by Alembic) — skipping create_all."
-            )
-        else:
-            logger.error("Unexpected DB error during startup: %s", exc)
-            raise
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+        logger.info("Database connectivity verified.")
     except Exception as exc:
         logger.error("Database startup check failed: %s", exc)
         raise
