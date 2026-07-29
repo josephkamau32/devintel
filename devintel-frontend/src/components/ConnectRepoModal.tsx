@@ -19,19 +19,27 @@ export const ConnectRepoModal: React.FC<ConnectRepoModalProps> = ({
 }) => {
   const [page, setPage] = useState(1);
   const { githubRepositories, isLoading, isError } = useGitHubRepositories(page, 30);
-  const [connectingId, setConnectingId] = useState<number | null>(null);
+  const [connectingFullName, setConnectingFullName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleConnect = async (repo: GitHubRepository) => {
-    setConnectingId(repo.id);
+    setConnectingFullName(repo.full_name);
     setError(null);
     try {
       await connectRepository(repo);
       onConnect();
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to connect repository');
+      const detail = err.response?.data?.detail;
+      const errors = err.response?.data?.errors;
+      let message = 'Failed to connect repository';
+      if (typeof detail === 'string') {
+        message = detail;
+      } else if (Array.isArray(errors) && errors.length > 0) {
+        message = errors.map((e: any) => `${e.field}: ${e.message}`).join(', ');
+      }
+      setError(message);
     } finally {
-      setConnectingId(null);
+      setConnectingFullName(null);
     }
   };
 
@@ -60,16 +68,16 @@ export const ConnectRepoModal: React.FC<ConnectRepoModalProps> = ({
           <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">
             {githubRepositories.map((repo: GitHubRepository) => {
               const isConnected = connectedRepoFullNames.includes(repo.full_name);
-              const isConnecting = connectingId === repo.id;
+              const isConnecting = connectingFullName === repo.full_name;
 
               return (
                 <div 
-                  key={repo.id}
+                  key={repo.full_name}
                   className="flex items-center justify-between p-4 bg-gray-800/50 border border-gray-700 rounded-xl hover:bg-gray-800 transition-colors"
                 >
                   <div>
                     <h4 className="font-medium text-white flex items-center space-x-2">
-                      <span>{repo.name}</span>
+                      <span>{repo.repo_name}</span>
                       {repo.private && (
                         <span className="px-2 py-0.5 text-xs bg-gray-700 text-gray-300 rounded-full">Private</span>
                       )}

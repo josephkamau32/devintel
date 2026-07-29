@@ -10,9 +10,12 @@ interface RepositoryCardProps {
 export const RepositoryCard: React.FC<RepositoryCardProps> = ({ repository, onIndex }) => {
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'completed': return <CheckCircle2 className="text-green-500 w-5 h-5" />;
+      case 'completed': 
+      case 'complete': 
+        return <CheckCircle2 className="text-green-500 w-5 h-5" />;
       case 'failed': return <XCircle className="text-red-500 w-5 h-5" />;
       case 'pending': 
+      case 'indexing':
       case 'cloning': 
       case 'chunking': 
       case 'embedding': 
@@ -21,7 +24,7 @@ export const RepositoryCard: React.FC<RepositoryCardProps> = ({ repository, onIn
     }
   };
 
-  const isIndexing = ['pending', 'cloning', 'chunking', 'embedding'].includes(repository.indexing_status);
+  const isIndexing = ['pending', 'indexing', 'cloning', 'chunking', 'embedding'].includes(repository.indexing_status);
 
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-blue-500/50 transition-colors">
@@ -76,7 +79,7 @@ export const RepositoryCard: React.FC<RepositoryCardProps> = ({ repository, onIn
           ) : (
             <>
               <Play className="w-4 h-4" />
-              <span>{repository.indexing_status === 'completed' ? 'Re-Index' : 'Index'}</span>
+              <span>{(repository.indexing_status === 'completed' || repository.indexing_status === 'complete') ? 'Re-Index' : 'Index'}</span>
             </>
           )}
         </button>

@@ -61,6 +61,7 @@ class GitHubClient:
                         "stars": repo.stargazers_count,
                         "language": repo.language,
                         "private": repo.private,
+                        "default_branch": repo.default_branch,
                     }
                     for repo in page_data[:per_page]
                 ]

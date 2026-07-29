@@ -1,4 +1,4 @@
-export type IndexingStatus = "pending" | "cloning" | "chunking" | "embedding" | "completed" | "failed";
+export type IndexingStatus = "pending" | "indexing" | "complete" | "completed" | "cloning" | "chunking" | "embedding" | "failed";
 
 export interface Repository {
   id: string;
@@ -35,13 +35,14 @@ export interface SearchResponse {
 }
 
 export interface GitHubRepository {
-  id: number;
-  name: string;
+  repo_name: string;
   full_name: string;
-  private: boolean;
-  html_url: string;
   description: string | null;
-  stargazers_count: number;
+  url: string;
+  clone_url: string;
+  stars: number;
   language: string | null;
+  private: boolean;
   default_branch: string;
 }
+

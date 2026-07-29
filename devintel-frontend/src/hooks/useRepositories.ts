@@ -39,11 +39,11 @@ export function useGitHubRepositories(page: number = 1, perPage: number = 30) {
 
 export async function connectRepository(repo: GitHubRepository) {
   const response = await api.post('/repos', {
-    repo_name: repo.name,
+    repo_name: repo.repo_name,
     full_name: repo.full_name,
-    url: repo.html_url,
+    url: repo.url,
     description: repo.description,
-    stars: repo.stargazers_count,
+    stars: repo.stars,
     language: repo.language,
     default_branch: repo.default_branch
   });
