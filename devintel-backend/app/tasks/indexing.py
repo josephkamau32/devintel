@@ -11,6 +11,7 @@ from git import Repo
 
 from app.core.logging import get_logger
 from app.db.session import AsyncSessionLocal
+from app.models.repository import IndexingStatus
 from app.repositories.embedding import EmbeddingRepository
 from app.repositories.repository import RepositoryRepository
 from app.services.embedding import EmbeddingService
@@ -72,7 +73,7 @@ async def _index_repository_async(
             # Update status to in-progress
             await repo_repo.update(
                 UUID(repo_id),
-                indexed_status=False,
+                indexing_status=IndexingStatus.INDEXING,
                 indexing_progress=0,
                 indexing_error=None,
             )
@@ -99,7 +100,7 @@ async def _index_repository_async(
                 logger.warning(f"No supported files found in repo {repo_id}")
                 await repo_repo.update(
                     UUID(repo_id),
-                    indexed_status=True, # Mark as "indexed" even if empty to avoid stuck status
+                    indexing_status=IndexingStatus.COMPLETE,
                     indexing_progress=100,
                     indexing_error="No supported files found"
                 )
@@ -173,7 +174,7 @@ async def _index_repository_async(
             # Update repository as indexed with commit SHA
             await repo_repo.update(
                 UUID(repo_id),
-                indexed_status=True,
+                indexing_status=IndexingStatus.COMPLETE,
                 last_indexed_at=datetime.utcnow(),
                 indexing_progress=100,
                 indexing_error=None,
@@ -219,7 +220,7 @@ async def _handle_indexing_failure(repo_repo, db, repo_id, error_msg):
     try:
         await repo_repo.update(
             UUID(repo_id),
-            indexed_status=False,
+            indexing_status=IndexingStatus.FAILED,
             indexing_error=error_msg,
             indexing_progress=0,
         )

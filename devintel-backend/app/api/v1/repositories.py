@@ -218,12 +218,28 @@ async def index_repository(
         if decrypted:
             access_token = decrypted
 
+    # Construct proper git clone URL from the stored HTML URL
+    clone_url = repository.url or ""
+    if clone_url and not clone_url.endswith(".git"):
+        clone_url = clone_url + ".git"
+
+    # Mark status as indexing immediately so the UI shows progress
+    from app.models.repository import IndexingStatus
+    repo_repo_update = RepositoryRepository(db)
+    await repo_repo_update.update(
+        request.repository_id,
+        indexing_status=IndexingStatus.INDEXING,
+        indexing_progress=0,
+        indexing_error=None,
+    )
+    await db.commit()
+
     # Trigger background task
     task_id = str(uuid.uuid4())
     asyncio.create_task(
         index_repository_task(
             repo_id=str(request.repository_id),
-            clone_url=repository.url,
+            clone_url=clone_url,
             access_token=access_token,
         )
     )
