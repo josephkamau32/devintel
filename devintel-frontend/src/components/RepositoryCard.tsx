@@ -4,7 +4,7 @@ import { Repository } from '../types/repository';
 
 interface RepositoryCardProps {
   repository: Repository;
-  onIndex: (id: number) => void;
+  onIndex: (id: string) => void;
 }
 
 export const RepositoryCard: React.FC<RepositoryCardProps> = ({ repository, onIndex }) => {

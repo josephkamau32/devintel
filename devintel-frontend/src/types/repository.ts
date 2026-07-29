@@ -1,8 +1,8 @@
 export type IndexingStatus = "pending" | "cloning" | "chunking" | "embedding" | "completed" | "failed";
 
 export interface Repository {
-  id: number;
-  user_id: number;
+  id: string;
+  user_id: string;
   github_repo_id: string | null;
   full_name: string;
   repo_name: string;
@@ -30,7 +30,7 @@ export interface SearchResult {
 
 export interface SearchResponse {
   results: SearchResult[];
-  repository_id: number;
+  repository_id: string;
   query: string;
 }
 

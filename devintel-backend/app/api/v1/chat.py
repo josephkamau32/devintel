@@ -1,6 +1,7 @@
 """RAG-powered chat routes — SSE streaming."""
 
 import json
+import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -32,7 +33,7 @@ class ChatRequest(BaseModel):
 
 @router.post("/{repository_id}/stream")
 async def stream_chat(
-    repository_id: int,
+    repository_id: uuid.UUID,
     request: ChatRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

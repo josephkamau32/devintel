@@ -14,7 +14,7 @@ export const DashboardPage: React.FC = () => {
   const { repositories, isLoading, mutate } = useRepositories();
   const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
 
-  const handleIndex = async (id: number) => {
+  const handleIndex = async (id: string) => {
     try {
       await indexRepository(id);
       mutate();

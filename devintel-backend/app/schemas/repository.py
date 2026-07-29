@@ -1,15 +1,14 @@
 from typing import Optional
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
-
-from app.models.repository import IndexingStatus
 
 
 class RepositoryPublic(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: int
-    user_id: int
+    id: UUID
+    user_id: UUID
     github_repo_id: Optional[str] = None
     full_name: str
     repo_name: str
@@ -19,7 +18,7 @@ class RepositoryPublic(BaseModel):
     language: Optional[str] = None
     default_branch: str
     is_private: bool
-    indexing_status: IndexingStatus
+    indexing_status: str
     last_indexed_commit: Optional[str] = None
 
 
@@ -42,13 +41,13 @@ class RepositoryResponse(RepositoryPublic):
 
 
 class RepositoryIndexRequest(BaseModel):
-    repository_id: int
+    repository_id: UUID
 
 
 class RepositoryIndexResponse(BaseModel):
     task_id: str
     message: str
-    repository_id: int
+    repository_id: UUID
 
 
 class RepositoryListResponse(BaseModel):
@@ -57,7 +56,7 @@ class RepositoryListResponse(BaseModel):
 
 
 class IndexingStatusResponse(BaseModel):
-    id: int
+    id: UUID
     indexed_status: str
     indexing_progress: int
     indexing_error: Optional[str]
@@ -75,7 +74,7 @@ class SearchResult(BaseModel):
 
 class SearchResponse(BaseModel):
     results: list[SearchResult]
-    repository_id: int
+    repository_id: UUID
     query: str
 
 

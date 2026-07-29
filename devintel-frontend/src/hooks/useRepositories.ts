@@ -50,7 +50,7 @@ export async function connectRepository(repo: GitHubRepository) {
   return response.data;
 }
 
-export async function indexRepository(repositoryId: number) {
+export async function indexRepository(repositoryId: string) {
   const response = await api.post('/repos/index', {
     repository_id: repositoryId
   });
