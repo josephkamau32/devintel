@@ -10,4 +10,106 @@
     @apply bg-slate-950 text-white antialiased;
     font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
   }
+
+  /* Smooth scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(100, 116, 139, 0.3);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(100, 116, 139, 0.5);
+  }
+
+  /* Selection color */
+  ::selection {
+    background: rgba(139, 92, 246, 0.3);
+    color: #fff;
+  }
+}
+
+@layer utilities {
+  /* Glass morphism */
+  .glass {
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(148, 163, 184, 0.1);
+  }
+
+  /* Glow effect for cards on hover */
+  .glow-violet {
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.15),
+                0 0 40px rgba(139, 92, 246, 0.05);
+  }
+}
+
+/* Custom keyframes for animations */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out both;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.35s ease-out both;
+}
+
+.animate-slide-down {
+  animation: slide-down 0.35s ease-out both;
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent 25%, rgba(148, 163, 184, 0.08) 50%, transparent 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shift 6s ease infinite;
 }

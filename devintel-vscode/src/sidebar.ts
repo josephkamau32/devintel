@@ -107,7 +107,7 @@ export class DevIntelSidebarProvider implements vscode.WebviewViewProvider {
         try {
             const resp = await fetch(`${apiBaseUrl}/api/v1/repos`, { headers });
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-            const data = (await resp.json()) as { repositories: { id: string; full_name: string; indexed_status: boolean }[] };
+            const data = (await resp.json()) as { repositories: { id: string; full_name: string; indexing_status: string }[] };
             webview.postMessage({ type: "repos", repositories: data.repositories || [] });
         } catch (e: unknown) {
             webview.postMessage({ type: "repos", repositories: [], error: e instanceof Error ? e.message : String(e) });
@@ -466,7 +466,7 @@ export class DevIntelSidebarProvider implements vscode.WebviewViewProvider {
   }
 
   function populateRepoSelector() {
-    const indexed = state.repos.filter(r => r.indexed_status);
+    const indexed = state.repos.filter(r => r.indexing_status === 'completed' || r.indexing_status === 'complete');
     repoSelect.innerHTML = '';
     if (indexed.length === 0) {
       repoSelect.innerHTML = '<option value="">No indexed repos</option>';
@@ -567,7 +567,7 @@ export class DevIntelSidebarProvider implements vscode.WebviewViewProvider {
   }
 
   function handleReviewFile(filePath, content, language) {
-    const question = 'Review this ' + language + ' file for bugs, security issues, and improvements:\\n\\nFile: ' + filePath + '\\n\\n\`\`\`' + language + '\\n' + content + '\\n\`\`\`';
+    const question = 'Review this ' + language + ' file for bugs, security issues, and improvements:\n\nFile: ' + filePath + '\n\n```' + language + '\n' + content + '\n```';
     userInput.value = '';
     appendUserMsg('📄 Reviewing: ' + filePath.split(/[\\\\/]/).pop());
     state.streaming = true;

@@ -8,11 +8,21 @@
     <meta name="keywords" content="AI, code review, RAG, GitHub, code intelligence, developer tools, GPT-4, FastAPI, React" />
     <meta name="author" content="Joseph Kamau" />
 
+    <!-- Theme color for mobile browsers -->
+    <meta name="theme-color" content="#020617" />
+    <meta name="color-scheme" content="dark" />
+
     <!-- Open Graph / Social sharing -->
     <meta property="og:type" content="website" />
     <meta property="og:title" content="DevIntel AI — AI-Powered Code Intelligence" />
     <meta property="og:description" content="Index your repositories, chat with your code, review PRs with AI, and generate auto-fix PRs — built with FastAPI, React, PostgreSQL + pgvector, and GPT-4o." />
     <meta property="og:site_name" content="DevIntel AI" />
+    <meta property="og:url" content="https://devintel.vercel.app/" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="DevIntel AI — AI-Powered Code Intelligence" />
+    <meta name="twitter:description" content="AI coding assistant for your GitHub codebase with RAG-powered chat, automated PR reviews, and code health scoring." />
 
     <!-- Favicon (inline SVG data URI — no external file needed) -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237c3aed' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4'/%3E%3C/svg%3E" />
@@ -20,9 +30,20 @@
     <!-- Preconnect to Google Fonts for faster loading -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+    <!-- Prevent FOUC -->
+    <style>
+      html { background: #020617; }
+      #root { min-height: 100vh; }
+    </style>
   </head>
   <body>
+    <noscript>
+      <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#020617;color:#94a3b8;font-family:Inter,sans-serif;text-align:center;padding:2rem;">
+        <p>DevIntel AI requires JavaScript to run. Please enable JavaScript in your browser settings.</p>
+      </div>
+    </noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

@@ -92,7 +92,14 @@ def create_app() -> FastAPI:
 
     @app.get("/health")
     async def health():
-        return {"status": "ok", "app": settings.APP_NAME}
+        import time
+        return {
+            "status": "ok",
+            "app": settings.APP_NAME,
+            "version": "1.0.0",
+            "environment": "production" if not settings.DEBUG else "development",
+            "timestamp": time.time(),
+        }
 
     logger.info("%s started. Debug=%s", settings.APP_NAME, settings.DEBUG)
     return app
