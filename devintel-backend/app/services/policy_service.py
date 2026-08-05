@@ -7,7 +7,7 @@ from uuid import UUID
 from pydantic import BaseModel
 
 from app.core.logging import get_logger
-from app.integrations.openai_client import OpenAIClient
+from app.ai.orchestrator import get_orchestrator
 from app.models.policy import Policy, PolicyRuleType
 from app.repositories.policy import PolicyRepository
 
@@ -31,7 +31,7 @@ class PolicyChecker:
 
     def __init__(self, db_session):
         self.db = db_session
-        self.openai_client = OpenAIClient()
+        self.orchestrator = get_orchestrator()
 
     async def check(
         self,
@@ -120,12 +120,13 @@ class PolicyChecker:
         ]
 
         try:
-            response = await self.openai_client.chat_completion(
+            response = await self.orchestrator.complete(
                 messages=messages,
                 temperature=0.0,
                 max_tokens=200,
+                agent="policy",
             )
-            content = response.content if hasattr(response, "content") else str(response)
+            content = response.content
             if "FAIL" in content.upper():
                 return [PolicyViolation(
                     rule_name=policy.name,

@@ -80,16 +80,23 @@ def decode_refresh_token(token: str) -> Optional[UUID]:
 
 
 # ── Fernet encryption (GitHub tokens) ────────────────────────────────────────
-_fernet = Fernet(settings.TOKEN_ENCRYPTION_KEY.encode())
+# Lazy initialization: avoids crash if TOKEN_ENCRYPTION_KEY is not set at
+# import time (e.g. during test collection that only needs JWT helpers).
+from functools import lru_cache
+
+
+@lru_cache(maxsize=1)
+def _get_fernet() -> Fernet:
+    return Fernet(settings.TOKEN_ENCRYPTION_KEY.encode())
 
 
 def encrypt_token(plain_token: str) -> str:
-    return _fernet.encrypt(plain_token.encode()).decode()
+    return _get_fernet().encrypt(plain_token.encode()).decode()
 
 
 def decrypt_token(encrypted_token: str) -> str:
     try:
-        return _fernet.decrypt(encrypted_token.encode()).decode()
+        return _get_fernet().decrypt(encrypted_token.encode()).decode()
     except InvalidToken as e:
         logger.error("Failed to decrypt token: %s", e)
         raise ValueError("Token decryption failed") from e

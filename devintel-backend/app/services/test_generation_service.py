@@ -5,7 +5,7 @@ from uuid import UUID
 
 from app.core.exceptions import APIError
 from app.core.logging import get_logger
-from app.integrations.openai_client import OpenAIClient
+from app.ai.orchestrator import get_orchestrator
 from app.models.generated_test import TestStatus
 from app.models.repository import Repository
 from app.repositories.generated_test import GeneratedTestRepository
@@ -19,7 +19,7 @@ class TestGenerationService:
 
     def __init__(self, db_session):
         self.db = db_session
-        self.openai_client = OpenAIClient()
+        self.orchestrator = get_orchestrator()
 
     async def generate_and_run_tests(
         self,
@@ -60,16 +60,17 @@ Return only valid Python test code with appropriate imports. Ensure tests cover:
 """
 
         try:
-            response = await self.openai_client.chat_completion(
+            response = await self.orchestrator.complete(
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": "Generate comprehensive unit tests for the modified code."}
                 ],
                 temperature=0.2,
                 max_tokens=3000,
+                agent="test_generation",
             )
 
-            test_content = response.content if hasattr(response, "content") else str(response)
+            test_content = response.content
 
             # Create test record
             test_record = await test_repo.create(

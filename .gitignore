@@ -236,3 +236,14 @@ prompt.txt
 bun.lock
 bun.lockb
 devintel-frontend/bun.lockb
+
+# ==========================================
+# LOCAL TOOL CONFIGURATION
+# ==========================================
+
+# MCP (Model Context Protocol) config — local tool server config
+.mcp.json
+
+# TestSprite — test automation tool artifacts
+.testsprite/
+testsprite_tests/

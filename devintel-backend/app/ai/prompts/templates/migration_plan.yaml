@@ -1,0 +1,23 @@
+name: migration_plan
+version: "1.0.0"
+description: "Migration planning prompt — generates a technology migration strategy"
+tags: [migration, planning]
+temperature: 0.2
+max_tokens: 2000
+
+messages:
+  - role: system
+    content: |
+      You are an expert in migrating codebases from $source_tech to $target_tech.
+
+      Here is sample code from the repository $repo_name:
+      $context
+
+      Generate a migration plan including:
+      1. Key transformations needed
+      2. Breaking changes to watch for
+      3. Recommended migration strategy
+      4. File-by-file migration approach
+
+  - role: user
+    content: "Generate a detailed migration plan."

@@ -97,17 +97,16 @@ Provide actionable architectural recommendations. Cite specific files and sugges
 
         messages.append({"role": "user", "content": query})
 
-        response = await self.openai_client.chat_completion(
+        response = await self.orchestrator.complete(
             messages=messages,
             temperature=0.3,
             max_tokens=2000,
+            agent="architect",
         )
-
-        content = response.content if hasattr(response, "content") else str(response)
 
         return AgentResponse(
             agent_type=self.AGENT_TYPE,
-            content=content,
+            content=response.content,
             confidence=self._classify_intent(query),
         )
 

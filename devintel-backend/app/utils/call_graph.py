@@ -110,7 +110,7 @@ def extract_calls_from_directory(repo_path: str) -> list[tuple[str, str, str]]:
         for file in files:
             file_path = os.path.join(root, file)
             ext = file.split('.')[-1].lower() if '.' in file else ""
-            if ext not in get_language_for_extension(ext) and ext not in ["py", "js", "ts", "tsx", "jsx", "go", "java", "rs", "rb"]:
+            if get_language_for_extension(ext) is None:
                 continue
 
             try:

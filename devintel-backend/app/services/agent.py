@@ -5,7 +5,7 @@ from typing import Any
 
 from app.core.logging import get_logger
 from app.integrations.github_client import GitHubClient
-from app.integrations.openai_client import OpenAIClient
+from app.ai.orchestrator import get_orchestrator
 from app.models.repository import Repository
 from app.repositories.embedding import EmbeddingRepository
 from app.services.chat import ChatService
@@ -18,7 +18,7 @@ class AgentService:
 
     def __init__(self, github_token: str):
         """Initialize service."""
-        self.openai_client = OpenAIClient()
+        self.orchestrator = get_orchestrator()
         self.github_client = GitHubClient(github_token)
         self.chat_service = ChatService()
 
@@ -114,24 +114,25 @@ When using the tool, you must provide the ENTIRE updated content for each file y
             {"role": "user", "content": instruction},
         ]
 
-        # 3. Call OpenAI with forced tool choice
+        # 3. Call AI orchestrator with forced tool choice
         logger.info(f"Calling LLM for agent draft on {repo_name}...")
-        response_message = await self.openai_client.chat_completion(
+        response = await self.orchestrator.complete(
             messages=messages,
             temperature=0.2,
             max_tokens=4000,
             tools=[self.create_pr_tool],
             tool_choice={"type": "function", "function": {"name": "create_pull_request"}},
+            agent="agent",
         )
 
         # Ensure we got a tool call
-        if not hasattr(response_message, "tool_calls") or not response_message.tool_calls:
+        if not response.tool_calls:
             raise ValueError("The AI failed to generate a Pull Request instruction. Please try making your request more specific.")
 
-        tool_call = response_message.tool_calls[0]
+        tool_call = response.tool_calls[0]
         try:
-            args = json.loads(tool_call.function.arguments)
-        except json.JSONDecodeError as e:
+            args = json.loads(tool_call["function"]["arguments"])
+        except (json.JSONDecodeError, KeyError) as e:
             logger.error(f"Failed to parse LLM tool call arguments: {e}")
             raise ValueError("The AI generated an invalid code payload. Please try again.")
 

@@ -85,13 +85,13 @@ Provide secure code fixes with explanations."""
             messages.extend(chat_history)
         messages.append({"role": "user", "content": query})
 
-        response = await self.openai_client.chat_completion(
-            messages=messages, temperature=0.1, max_tokens=2500
+        response = await self.orchestrator.complete(
+            messages=messages, temperature=0.1, max_tokens=2500, agent="security_remediation"
         )
 
         return AgentResponse(
             agent_type=self.AGENT_TYPE,
-            content=response.content if hasattr(response, "content") else str(response),
+            content=response.content,
             confidence=self._classify_intent(query),
         )
 

@@ -61,25 +61,34 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
 
     The request ID is:
     - Added to response headers
-    - Added to log context
+    - Added to log context (via contextvars, auto-injected into JSON logs)
     - Used for distributed tracing
     """
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Add request ID to request and response."""
+        from app.core.logging import log_context
+
         # Generate or extract request ID
         request_id = request.headers.get("X-Request-ID", str(uuid4()))
 
         # Add to request state for access in routes
         request.state.request_id = request_id
 
-        # Process request
-        response = await call_next(request)
+        # Set contextvars for structured logging — all logger calls during
+        # this request will automatically include the request_id
+        log_context.set(request_id=request_id)
 
-        # Add request ID to response headers
-        response.headers["X-Request-ID"] = request_id
+        try:
+            # Process request
+            response = await call_next(request)
 
-        return response
+            # Add request ID to response headers
+            response.headers["X-Request-ID"] = request_id
+
+            return response
+        finally:
+            log_context.clear()
 
 
 class RequestSizeLimitMiddleware(BaseHTTPMiddleware):

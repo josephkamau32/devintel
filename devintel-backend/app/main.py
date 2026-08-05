@@ -9,6 +9,7 @@ from sqlalchemy import text
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.exceptions import AppException, app_exception_handler, unhandled_exception_handler, validation_exception_handler
+from app.middleware.metrics import PrometheusMiddleware
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.security import (
     AuditLoggingMiddleware,
@@ -35,7 +36,15 @@ async def lifespan(app: FastAPI):
     ``CREATE TABLE IF NOT EXISTS`` via checkfirst introspection and
     will crash with DuplicateTableError.
     """
+    from app.core.logging import setup_logging
+    from app.core.telemetry import init_telemetry
     from app.db.session import engine
+
+    # Initialize structured logging
+    setup_logging()
+
+    # Initialize OpenTelemetry (no-op if OTEL_ENABLED != true)
+    init_telemetry(app)
 
     try:
         async with engine.connect() as conn:
@@ -44,7 +53,17 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         logger.error("Database startup check failed: %s", exc)
         raise
+
     yield
+
+    # --- Shutdown ---
+    from app.core.http_pool import close_http_client
+    from app.services.cache import cache
+    logger.info("Shutting down: closing connections...")
+    await close_http_client()
+    await cache.close()
+    await engine.dispose()
+    logger.info("Shutdown complete.")
 
 
 def create_app() -> FastAPI:
@@ -72,6 +91,8 @@ def create_app() -> FastAPI:
     app.add_middleware(RateLimitMiddleware, default_limit=settings.RATE_LIMIT_PER_MINUTE)
     # Audit logging for sensitive paths (/auth, /repos, /admin)
     app.add_middleware(AuditLoggingMiddleware)
+    # Prometheus HTTP metrics (request count, duration, in-progress)
+    app.add_middleware(PrometheusMiddleware)
 
     # ── CORS (must be outermost = added LAST) ─────────────────────────────
     app.add_middleware(
@@ -100,6 +121,13 @@ def create_app() -> FastAPI:
             "environment": "production" if not settings.DEBUG else "development",
             "timestamp": time.time(),
         }
+
+    @app.get("/metrics")
+    async def metrics():
+        """Prometheus metrics endpoint."""
+        from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+        from fastapi.responses import Response
+        return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
     logger.info("%s started. Debug=%s", settings.APP_NAME, settings.DEBUG)
     return app

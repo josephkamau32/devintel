@@ -3,7 +3,7 @@
 from typing import Any, Optional
 
 from app.core.logging import get_logger
-from app.integrations.openai_client import OpenAIClient
+from app.ai.orchestrator import get_orchestrator
 from app.models.architecture import ArchitectureDiagram, DiagramType
 from app.models.repository import Repository
 from app.repositories.architecture import ArchitectureDiagramRepository
@@ -16,7 +16,7 @@ class ArchitectureVisualizationService:
 
     def __init__(self, db_session):
         self.db = db_session
-        self.openai_client = OpenAIClient()
+        self.orchestrator = get_orchestrator()
 
     async def generate_mermaid_diagram(
         self,

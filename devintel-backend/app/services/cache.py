@@ -141,8 +141,73 @@ class CacheService:
             logger.error(f"Cache delete_pattern error: {e}")
             return False
 
+    async def get_or_set(
+        self,
+        key: str,
+        factory,
+        ttl: int = settings.REDIS_CACHE_TTL,
+    ) -> Any:
+        """Cache-aside helper: return cached value or compute and store it.
+
+        This is the recommended pattern for caching expensive operations::
+
+            result = await cache.get_or_set(
+                f"health:{repo_id}",
+                lambda: compute_health(repo_id),
+                ttl=3600,
+            )
+
+        Args:
+            key: Cache key.
+            factory: Async callable (no args) that produces the value on miss.
+            ttl: Time-to-live in seconds.
+
+        Returns:
+            Cached or freshly computed value.
+        """
+        cached = await self.get(key)
+        if cached is not None:
+            return cached
+
+        # Compute fresh value
+        value = await factory()
+        await self.set(key, value, ttl=ttl)
+        return value
+
+    async def acquire_lock(
+        self,
+        lock_name: str,
+        ttl: int = 30,
+    ) -> bool:
+        """Acquire a simple distributed lock (best-effort).
+
+        Uses Redis SETNX. For in-memory mode, uses a dict key.
+        Returns True if the lock was acquired, False if already held.
+
+        Args:
+            lock_name: Lock identifier (e.g., ``lock:index:{repo_id}``).
+            ttl: Lock TTL in seconds (auto-release safety).
+        """
+        key = f"lock:{lock_name}"
+        if self._mem is not None:
+            existing = await self._mem.get(key)
+            if existing is not None:
+                return False
+            await self._mem.set(key, "1", ttl=ttl)
+            return True
+        try:
+            acquired = await self._redis.set(key, "1", nx=True, ex=ttl)
+            return bool(acquired)
+        except Exception as e:
+            logger.error("Lock acquire failed for %s: %s", lock_name, e)
+            return False
+
+    async def release_lock(self, lock_name: str) -> bool:
+        """Release a distributed lock."""
+        return await self.delete(f"lock:{lock_name}")
+
     async def close(self) -> None:
-        """Close cache connection."""
+        """Close cache connection. Call from application lifespan shutdown."""
         if self._mem is not None:
             await self._mem.close()
         elif self._redis is not None:

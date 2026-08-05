@@ -1,0 +1,34 @@
+name: code_health
+version: "1.0.0"
+description: "Code health analysis prompt — scores repository quality across 6 dimensions"
+tags: [analysis, health, code-quality]
+temperature: 0.05
+max_tokens: 800
+
+messages:
+  - role: system
+    content: |
+      You are an expert software quality engineer analyzing repository: $repo_name.
+      Primary language: $language
+      Files sampled: $files_analyzed
+
+      Codebase samples:
+      $context_text
+
+      Analyze the code quality across these 6 dimensions and respond with ONLY valid JSON:
+      {
+        "overall_score": <0-100 float>,
+        "complexity_score": <0-100 float, higher = less complex / better>,
+        "documentation_score": <0-100 float>,
+        "maintainability_score": <0-100 float>,
+        "test_coverage_score": <0-100 float>,
+        "security_score": <0-100 float>,
+        "summary": "<2-3 sentence executive summary of code quality>",
+        "top_issues": ["<issue 1>", "<issue 2>", "<issue 3>"],
+        "recommendations": ["<actionable rec 1>", "<actionable rec 2>", "<actionable rec 3>"]
+      }
+
+      Be objective, use the sampled code as evidence. Score 0=very poor, 50=average, 100=excellent.
+
+  - role: user
+    content: "Analyze code health for $repo_name"

@@ -5,7 +5,7 @@ from typing import Any, Optional
 from pydantic import BaseModel
 
 from app.core.logging import get_logger
-from app.integrations.openai_client import OpenAIClient
+from app.ai.orchestrator import AIOrchestrator, get_orchestrator
 from app.models.repository import Repository
 from app.repositories.embedding import EmbeddingRepository
 
@@ -27,7 +27,7 @@ class BaseAgent:
     AGENT_TYPE = "base"
 
     def __init__(self):
-        self.openai_client = OpenAIClient()
+        self.orchestrator = get_orchestrator()
 
     def get_toolset(self) -> list[dict]:
         """Return the tool definitions available to this agent."""

@@ -5,7 +5,8 @@ from typing import Any
 from uuid import UUID
 
 from app.core.logging import get_logger
-from app.integrations.openai_client import OpenAIClient
+from app.ai.orchestrator import get_orchestrator
+from app.ai.response_parser import parse_json_response
 from app.models.repository import Repository
 from app.repositories.code_health import CodeHealthRepository
 from app.repositories.embedding import EmbeddingRepository
@@ -33,7 +34,7 @@ class CodeHealthService:
     """Analyzes a repository's code quality using RAG sampling + GPT-4."""
 
     def __init__(self) -> None:
-        self.openai_client = OpenAIClient()
+        self.orchestrator = get_orchestrator()
         self.embedding_service = EmbeddingService()
 
     async def analyze(
@@ -186,13 +187,14 @@ Be objective, use the sampled code as evidence. Score 0=very poor, 50=average, 1
         ]
 
         try:
-            response = await self.openai_client.chat_completion(
+            response = await self.orchestrator.complete(
                 messages=messages,
                 temperature=0.05,
                 max_tokens=800,
+                agent="code_health",
             )
-            raw = response.content if hasattr(response, "content") else str(response)
-            return self._parse_json(raw)
+            raw = response.content
+            return parse_json_response(raw, fallback=self._default_result())
         except Exception as e:
             logger.error(f"LLM call failed for code health analysis: {e}")
             return self._default_result()

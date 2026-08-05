@@ -67,7 +67,7 @@ class HybridRetriever:
             bm25_results = await self.bm25_index.search(repo_id, query, top_k)
 
         if mode == RetrievalMode.HYBRID:
-            return self._fuse_and_expand(repo_id, vector_results, bm25_results, top_k)
+            return await self._fuse_and_expand(repo_id, vector_results, bm25_results, top_k)
 
         return vector_results
 
@@ -91,7 +91,7 @@ class HybridRetriever:
             for emb, sim in results
         ]
 
-    def _fuse_and_expand(
+    async def _fuse_and_expand(
         self,
         repo_id: UUID,
         vector_results: list[tuple[ScoredChunk, float]],
@@ -112,7 +112,7 @@ class HybridRetriever:
             return []
 
         # Expand via call graph (get callers/callees of top results)
-        expanded = asyncio.run(self._expand_via_call_graph(repo_id, fused[:top_k]))
+        expanded = await self._expand_via_call_graph(repo_id, fused[:top_k])
 
         # Merge and deduplicate
         seen_ids = set()

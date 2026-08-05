@@ -10,7 +10,7 @@ import tiktoken
 
 from app.core.config import settings
 from app.core.logging import get_logger
-from app.integrations.openai_client import OpenAIClient
+from app.ai.orchestrator import get_orchestrator
 from app.models.embedding import Embedding
 from app.repositories.embedding import EmbeddingRepository
 from app.services.cache import cache
@@ -24,7 +24,7 @@ class ChatService:
 
     def __init__(self):
         """Initialize service."""
-        self.openai_client = OpenAIClient()
+        self.orchestrator = get_orchestrator()
         self.embedding_service = EmbeddingService()
         self._encoding = tiktoken.get_encoding("cl100k_base")
 
@@ -134,69 +134,25 @@ Rules:
         top_k: int = settings.TOP_K_CHUNKS,
         expand_context: bool = True,
     ) -> list[tuple[Embedding, float]]:
-        """Retrieve relevant chunks using vector similarity search."""
-        # Check cache
-        cache_key = f"embed:{repo_id}:{hashlib.sha256(question.encode()).hexdigest()}"
-        cached_result = await cache.get(cache_key)
+        """Retrieve relevant chunks using the context pipeline.
 
-        results = []
-        if cached_result:
-            logger.info("Retrieved chunks from cache")
+        Delegates to the ContextPipeline which handles:
+        - Query embedding generation
+        - Vector similarity search
+        - Batched neighbor expansion (fixes N+1 query problem)
+        - Reranking and compression
+        - Result caching
+        """
+        from app.ai.context.pipeline import ContextPipeline
 
-            try:
-                cached_data = json.loads(cached_result)
-                for item in cached_data:
-                    embedding = await embedding_repo.get_by_id(UUID(item["embedding_id"]))
-                    if embedding:
-                        results.append((embedding, item["similarity"]))
-            except Exception as e:
-                logger.warning(f"Cache deserialization failed: {e}, fetching from DB")
-
-        if not results:
-            # Generate question embedding
-            question_embedding = await self.embedding_service.generate_embedding(question)
-
-            # Vector search
-            results = await embedding_repo.vector_search(
-                repo_id=repo_id,
-                query_embedding=question_embedding,
-                top_k=top_k,
-            )
-
-            # Cache results (serialize to JSON)
-            cache_data = [
-                {"embedding_id": str(emb.id), "similarity": sim}
-                for emb, sim in results
-            ]
-            await cache.set(cache_key, json.dumps(cache_data), ttl=3600)
-
-        if not expand_context:
-            return results
-
-        # --- Context Expansion ---
-        # For each hit, retrieve adjacent chunks to provide semantic continuity
-        expanded_results = {} # map (file_path, chunk_index) -> (Embedding, similarity)
-
-        for emb, sim in results:
-            # Load neighbors
-            neighbors = await embedding_repo.get_neighbors(
-                repo_id=repo_id,
-                file_path=emb.file_path,
-                chunk_index=emb.chunk_index,
-                radius=1
-            )
-            for n in neighbors:
-                key = (n.file_path, n.chunk_index)
-                # If it's the original hit, use its similarity.
-                # If it's a neighbor, use a slightly decayed similarity or just the original hit's sim.
-                if key not in expanded_results:
-                    # Neighboring chunks inherit a fraction of the relevance
-                    relevance = sim if n.id == emb.id else sim * 0.95
-                    expanded_results[key] = (n, relevance)
-
-        # Sort combined results by file then index to maintain logical order in prompt
-        sorted_keys = sorted(expanded_results.keys())
-        return [expanded_results[k] for k in sorted_keys]
+        pipeline = ContextPipeline(self.embedding_service)
+        return await pipeline.retrieve(
+            repo_id=repo_id,
+            query=question,
+            embedding_repo=embedding_repo,
+            top_k=top_k,
+            expand=expand_context,
+        )
 
     async def stream_chat(
         self,
@@ -229,5 +185,7 @@ Rules:
         # Validate context window and trim if needed
         messages = self.validate_context_window(messages)
 
-        async for chunk in self.openai_client.chat_completion_stream(messages):
+        async for chunk in self.orchestrator.stream(
+            messages=messages, agent="chat"
+        ):
             yield chunk

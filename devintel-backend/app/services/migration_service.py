@@ -3,7 +3,7 @@
 from uuid import UUID
 
 from app.core.logging import get_logger
-from app.integrations.openai_client import OpenAIClient
+from app.ai.orchestrator import get_orchestrator
 from app.models.migration import MigratedFile, MigrationProject
 from app.models.repository import Repository
 from app.repositories.embedding import EmbeddingRepository
@@ -18,7 +18,7 @@ class CodeMigrationService:
 
     def __init__(self, db_session):
         self.db = db_session
-        self.openai_client = OpenAIClient()
+        self.orchestrator = get_orchestrator()
 
     async def create_migration_project(
         self,
@@ -83,16 +83,17 @@ Generate a migration plan including:
 3. Recommended migration strategy
 4. File-by-file migration approach"""
 
-        response = await self.openai_client.chat_completion(
+        response = await self.orchestrator.complete(
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": "Generate a detailed migration plan."}
             ],
             temperature=0.2,
             max_tokens=2000,
+            agent="migration",
         )
 
-        plan = response.content if hasattr(response, "content") else str(response)
+        plan = response.content
 
         await MigrationProjectRepository(self.db).update(project.id, migration_plan=plan)
         return plan
@@ -115,16 +116,17 @@ Generate a migration plan including:
 
 Provide the fully migrated code for {project.target_tech}."""
 
-        response = await self.openai_client.chat_completion(
+        response = await self.orchestrator.complete(
             messages=[
                 {"role": "system", "content": f"You are a migration expert converting {project.source_tech} to {project.target_tech}."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.1,
             max_tokens=4000,
+            agent="migration",
         )
 
-        migrated_content = response.content if hasattr(response, "content") else str(response)
+        migrated_content = response.content
 
         # Create migrated file record
         migrated_file = await migrated_repo.create(

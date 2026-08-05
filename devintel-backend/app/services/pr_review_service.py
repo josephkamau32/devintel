@@ -5,7 +5,8 @@ from typing import Any
 from uuid import UUID
 
 from app.core.logging import get_logger
-from app.integrations.openai_client import OpenAIClient
+from app.ai.orchestrator import get_orchestrator
+from app.ai.response_parser import parse_json_response
 from app.models.repository import Repository
 from app.repositories.embedding import EmbeddingRepository
 from app.services.embedding import EmbeddingService
@@ -21,7 +22,7 @@ class PRReviewService:
     """Autonomous code review service powered by RAG + OpenAI."""
 
     def __init__(self) -> None:
-        self.openai_client = OpenAIClient()
+        self.orchestrator = get_orchestrator()
         self.embedding_service = EmbeddingService()
 
     # ------------------------------------------------------------------
@@ -98,15 +99,16 @@ Be specific, cite file names. Keep each issue description under 100 words."""
             {"role": "user", "content": f"Please review PR #{pr_number}: {pr_title}"},
         ]
 
-        logger.info(f"Calling OpenAI for PR review: {repo_name}#{pr_number}")
-        response = await self.openai_client.chat_completion(
+        logger.info(f"Calling AI orchestrator for PR review: {repo_name}#{pr_number}")
+        response = await self.orchestrator.complete(
             messages=messages,
             temperature=0.1,
             max_tokens=2000,
+            agent="pr_review",
         )
 
         # Parse JSON response
-        raw_content = response.content if hasattr(response, "content") else str(response)
+        raw_content = response.content
         review_data = self._parse_review_json(raw_content)
 
         # 4. Render as GitHub markdown

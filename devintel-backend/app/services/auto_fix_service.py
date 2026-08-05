@@ -10,7 +10,7 @@ from github import GithubException
 from app.core.exceptions import APIError
 from app.core.logging import get_logger
 from app.integrations.github_client import GitHubClient
-from app.integrations.openai_client import OpenAIClient
+from app.ai.orchestrator import get_orchestrator
 from app.models.repository import Repository
 from app.models.user import User
 from app.repositories.embedding import EmbeddingRepository
@@ -25,7 +25,7 @@ class AutoFixService:
     """Service to automatically generate and apply fixes for code health issues."""
 
     def __init__(self) -> None:
-        self.openai_client = OpenAIClient()
+        self.orchestrator = get_orchestrator()
         self.embedding_service = EmbeddingService()
 
     async def generate_and_apply_fix(
@@ -200,12 +200,13 @@ CRITICAL REQUIREMENTS FOR SEARCH BLOCKS:
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                response = await self.openai_client.chat_completion(
+                response = await self.orchestrator.complete(
                     messages=messages,
                     temperature=0.1,
                     max_tokens=2500,
+                    agent="auto_fix",
                 )
-                raw = response.content if hasattr(response, "content") else str(response)
+                raw = response.content
 
                 content = raw.strip()
                 if content.startswith("```"):

@@ -83,13 +83,13 @@ Generate comprehensive test suggestions and identify uncovered code paths."""
             messages.extend(chat_history)
         messages.append({"role": "user", "content": query})
 
-        response = await self.openai_client.chat_completion(
-            messages=messages, temperature=0.2, max_tokens=2000
+        response = await self.orchestrator.complete(
+            messages=messages, temperature=0.2, max_tokens=2000, agent="test"
         )
 
         return AgentResponse(
             agent_type=self.AGENT_TYPE,
-            content=response.content if hasattr(response, "content") else str(response),
+            content=response.content,
             confidence=self._classify_intent(query),
         )
 

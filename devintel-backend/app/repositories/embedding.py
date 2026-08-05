@@ -120,6 +120,50 @@ class EmbeddingRepository(BaseRepository[Embedding]):
         )
         return list(result.scalars().all())
 
+    async def batch_get_neighbors(
+        self,
+        repo_id: UUID,
+        chunks: list[tuple[str, int]],
+        radius: int = 1,
+    ) -> list[Embedding]:
+        """Fetch adjacent chunks for multiple (file_path, chunk_index) pairs in one query.
+
+        This replaces N sequential get_neighbors() calls with a single query,
+        eliminating the N+1 problem in context expansion.
+
+        Args:
+            repo_id: Repository ID.
+            chunks: List of (file_path, chunk_index) tuples.
+            radius: Number of adjacent chunks to include on each side.
+
+        Returns:
+            Deduplicated list of Embedding objects, ordered by file_path and chunk_index.
+        """
+        from sqlalchemy import or_, and_
+
+        if not chunks:
+            return []
+
+        conditions = []
+        for file_path, chunk_index in chunks:
+            conditions.append(
+                and_(
+                    Embedding.file_path == file_path,
+                    Embedding.chunk_index >= chunk_index - radius,
+                    Embedding.chunk_index <= chunk_index + radius,
+                )
+            )
+
+        result = await self.db.execute(
+            select(Embedding)
+            .where(
+                Embedding.repo_id == repo_id,
+                or_(*conditions),
+            )
+            .order_by(Embedding.file_path, Embedding.chunk_index)
+        )
+        return list(result.scalars().all())
+
     async def delete_by_file_path(self, repo_id: UUID, file_path: str) -> int:
         """Delete all embeddings for a specific file in a repository."""
         from sqlalchemy import delete

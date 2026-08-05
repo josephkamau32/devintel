@@ -10,7 +10,6 @@ from app.api.deps import check_repo_access, get_current_user
 from app.core.logging import get_logger
 from app.db.session import get_db
 from app.integrations.github_client import GitHubClient
-from app.integrations.openai_client import OpenAIClient
 from app.models.user import User
 from app.repositories.embedding import EmbeddingRepository
 from app.repositories.repository import RepositoryRepository
