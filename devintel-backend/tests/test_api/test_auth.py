@@ -17,40 +17,41 @@ async def test_signup_success(async_client: AsyncClient):
         "/api/v1/auth/signup",
         json={
             "email": "newuser@example.com",
-            "password": "securepassword123",
-            "name": "New User",
+            "password": "SecurePassword1",
+            "full_name": "New User",
         },
     )
-    assert response.status_code == 200
+    assert response.status_code == 201
     data = response.json()
     assert "access_token" in data
-    assert "refresh_token" in data
     assert data["token_type"] == "bearer"
     assert data["user"]["email"] == "newuser@example.com"
 
 
 @pytest.mark.asyncio
-async def test_signup_duplicate_email(async_client: AsyncClient, test_user_token: str):
+async def test_signup_duplicate_email(async_client: AsyncClient):
     """Test signup with existing email fails."""
-    # First signup
-    await async_client.post(
+    # First signup — must use a schema-valid password (uppercase + digit + ≥8 chars)
+    first_response = await async_client.post(
         "/api/v1/auth/signup",
         json={
             "email": "duplicate@example.com",
-            "password": "password123",
-            "name": "User One",
+            "password": "Password1",
+            "full_name": "User One",
         },
     )
-    # Duplicate signup
+    assert first_response.status_code == 201  # Ensure first signup succeeds
+
+    # Duplicate signup with the same email
     response = await async_client.post(
         "/api/v1/auth/signup",
         json={
             "email": "duplicate@example.com",
-            "password": "password456",
-            "name": "User Two",
+            "password": "Password2",
+            "full_name": "User Two",
         },
     )
-    assert response.status_code == 400
+    assert response.status_code == 409  # ConflictError
     assert "already registered" in response.json()["detail"]
 
 
@@ -62,7 +63,7 @@ async def test_signup_weak_password(async_client: AsyncClient):
         json={
             "email": "weakpass@example.com",
             "password": "short",
-            "name": "Weak Password User",
+            "full_name": "Weak Password User",
         },
     )
     assert response.status_code == 422  # Validation error
@@ -70,17 +71,11 @@ async def test_signup_weak_password(async_client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_login_success(async_client: AsyncClient, test_user: User):
-    """Test successful login with valid credentials."""
-    # First create user with password
-    from app.core.security import hash_password
-    from app.repositories.user import UserRepository
-    from app.db.session import AsyncSessionLocal
+    """Test successful login with valid credentials.
 
-    async with AsyncSessionLocal() as db:
-        user_repo = UserRepository(db)
-        await user_repo.update(test_user.id, hashed_password=get_password_hash("testpassword123"))
-        await db.commit()
-
+    The test_user fixture already creates a user with email 'test@example.com'
+    and hashed password for 'testpassword123'. We login with those credentials.
+    """
     response = await async_client.post(
         "/api/v1/auth/login",
         json={
@@ -91,7 +86,8 @@ async def test_login_success(async_client: AsyncClient, test_user: User):
     assert response.status_code == 200
     data = response.json()
     assert "access_token" in data
-    assert "refresh_token" in data
+    assert data["token_type"] == "bearer"
+    assert data["user"]["email"] == "test@example.com"
 
 
 @pytest.mark.asyncio
@@ -122,18 +118,24 @@ async def test_login_nonexistent_user(async_client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_token_refresh(async_client: AsyncClient, test_user_token: str):
-    """Test token refresh endpoint."""
+async def test_token_refresh(async_client: AsyncClient, test_user: User):
+    """Test token refresh endpoint.
+
+    The refresh endpoint reads the refresh token from an HTTP-only cookie,
+    not from the JSON body. We must create a proper *refresh* token (not an
+    access token) and send it via the cookie.
+    """
+    refresh_tok = create_refresh_token(test_user.id)
+
+    # Send the refresh token as a cookie (the endpoint reads from Cookie)
     response = await async_client.post(
         "/api/v1/auth/refresh",
-        json={
-            "refresh_token": test_user_token,
-        },
+        cookies={"refresh_token": refresh_tok},
     )
     assert response.status_code == 200
     data = response.json()
     assert "access_token" in data
-    assert "refresh_token" in data
+    assert data["token_type"] == "bearer"
 
 
 @pytest.mark.asyncio
@@ -141,36 +143,49 @@ async def test_token_refresh_invalid_token(async_client: AsyncClient):
     """Test refresh with invalid token fails."""
     response = await async_client.post(
         "/api/v1/auth/refresh",
-        json={
-            "refresh_token": "invalid.token.string",
-        },
+        cookies={"refresh_token": "invalid.token.string"},
     )
     assert response.status_code == 401
 
 
 @pytest.mark.asyncio
-@patch("app.api.v1.auth.GitHubClient")
-@patch("app.api.v1.auth.exchange_code_for_token")
-async def test_github_oauth_flow(mock_exchange, mock_github_client_cls, async_client: AsyncClient):
-    """Test complete GitHub OAuth flow."""
+@patch("app.services.github_service.GitHubService.get_primary_email", new_callable=AsyncMock)
+@patch("app.services.github_service.GitHubService.get_github_user", new_callable=AsyncMock)
+@patch("app.services.github_service.GitHubService.exchange_code_for_token", new_callable=AsyncMock)
+async def test_github_oauth_flow(
+    mock_exchange, mock_get_user, mock_get_email, async_client: AsyncClient
+):
+    """Test complete GitHub OAuth flow.
+
+    The /github/callback endpoint uses GitHubService.authenticate() which
+    internally calls exchange_code_for_token, get_github_user, and
+    get_primary_email. We mock all three at the service level.
+
+    The endpoint also requires a valid HMAC-signed state parameter for
+    CSRF protection, and returns a 302 redirect (not a JSON response).
+    """
     mock_exchange.return_value = "mock_github_token"
-    mock_github = AsyncMock()
-    mock_github.get_user_info.return_value = {
-        "github_id": "github_123",
+    mock_get_user.return_value = {
+        "id": 123456,
         "login": "githubuser",
         "email": "github@example.com",
         "name": "GitHub User",
         "avatar_url": "https://avatars.githubusercontent.com/u/123",
     }
-    mock_github_client_cls.return_value = mock_github
+    mock_get_email.return_value = "github@example.com"
+
+    # Create a valid HMAC-signed state token
+    from app.api.v1.auth import _create_oauth_state
+
+    state = _create_oauth_state()
 
     response = await async_client.get(
-        "/api/v1/auth/github/callback?code=mock_code",
+        f"/api/v1/auth/github/callback?code=mock_code&state={state}",
+        follow_redirects=False,
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert "access_token" in data
-    assert "refresh_token" in data
+    # The callback returns a 302 redirect to the frontend with access_token in the URL fragment
+    assert response.status_code == 302
+    assert "access_token=" in response.headers["location"]
 
 
 @pytest.mark.asyncio
@@ -198,9 +213,13 @@ async def test_logout(async_client: AsyncClient, test_user_token: str):
 
 @pytest.mark.asyncio
 async def test_missing_auth_header(async_client: AsyncClient):
-    """Test protected endpoint without auth header."""
+    """Test protected endpoint without auth header returns 401.
+
+    HTTPBearer(auto_error=False) yields None when the header is missing,
+    and get_current_user raises AuthenticationError (401), not 422.
+    """
     response = await async_client.get("/api/v1/auth/me")
-    assert response.status_code == 422  # Missing header
+    assert response.status_code == 401
 
 
 @pytest.mark.asyncio
@@ -215,7 +234,12 @@ async def test_invalid_auth_header(async_client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_sql_injection_in_login(async_client: AsyncClient):
-    """Test SQL injection attempt in login is blocked."""
+    """Test SQL injection attempt in login is blocked.
+
+    Pydantic's EmailStr validator rejects the malformed email before
+    it ever reaches the database layer, returning a 422 validation error.
+    This is the correct and safe behavior.
+    """
     response = await async_client.post(
         "/api/v1/auth/login",
         json={
@@ -223,4 +247,4 @@ async def test_sql_injection_in_login(async_client: AsyncClient):
             "password": "anypassword",
         },
     )
-    assert response.status_code == 400
+    assert response.status_code == 422
