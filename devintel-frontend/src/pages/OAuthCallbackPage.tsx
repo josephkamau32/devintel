@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { api } from '../lib/axios';
 import type { User } from '../lib/types';
+import { Code2 } from 'lucide-react';
 
 export function OAuthCallbackPage() {
   const { setAuth } = useAuthStore();
@@ -42,10 +43,15 @@ export function OAuthCallbackPage() {
   }, [navigate, setAuth]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-950">
-      <div className="text-center">
-        <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-violet-600 border-t-transparent" />
-        <p className="text-sm text-slate-400">Completing sign-in…</p>
+    <div className="flex min-h-screen items-center justify-center bg-surface-0">
+      <div className="flex flex-col items-center gap-4 animate-fade-in">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-600">
+          <Code2 className="h-5 w-5 text-white" />
+        </div>
+        <div className="flex items-center gap-2 text-sm text-text-tertiary">
+          <div className="h-4 w-4 animate-spin-slow rounded-full border-2 border-brand-500 border-t-transparent" />
+          Completing sign-in…
+        </div>
       </div>
     </div>
   );

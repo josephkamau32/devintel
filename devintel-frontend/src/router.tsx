@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { AuthGuard } from './components/AuthGuard';
+import { Code2 } from 'lucide-react';
 
 // Lazy-load pages for better code splitting
 const LandingPage = lazy(() => import('./pages/LandingPage').then(m => ({ default: m.LandingPage })));
@@ -12,10 +13,14 @@ const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then(m => ({ defa
 
 function PageLoader() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-950">
-      <div className="text-center">
-        <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-violet-600 border-t-transparent" />
-        <p className="text-sm text-slate-400">Loading…</p>
+    <div className="flex min-h-screen items-center justify-center bg-surface-0">
+      <div className="flex flex-col items-center gap-4 animate-fade-in">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-600 animate-pulse-subtle">
+          <Code2 className="h-5 w-5 text-white" />
+        </div>
+        <div className="h-1 w-16 rounded-full overflow-hidden bg-surface-3">
+          <div className="h-full w-full bg-brand-500 rounded-full animate-shimmer" />
+        </div>
       </div>
     </div>
   );

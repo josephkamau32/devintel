@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Modal } from './ui/Modal';
 import { useGitHubRepositories, connectRepository } from '../hooks/useRepositories';
-import { Loader2, Plus, Check, Search } from 'lucide-react';
+import { Loader2, Plus, Check, Search, AlertCircle, FolderGit2 } from 'lucide-react';
 import { GitHubRepository } from '../types/repository';
 
 interface ConnectRepoModalProps {
@@ -55,39 +55,48 @@ export const ConnectRepoModal: React.FC<ConnectRepoModalProps> = ({
     <Modal isOpen={isOpen} onClose={onClose} title="Connect GitHub Repository">
       <div className="space-y-4">
         {error && (
-          <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg text-sm animate-slide-down">
+          <div className="flex items-center gap-2 p-3 bg-status-error-muted border border-status-error/20 text-status-error rounded-lg text-sm animate-slide-down">
+            <AlertCircle className="h-4 w-4 shrink-0" />
             {error}
           </div>
         )}
 
         {/* Search filter */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-quaternary" />
           <input
             type="text"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             placeholder="Filter repositories…"
-            className="w-full pl-9 pr-4 py-2.5 text-sm bg-slate-800/60 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition-all"
+            className="w-full pl-9 pr-4 py-2.5 text-sm bg-surface-3 border border-border-medium rounded-lg text-text-primary placeholder-text-quaternary outline-none focus:border-brand-500 focus:shadow-focus-ring transition-all"
           />
         </div>
 
         {isLoading && page === 1 ? (
           <div className="flex flex-col items-center justify-center p-10 gap-3">
-            <Loader2 className="w-8 h-8 text-violet-400 animate-spin" />
-            <p className="text-sm text-slate-500">Loading your repositories…</p>
+            <Loader2 className="w-6 h-6 text-brand-400 animate-spin-slow" />
+            <p className="text-body-sm text-text-tertiary">Loading your repositories…</p>
           </div>
         ) : isError ? (
-          <div className="p-6 text-center">
-            <p className="text-red-400 mb-2">Failed to load repositories.</p>
-            <p className="text-sm text-slate-500">Make sure your GitHub account is connected.</p>
+          <div className="p-8 text-center">
+            <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-status-error-muted border border-status-error/20">
+              <AlertCircle className="h-5 w-5 text-status-error" />
+            </div>
+            <p className="text-sm font-medium text-status-error mb-1">Failed to load repositories</p>
+            <p className="text-body-sm text-text-tertiary">Make sure your GitHub account is connected.</p>
           </div>
         ) : filteredRepos.length === 0 ? (
-          <div className="p-8 text-center text-slate-400">
-            {filter ? 'No repositories match your search.' : 'No repositories found on your GitHub account.'}
+          <div className="p-8 text-center">
+            <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-surface-3 border border-border">
+              <FolderGit2 className="h-5 w-5 text-text-quaternary" />
+            </div>
+            <p className="text-sm text-text-tertiary">
+              {filter ? 'No repositories match your search.' : 'No repositories found on your GitHub account.'}
+            </p>
           </div>
         ) : (
-          <div className="space-y-2 max-h-[55vh] overflow-y-auto pr-1">
+          <div className="space-y-1.5 max-h-[55vh] overflow-y-auto pr-1">
             {filteredRepos.map((repo: GitHubRepository) => {
               const isConnected = connectedRepoFullNames.includes(repo.full_name);
               const isConnecting = connectingFullName === repo.full_name;
@@ -95,29 +104,31 @@ export const ConnectRepoModal: React.FC<ConnectRepoModalProps> = ({
               return (
                 <div 
                   key={repo.full_name}
-                  className="flex items-center justify-between p-4 bg-slate-800/30 border border-slate-800 rounded-xl hover:bg-slate-800/60 hover:border-slate-700 transition-all duration-200"
+                  className="flex items-center justify-between p-3.5 bg-surface-2 border border-border rounded-lg hover:bg-surface-3 hover:border-border-medium transition-all duration-150"
                 >
                   <div className="min-w-0 mr-3">
-                    <h4 className="font-medium text-white flex items-center space-x-2">
+                    <h4 className="text-sm font-medium text-text-primary flex items-center gap-2">
                       <span className="truncate">{repo.repo_name}</span>
                       {repo.private && (
-                        <span className="flex-shrink-0 px-2 py-0.5 text-[10px] bg-slate-700 text-slate-300 rounded-full font-medium">
+                        <span className="flex-shrink-0 px-1.5 py-0.5 text-[10px] bg-surface-4 text-text-quaternary rounded font-medium border border-border">
                           Private
                         </span>
                       )}
                     </h4>
-                    <p className="text-xs text-slate-500 mt-0.5 truncate">{repo.full_name}</p>
+                    <p className="text-xs text-text-quaternary mt-0.5 truncate">
+                      {repo.full_name}
+                    </p>
                   </div>
                   
                   <button
                     onClick={() => handleConnect(repo)}
                     disabled={isConnected || isConnecting}
-                    className={`flex-shrink-0 flex items-center space-x-1.5 px-3 py-1.5 rounded-lg font-medium text-xs transition-all duration-200 ${
+                    className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium text-xs transition-all duration-150 ${
                       isConnected
-                        ? 'bg-emerald-500/10 text-emerald-400 cursor-default border border-emerald-500/20'
+                        ? 'bg-status-success-muted text-status-success cursor-default border border-status-success/20'
                         : isConnecting
-                        ? 'bg-violet-600/50 text-white cursor-wait'
-                        : 'bg-violet-600 hover:bg-violet-500 text-white shadow-sm'
+                        ? 'bg-brand-600/50 text-white cursor-wait'
+                        : 'bg-brand-600 hover:bg-brand-500 text-white shadow-subtle'
                     }`}
                   >
                     {isConnected ? (
@@ -127,7 +138,7 @@ export const ConnectRepoModal: React.FC<ConnectRepoModalProps> = ({
                       </>
                     ) : isConnecting ? (
                       <>
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <Loader2 className="w-3.5 h-3.5 animate-spin-slow" />
                         <span>Connecting…</span>
                       </>
                     ) : (
@@ -143,19 +154,19 @@ export const ConnectRepoModal: React.FC<ConnectRepoModalProps> = ({
           </div>
         )}
         
-        <div className="flex justify-between items-center pt-4 border-t border-slate-800">
+        <div className="flex justify-between items-center pt-3 border-t border-border">
           <button
             onClick={() => setPage(p => Math.max(1, p - 1))}
             disabled={page === 1 || isLoading}
-            className="px-4 py-2 text-sm font-medium text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:text-slate-400 transition-colors rounded-lg hover:bg-slate-800"
+            className="px-3 py-1.5 text-sm font-medium text-text-tertiary hover:text-text-primary disabled:opacity-30 disabled:hover:text-text-tertiary transition-colors rounded-md hover:bg-surface-3"
           >
             ← Previous
           </button>
-          <span className="text-xs text-slate-500 font-medium">Page {page}</span>
+          <span className="text-xs text-text-quaternary font-medium">Page {page}</span>
           <button
             onClick={() => setPage(p => p + 1)}
             disabled={githubRepositories.length < 30 || isLoading}
-            className="px-4 py-2 text-sm font-medium text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:text-slate-400 transition-colors rounded-lg hover:bg-slate-800"
+            className="px-3 py-1.5 text-sm font-medium text-text-tertiary hover:text-text-primary disabled:opacity-30 disabled:hover:text-text-tertiary transition-colors rounded-md hover:bg-surface-3"
           >
             Next →
           </button>

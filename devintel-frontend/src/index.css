@@ -2,16 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Base Layer ─── */
 @layer base {
   *, *::before, *::after {
     box-sizing: border-box;
   }
-  body {
-    @apply bg-slate-950 text-white antialiased;
-    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
 
-  /* Smooth scrollbar */
+  body {
+    @apply bg-surface-0 text-text-primary;
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  /* Scrollbar */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -20,96 +29,63 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: rgba(100, 116, 139, 0.3);
+    background: rgba(161, 161, 170, 0.15);
     border-radius: 3px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(100, 116, 139, 0.5);
+    background: rgba(161, 161, 170, 0.25);
   }
 
-  /* Selection color */
+  /* Selection */
   ::selection {
-    background: rgba(139, 92, 246, 0.3);
-    color: #fff;
+    background: rgba(99, 102, 241, 0.25);
+    color: #fafafa;
+  }
+
+  /* Focus visible */
+  :focus-visible {
+    outline: none;
   }
 }
 
+/* ─── Utilities ─── */
 @layer utilities {
-  /* Glass morphism */
-  .glass {
-    background: rgba(15, 23, 42, 0.6);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(148, 163, 184, 0.1);
+  /* Skeleton loader shimmer */
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.03) 25%,
+      rgba(255, 255, 255, 0.06) 50%,
+      rgba(255, 255, 255, 0.03) 75%
+    );
+    background-size: 200% 100%;
+    animation: di-shimmer 1.8s linear infinite;
   }
 
-  /* Glow effect for cards on hover */
-  .glow-violet {
-    box-shadow: 0 0 20px rgba(139, 92, 246, 0.15),
-                0 0 40px rgba(139, 92, 246, 0.05);
+  /* Consistent focus ring */
+  .focus-ring {
+    @apply focus-visible:ring-2 focus-visible:ring-brand-500/25 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-0;
   }
-}
 
-/* Custom keyframes for animations */
-@keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
+  /* Card surface */
+  .card {
+    @apply bg-surface-2 border border-border rounded-xl;
+  }
 
-@keyframes slide-up {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+  .card-interactive {
+    @apply card transition-all duration-200 hover:border-border-medium hover:bg-surface-3;
+  }
 
-@keyframes slide-down {
-  from { opacity: 0; transform: translateY(-12px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+  /* Text gradient */
+  .text-gradient {
+    @apply bg-gradient-to-r from-brand-400 to-brand-300 bg-clip-text text-transparent;
+  }
 
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
-@keyframes pulse-glow {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 0.8; }
-}
-
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-6px); }
-}
-
-@keyframes gradient-shift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
-.animate-fade-in {
-  animation: fade-in 0.3s ease-out both;
-}
-
-.animate-slide-up {
-  animation: slide-up 0.35s ease-out both;
-}
-
-.animate-slide-down {
-  animation: slide-down 0.35s ease-out both;
-}
-
-.animate-shimmer {
-  background: linear-gradient(90deg, transparent 25%, rgba(148, 163, 184, 0.08) 50%, transparent 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-}
-
-.animate-float {
-  animation: float 3s ease-in-out infinite;
-}
-
-.animate-gradient {
-  background-size: 200% 200%;
-  animation: gradient-shift 6s ease infinite;
+  /* Stagger animation delay helpers */
+  .stagger-1 { animation-delay: 50ms; }
+  .stagger-2 { animation-delay: 100ms; }
+  .stagger-3 { animation-delay: 150ms; }
+  .stagger-4 { animation-delay: 200ms; }
+  .stagger-5 { animation-delay: 250ms; }
+  .stagger-6 { animation-delay: 300ms; }
 }
