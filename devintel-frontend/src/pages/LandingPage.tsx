@@ -7,8 +7,7 @@ import {
   ShieldCheck,
   BarChart3,
   Zap,
-  Lock,
-  RefreshCw,
+  Network,
   ArrowRight,
   Play,
   ExternalLink,
@@ -16,41 +15,58 @@ import {
   Monitor,
   Puzzle,
   Github,
+  Activity,
+  Sparkles,
+  GitPullRequest,
+  Shield,
 } from 'lucide-react';
 
 /* ─── Data ─── */
 
 const features = [
   {
+    icon: Activity,
+    title: 'Engineering Health Scores',
+    desc: 'Multi-dimensional quality analysis — security, complexity, documentation, maintainability, and test coverage, with AI-powered recommendations.',
+  },
+  {
     icon: MessageSquareText,
-    title: 'RAG-Powered Chat',
-    desc: 'Ask natural language questions about your codebase — backed by pgvector semantic search with AST-aware chunking.',
+    title: 'RAG-Powered Code Chat',
+    desc: 'Ask natural language questions about your codebase — backed by pgvector semantic search with AST-aware chunking and streaming responses.',
   },
   {
-    icon: ShieldCheck,
-    title: 'AI Code Review',
-    desc: 'Automated PR reviews with severity-tagged issues, security analysis, and actionable improvement suggestions.',
+    icon: GitPullRequest,
+    title: 'AI Code Reviews',
+    desc: 'Automated PR reviews with severity-tagged issues, security analysis, performance notes, and actionable refactoring suggestions.',
   },
   {
-    icon: BarChart3,
-    title: 'Code Health Scoring',
-    desc: 'Multi-dimensional quality analysis — complexity, documentation, maintainability, test coverage, and security.',
+    icon: Network,
+    title: 'Architecture Intelligence',
+    desc: 'Generate Mermaid and C4 architecture diagrams from your codebase automatically. Understand system design at a glance.',
   },
   {
     icon: Zap,
     title: 'Autonomous Agent',
-    desc: 'Instruct the AI to implement features — it drafts a plan, creates a branch, commits code, and opens a PR.',
+    desc: 'Instruct the AI to implement features — it drafts a plan, creates a branch, commits code, runs tests, and opens a PR.',
   },
   {
-    icon: Lock,
-    title: 'Enterprise Security',
-    desc: 'JWT + HttpOnly cookies, Fernet AES-256 token encryption, OWASP headers, CSRF protection, audit logging.',
+    icon: ShieldCheck,
+    title: 'Security-First',
+    desc: 'JWT + HttpOnly cookies, Fernet AES-256 token encryption, OWASP headers, CSRF protection, and comprehensive audit logging.',
   },
-  {
-    icon: RefreshCw,
-    title: 'Resilience Patterns',
-    desc: 'Circuit breaker, exponential backoff retries, retry queues, Redis caching — production-grade infrastructure.',
-  },
+];
+
+const pillars = [
+  { icon: Shield, label: 'Security Intelligence', desc: 'Vulnerability detection & auto-fix PRs' },
+  { icon: Network, label: 'Architecture Analysis', desc: 'Automated diagram generation' },
+  { icon: BarChart3, label: 'Health Scoring', desc: '5 quality dimensions per repository' },
+  { icon: Sparkles, label: 'AI Code Reviews', desc: 'Deep PR analysis with context' },
+];
+
+const howItWorks = [
+  { step: '01', title: 'Connect', desc: 'Link your GitHub repositories with one click.' },
+  { step: '02', title: 'Analyze', desc: 'DevIntel indexes your code and runs health analysis.' },
+  { step: '03', title: 'Understand', desc: 'Get intelligence — scores, insights, architecture, and chat.' },
 ];
 
 const techStack = [
@@ -64,13 +80,6 @@ const techStack = [
   'SQLAlchemy',
 ];
 
-const stats = [
-  { value: '17+', label: 'Database Tables' },
-  { value: '24', label: 'Service Modules' },
-  { value: '20', label: 'DB Migrations' },
-  { value: '6', label: 'Docker Services' },
-];
-
 const architecture = [
   {
     icon: Server,
@@ -80,9 +89,9 @@ const architecture = [
   },
   {
     icon: Monitor,
-    name: 'Dashboard',
+    name: 'Intelligence Dashboard',
     tech: 'React 18 + TypeScript + Vite',
-    desc: 'RAG chat, code health analytics, PR reviews',
+    desc: 'Health scores, architecture, AI chat, PR reviews',
   },
   {
     icon: Puzzle,
@@ -121,7 +130,9 @@ function useInView(threshold = 0.15) {
 
 export function LandingPage() {
   const demoLogin = useDemoLogin();
+  const pillarsSection = useInView();
   const featuresSection = useInView();
+  const howSection = useInView();
   const archSection = useInView();
   const ctaSection = useInView();
 
@@ -183,24 +194,23 @@ export function LandingPage() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-status-success opacity-75" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-status-success" />
             </span>
-            Open Source · Built with GPT-4o + RAG
+            AI Engineering Intelligence Platform
           </div>
         </div>
 
         <h1 className="animate-slide-up text-4xl font-bold leading-tight tracking-tight sm:text-5xl lg:text-display">
-          Developer intelligence{' '}
+          Your codebase,{' '}
           <br className="hidden sm:block" />
-          for your{' '}
-          <span className="text-gradient">GitHub codebase</span>
+          <span className="text-gradient">deeply understood</span>
         </h1>
 
         <p
           className="mx-auto mt-5 max-w-xl text-body text-text-secondary animate-slide-up"
           style={{ animationDelay: '80ms' }}
         >
-          Index your repositories, chat with your code using RAG, review pull
-          requests with AI, score code health, and generate auto-fix PRs — all
-          with production-grade security and enterprise resilience patterns.
+          DevIntel analyzes your repositories and surfaces engineering intelligence —
+          health scores, architecture diagrams, security insights, AI code reviews,
+          and autonomous agent actions.
         </p>
 
         <div
@@ -237,73 +247,110 @@ export function LandingPage() {
         </p>
       </section>
 
-      {/* ─── Stats ─── */}
-      <section className="relative z-10 border-y border-border">
-        <div className="mx-auto grid max-w-3xl grid-cols-2 gap-6 px-4 py-10 sm:grid-cols-4 sm:px-6">
-          {stats.map((stat) => (
-            <div key={stat.label} className="text-center">
-              <div className="text-2xl font-bold text-text-primary">
-                {stat.value}
-              </div>
-              <div className="mt-0.5 text-overline uppercase text-text-quaternary">
-                {stat.label}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ─── Features ─── */}
-      <section
-        ref={featuresSection.ref}
-        className="relative z-10 mx-auto max-w-5xl px-4 py-20 sm:px-6"
-      >
-        <div className="mb-12 text-center">
-          <h2 className="text-h1 text-text-primary">
-            Enterprise-grade AI code intelligence
-          </h2>
-          <p className="mt-3 text-body text-text-secondary max-w-lg mx-auto">
-            Beyond simple ChatGPT wrappers — a complete RAG pipeline with
-            production resilience patterns.
-          </p>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map((f, i) => {
-            const Icon = f.icon;
+      {/* ─── Intelligence Pillars ─── */}
+      <section ref={pillarsSection.ref} className="relative z-10 border-y border-border">
+        <div className="mx-auto grid max-w-4xl grid-cols-2 gap-6 px-4 py-12 sm:grid-cols-4 sm:px-6">
+          {pillars.map((pillar, i) => {
+            const Icon = pillar.icon;
             return (
               <div
-                key={f.title}
-                className={`group card-interactive p-5 transition-all duration-300 ${
-                  featuresSection.inView
-                    ? 'opacity-100 translate-y-0'
-                    : 'opacity-0 translate-y-3'
+                key={pillar.label}
+                className={`text-center transition-all duration-300 ${
+                  pillarsSection.inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
                 }`}
-                style={{
-                  transitionDelay: featuresSection.inView
-                    ? `${i * 60}ms`
-                    : '0ms',
-                }}
+                style={{ transitionDelay: pillarsSection.inView ? `${i * 80}ms` : '0ms' }}
               >
-                <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-surface-4 text-text-secondary group-hover:text-brand-400 transition-colors">
-                  <Icon className="h-[18px] w-[18px]" />
+                <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-surface-3 mb-3 border border-border">
+                  <Icon className="h-5 w-5 text-brand-400" />
                 </div>
-                <h3 className="mb-1.5 text-sm font-semibold text-text-primary">
-                  {f.title}
-                </h3>
-                <p className="text-body-sm text-text-tertiary leading-relaxed">
-                  {f.desc}
-                </p>
+                <div className="text-sm font-semibold text-text-primary">{pillar.label}</div>
+                <div className="mt-0.5 text-xs text-text-quaternary">{pillar.desc}</div>
               </div>
             );
           })}
         </div>
       </section>
 
+      {/* ─── How It Works ─── */}
+      <section ref={howSection.ref} className="relative z-10 py-20">
+        <div className="mx-auto max-w-3xl px-4 sm:px-6">
+          <div className="mb-12 text-center">
+            <h2 className="text-h1 text-text-primary">How it works</h2>
+            <p className="mt-3 text-body text-text-secondary">Three steps to engineering intelligence.</p>
+          </div>
+          <div className="grid sm:grid-cols-3 gap-6">
+            {howItWorks.map((step, i) => (
+              <div
+                key={step.step}
+                className={`text-center transition-all duration-300 ${
+                  howSection.inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
+                }`}
+                style={{ transitionDelay: howSection.inView ? `${i * 100}ms` : '0ms' }}
+              >
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-brand-600/10 border border-brand-500/20 mb-4">
+                  <span className="text-lg font-bold text-brand-400">{step.step}</span>
+                </div>
+                <h3 className="text-sm font-semibold text-text-primary mb-1">{step.title}</h3>
+                <p className="text-body-sm text-text-tertiary">{step.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Features ─── */}
+      <section
+        ref={featuresSection.ref}
+        className="relative z-10 border-y border-border py-20"
+      >
+        <div className="mx-auto max-w-5xl px-4 sm:px-6">
+          <div className="mb-12 text-center">
+            <h2 className="text-h1 text-text-primary">
+              Enterprise-grade AI code intelligence
+            </h2>
+            <p className="mt-3 text-body text-text-secondary max-w-lg mx-auto">
+              Beyond simple ChatGPT wrappers — a complete RAG pipeline with
+              production resilience patterns.
+            </p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {features.map((f, i) => {
+              const Icon = f.icon;
+              return (
+                <div
+                  key={f.title}
+                  className={`group card-interactive p-5 transition-all duration-300 ${
+                    featuresSection.inView
+                      ? 'opacity-100 translate-y-0'
+                      : 'opacity-0 translate-y-3'
+                  }`}
+                  style={{
+                    transitionDelay: featuresSection.inView
+                      ? `${i * 60}ms`
+                      : '0ms',
+                  }}
+                >
+                  <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-surface-4 text-text-secondary group-hover:text-brand-400 transition-colors">
+                    <Icon className="h-[18px] w-[18px]" />
+                  </div>
+                  <h3 className="mb-1.5 text-sm font-semibold text-text-primary">
+                    {f.title}
+                  </h3>
+                  <p className="text-body-sm text-text-tertiary leading-relaxed">
+                    {f.desc}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
       {/* ─── Architecture ─── */}
       <section
         ref={archSection.ref}
-        className="relative z-10 border-y border-border py-20"
+        className="relative z-10 py-20"
       >
         <div className="mx-auto max-w-4xl px-4 sm:px-6">
           <div className="mb-10 text-center">
@@ -349,7 +396,7 @@ export function LandingPage() {
       </section>
 
       {/* ─── Tech Stack ─── */}
-      <section className="relative z-10 py-14">
+      <section className="relative z-10 border-y border-border py-14">
         <div className="mx-auto max-w-3xl px-4 text-center sm:px-6">
           <p className="mb-6 text-overline uppercase text-text-quaternary">
             Built with
@@ -370,7 +417,7 @@ export function LandingPage() {
       {/* ─── CTA ─── */}
       <section
         ref={ctaSection.ref}
-        className="relative z-10 border-t border-border py-20"
+        className="relative z-10 py-20"
       >
         <div
           className={`mx-auto max-w-lg px-4 text-center sm:px-6 transition-all duration-500 ${
@@ -383,7 +430,7 @@ export function LandingPage() {
             Ready to understand your codebase?
           </h2>
           <p className="text-body text-text-secondary mb-8">
-            Start chatting with your code in under a minute. No credit card
+            Start generating engineering intelligence in under a minute. No credit card
             required.
           </p>
           <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
@@ -417,7 +464,7 @@ export function LandingPage() {
               <Code2 className="h-3 w-3 text-white" />
             </div>
             <span className="text-xs text-text-quaternary">
-              DevIntel — Open source AI code intelligence
+              DevIntel — AI Engineering Intelligence Platform
             </span>
           </div>
           <div className="flex items-center gap-3 text-xs text-text-quaternary">

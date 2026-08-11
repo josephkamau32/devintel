@@ -48,6 +48,84 @@
   }
 }
 
+/* ─── Component Layer ─── */
+@layer components {
+  /* Score Ring */
+  .score-ring-track {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.06);
+    stroke-width: 6;
+  }
+
+  .score-ring-value {
+    fill: none;
+    stroke-width: 6;
+    stroke-linecap: round;
+    transform: rotate(-90deg);
+    transform-origin: center;
+    transition: stroke-dashoffset 1s ease-out;
+  }
+
+  /* Score bar */
+  .score-bar-track {
+    @apply h-1.5 w-full rounded-full bg-surface-4;
+  }
+
+  .score-bar-fill {
+    @apply h-full rounded-full transition-all duration-700 ease-out;
+  }
+
+  /* Sidebar */
+  .sidebar-nav-item {
+    @apply flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium
+           text-text-tertiary transition-all duration-150
+           hover:text-text-secondary hover:bg-surface-3;
+  }
+
+  .sidebar-nav-item-active {
+    @apply text-text-primary bg-surface-3;
+  }
+
+  /* Stat Card */
+  .stat-card {
+    @apply card p-4 flex flex-col gap-1;
+  }
+
+  /* Workspace Tab */
+  .workspace-tab {
+    @apply px-3 py-2 text-sm font-medium text-text-tertiary
+           border-b-2 border-transparent transition-all duration-150
+           hover:text-text-secondary hover:border-border-medium;
+  }
+
+  .workspace-tab-active {
+    @apply text-text-primary border-brand-500;
+  }
+
+  /* Chat bubble */
+  .chat-bubble-user {
+    @apply bg-brand-600/15 border border-brand-500/10 rounded-2xl rounded-br-md px-4 py-3;
+  }
+
+  .chat-bubble-assistant {
+    @apply bg-surface-3 border border-border rounded-2xl rounded-bl-md px-4 py-3;
+  }
+
+  /* Insight card */
+  .insight-card {
+    @apply card p-4 hover:border-border-medium transition-all duration-200;
+  }
+
+  /* Action button row */
+  .action-pill {
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full
+           text-xs font-medium bg-surface-3 text-text-secondary
+           border border-border hover:border-border-medium
+           hover:bg-surface-4 hover:text-text-primary
+           transition-all duration-150 cursor-pointer;
+  }
+}
+
 /* ─── Utilities ─── */
 @layer utilities {
   /* Skeleton loader shimmer */
@@ -88,4 +166,27 @@
   .stagger-4 { animation-delay: 200ms; }
   .stagger-5 { animation-delay: 250ms; }
   .stagger-6 { animation-delay: 300ms; }
+
+  /* Line clamp */
+  .line-clamp-1 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+  }
+  .line-clamp-3 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+
+  /* Hide scrollbar but keep scroll */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }

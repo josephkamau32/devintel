@@ -1,18 +1,47 @@
 import React from 'react';
-import { Github, Play, Loader2, CheckCircle2, XCircle, RotateCw } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Loader2, CheckCircle2, XCircle, RotateCw, ArrowRight, Activity } from 'lucide-react';
 import { Repository } from '../types/repository';
+import type { HealthReport } from '../types/api';
+import { clsx } from 'clsx';
 
 interface RepositoryCardProps {
   repository: Repository;
   onIndex: (id: string) => void;
   isTriggering?: boolean;
+  healthReport?: HealthReport;
 }
 
-export const RepositoryCard: React.FC<RepositoryCardProps> = ({ repository, onIndex, isTriggering }) => {
+function getScoreColor(score: number): string {
+  if (score >= 90) return 'text-score-excellent';
+  if (score >= 70) return 'text-score-good';
+  if (score >= 40) return 'text-score-warning';
+  return 'text-score-critical';
+}
+
+function getScoreBg(score: number): string {
+  if (score >= 90) return 'bg-score-excellent-muted border-score-excellent/20';
+  if (score >= 70) return 'bg-score-good-muted border-score-good/20';
+  if (score >= 40) return 'bg-score-warning-muted border-score-warning/20';
+  return 'bg-score-critical-muted border-score-critical/20';
+}
+
+function getScoreLabel(score: number): string {
+  if (score >= 90) return 'Excellent';
+  if (score >= 70) return 'Good';
+  if (score >= 40) return 'Fair';
+  return 'Needs work';
+}
+
+export const RepositoryCard: React.FC<RepositoryCardProps> = ({ repository, onIndex, isTriggering, healthReport }) => {
+  const navigate = useNavigate();
+  const isIndexing = ['pending', 'indexing', 'cloning', 'chunking', 'embedding'].includes(repository.indexing_status);
+  const isCompleted = repository.indexing_status === 'completed' || repository.indexing_status === 'complete';
+
   const getStatusConfig = (status: string) => {
     switch (status) {
-      case 'completed': 
-      case 'complete': 
+      case 'completed':
+      case 'complete':
         return {
           icon: <CheckCircle2 className="w-3.5 h-3.5" />,
           color: 'text-status-success',
@@ -28,11 +57,11 @@ export const RepositoryCard: React.FC<RepositoryCardProps> = ({ repository, onIn
           border: 'border-status-error/20',
           label: 'Failed',
         };
-      case 'pending': 
+      case 'pending':
       case 'indexing':
-      case 'cloning': 
-      case 'chunking': 
-      case 'embedding': 
+      case 'cloning':
+      case 'chunking':
+      case 'embedding':
         return {
           icon: <Loader2 className="w-3.5 h-3.5 animate-spin-slow" />,
           color: 'text-status-info',
@@ -52,82 +81,105 @@ export const RepositoryCard: React.FC<RepositoryCardProps> = ({ repository, onIn
   };
 
   const statusConfig = getStatusConfig(repository.indexing_status);
-  const isIndexing = ['pending', 'indexing', 'cloning', 'chunking', 'embedding'].includes(repository.indexing_status);
-  const isCompleted = repository.indexing_status === 'completed' || repository.indexing_status === 'complete';
-
-  // Map common languages to colors
-  const langColor: Record<string, string> = {
-    Python: 'bg-blue-500',
-    TypeScript: 'bg-blue-400',
-    JavaScript: 'bg-yellow-400',
-    Rust: 'bg-orange-500',
-    Go: 'bg-cyan-400',
-    Java: 'bg-red-500',
-    'C++': 'bg-pink-500',
-    C: 'bg-zinc-400',
-    Ruby: 'bg-red-400',
-    PHP: 'bg-indigo-400',
-  };
 
   return (
-    <div className="group card-interactive p-5">
-      {/* Top: repo info + status badge */}
+    <div className="group card-interactive p-5 flex flex-col">
+      {/* Top: name + status */}
       <div className="flex justify-between items-start mb-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="flex-shrink-0 flex h-9 w-9 items-center justify-center rounded-lg bg-surface-4 text-text-tertiary group-hover:text-text-secondary transition-colors">
-            <Github className="w-[18px] h-[18px]" />
-          </div>
-          <div className="min-w-0">
-            <h3 className="text-sm font-semibold text-text-primary truncate">
-              {repository.repo_name}
-            </h3>
-            <p className="text-xs text-text-quaternary truncate">
-              {repository.full_name}
-            </p>
-          </div>
+        <div className="min-w-0 flex-1">
+          <h3 className="text-sm font-semibold text-text-primary truncate">{repository.repo_name}</h3>
+          <p className="text-xs text-text-quaternary truncate mt-0.5">{repository.full_name}</p>
         </div>
-        <div
-          className={`flex-shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium ${statusConfig.color} ${statusConfig.bg} border ${statusConfig.border}`}
-        >
+        <div className={`flex-shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium ${statusConfig.color} ${statusConfig.bg} border ${statusConfig.border}`}>
           {statusConfig.icon}
           <span>{statusConfig.label}</span>
         </div>
       </div>
-      
-      {/* Description */}
-      {repository.description && (
-        <p className="text-body-sm text-text-tertiary mb-4 line-clamp-2">
-          {repository.description}
-        </p>
-      )}
 
-      {/* Bottom: language + stars + action */}
-      <div className="flex items-center justify-between mt-auto pt-3 border-t border-border">
-        <div className="flex items-center gap-3.5 text-xs text-text-quaternary">
-          <div className="flex items-center gap-1.5">
-            <span
-              className={`w-2 h-2 rounded-full ${langColor[repository.language || ''] || 'bg-zinc-500'}`}
-            />
-            <span>{repository.language || 'Unknown'}</span>
-          </div>
-          {repository.stars > 0 && (
-            <div className="flex items-center gap-1">
-              <svg className="w-3 h-3 text-amber-400" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-              </svg>
-              <span>{repository.stars.toLocaleString()}</span>
+      {/* Intelligence section */}
+      {healthReport ? (
+        <>
+          {/* Health score */}
+          <div className="flex items-center gap-3 mb-3">
+            <div className={clsx(
+              'flex items-center justify-center w-11 h-11 rounded-lg text-lg font-bold border',
+              getScoreBg(healthReport.overall_score),
+              getScoreColor(healthReport.overall_score),
+            )}>
+              {Math.round(healthReport.overall_score)}
             </div>
+            <div className="min-w-0 flex-1">
+              <div className={clsx('text-xs font-semibold', getScoreColor(healthReport.overall_score))}>
+                {getScoreLabel(healthReport.overall_score)} Health
+              </div>
+              <div className="text-[10px] text-text-quaternary mt-0.5">
+                {healthReport.files_analyzed} files · {healthReport.language_detected || repository.language || 'Unknown'}
+              </div>
+            </div>
+          </div>
+
+          {/* Dimension bars */}
+          <div className="grid grid-cols-5 gap-1.5 mb-3">
+            {(['security', 'maintainability', 'complexity', 'documentation', 'test_coverage'] as const).map((dim) => {
+              const score = healthReport.dimensions[dim];
+              return (
+                <div key={dim} className="flex flex-col items-center gap-1">
+                  <span className="text-[9px] text-text-quaternary capitalize">{dim.slice(0, 4)}</span>
+                  <div className="w-full score-bar-track">
+                    <div
+                      className={clsx('score-bar-fill', {
+                        'bg-score-excellent': score >= 90,
+                        'bg-score-good': score >= 70 && score < 90,
+                        'bg-score-warning': score >= 40 && score < 70,
+                        'bg-score-critical': score < 40,
+                      })}
+                      style={{ width: `${score}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* AI Summary */}
+          {healthReport.summary && (
+            <p className="text-xs text-text-tertiary line-clamp-2 mb-3 leading-relaxed">
+              {healthReport.summary}
+            </p>
           )}
+        </>
+      ) : isCompleted ? (
+        <div className="flex items-center gap-2 mb-3 p-3 bg-surface-3 rounded-lg border border-border">
+          <Activity className="h-4 w-4 text-text-quaternary flex-shrink-0" />
+          <p className="text-xs text-text-tertiary">Health analysis will run automatically.</p>
         </div>
-        
+      ) : !isIndexing ? (
+        <div className="flex-1 flex items-center justify-center py-4">
+          <p className="text-xs text-text-quaternary text-center">
+            {repository.description || 'Index this repository to generate intelligence.'}
+          </p>
+        </div>
+      ) : null}
+
+      {/* Actions */}
+      <div className="flex items-center gap-2 mt-auto pt-3 border-t border-border">
+        {isCompleted && (
+          <button
+            onClick={() => navigate(`/repositories/${repository.id}`)}
+            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium bg-brand-600 hover:bg-brand-500 text-white transition-all shadow-subtle"
+          >
+            Open Workspace
+            <ArrowRight className="h-3 w-3" />
+          </button>
+        )}
         <button
           onClick={() => onIndex(repository.id)}
           disabled={isIndexing || isTriggering}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-150 ${
-            isIndexing || isTriggering
-              ? 'bg-surface-4 text-text-quaternary cursor-not-allowed'
-              : 'bg-brand-600 hover:bg-brand-500 text-white shadow-subtle'
-          }`}
+          className={clsx(
+            'flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-150',
+            isCompleted ? 'bg-surface-3 text-text-secondary hover:bg-surface-4 border border-border' : 'flex-1 bg-brand-600 hover:bg-brand-500 text-white shadow-subtle',
+            (isIndexing || isTriggering) && 'opacity-50 cursor-not-allowed',
+          )}
         >
           {isIndexing || isTriggering ? (
             <>
@@ -136,7 +188,7 @@ export const RepositoryCard: React.FC<RepositoryCardProps> = ({ repository, onIn
             </>
           ) : (
             <>
-              {isCompleted ? <RotateCw className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+              {isCompleted ? <RotateCw className="w-3 h-3" /> : <Activity className="w-3 h-3" />}
               <span>{isCompleted ? 'Re-index' : 'Index'}</span>
             </>
           )}
