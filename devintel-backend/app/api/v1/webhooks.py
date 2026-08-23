@@ -1,8 +1,6 @@
 """GitHub Webhook handler — auto re-indexes repositories on push events."""
 
 import asyncio
-import hashlib
-import hmac
 import uuid
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
@@ -10,32 +8,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.logging import get_logger
+from app.core.webhook import verify_github_signature
 from app.db.session import get_db
 from app.repositories.repository import RepositoryRepository
+from app.services.cache import cache
 from app.tasks.indexing import index_repository_task
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/webhooks", tags=["Webhooks"])
-
-
-def _verify_github_signature(payload: bytes, signature: str) -> bool:
-    """Verify X-Hub-Signature-256 header from GitHub.
-
-    Returns True if the signature is valid or if webhook secret is not configured
-    (development fallback). In production, GITHUB_WEBHOOK_SECRET must be set.
-    """
-    secret = settings.GITHUB_WEBHOOK_SECRET
-    if not secret:
-        logger.warning(
-            "GITHUB_WEBHOOK_SECRET is not set — webhook signature validation skipped. "
-            "Configure this in production for security."
-        )
-        return True
-
-    mac = hmac.new(secret.encode("utf-8"), payload, hashlib.sha256)
-    expected = "sha256=" + mac.hexdigest()
-    return hmac.compare_digest(expected, signature)
-
 
 
 @router.post("/github", status_code=status.HTTP_202_ACCEPTED)
@@ -58,10 +38,17 @@ async def github_webhook(
     """
     payload_bytes = await request.body()
 
-    # Validate signature
-    if x_hub_signature_256 and not _verify_github_signature(
-        payload_bytes, x_hub_signature_256
-    ):
+    # Validate signature unconditionally (fails closed if secret unset or signature invalid)
+    try:
+        is_valid = verify_github_signature(payload_bytes, x_hub_signature_256)
+    except RuntimeError as e:
+        logger.error(f"Webhook signature verification failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid webhook signature.",
+        )
+
+    if not is_valid:
         logger.warning(
             f"Invalid webhook signature for delivery {x_github_delivery}"
         )
@@ -69,6 +56,21 @@ async def github_webhook(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid webhook signature.",
         )
+
+    # Validate delivery ID header
+    if not x_github_delivery:
+        logger.warning("Webhook rejected: missing X-GitHub-Delivery header")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing X-GitHub-Delivery header.",
+        )
+
+    # Replay protection: store delivery ID in cache with 24-hour TTL (86400s)
+    delivery_key = f"webhook:delivery:{x_github_delivery}"
+    is_new = await cache.setnx(delivery_key, "1", ttl=86400)
+    if not is_new:
+        logger.info(f"Duplicate webhook delivery ignored: {x_github_delivery}")
+        return {"status": "ignored", "reason": "Duplicate delivery ID"}
 
     # Parse body
     try:
@@ -269,7 +271,8 @@ async def _get_repo_access_token(repository, db) -> str:
                 return token
 
     # Org repository — find any org member with a token
-    if repository.org_id:
+    org_id = getattr(repository, "organization_id", None)
+    if org_id:
         from sqlalchemy import select
 
         from app.models.organization import OrganizationMember
@@ -278,7 +281,7 @@ async def _get_repo_access_token(repository, db) -> str:
             select(User)
             .join(OrganizationMember, OrganizationMember.user_id == User.id)
             .where(
-                OrganizationMember.organization_id == repository.org_id,
+                OrganizationMember.organization_id == org_id,
                 User.github_token_encrypted.isnot(None),
             )
             .limit(1)

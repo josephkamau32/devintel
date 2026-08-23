@@ -20,6 +20,7 @@ import hashlib
 import hmac
 from typing import Optional
 
+from app.core.config import settings
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -28,25 +29,28 @@ logger = get_logger(__name__)
 def verify_github_signature(
     payload_body: bytes,
     signature_header: Optional[str],
-    secret: str,
+    secret: Optional[str] = None,
 ) -> bool:
     """Verify a GitHub webhook signature (HMAC-SHA256).
 
     Args:
         payload_body: Raw request body bytes.
         signature_header: Value of the ``X-Hub-Signature-256`` header.
-        secret: The webhook secret configured in GitHub.
+        secret: Webhook secret. If None, uses ``settings.GITHUB_WEBHOOK_SECRET``.
 
     Returns:
         True if the signature is valid, False otherwise.
-    """
-    if not signature_header:
-        logger.warning("Webhook rejected: missing X-Hub-Signature-256 header")
-        return False
 
-    if not secret:
-        logger.warning("Webhook verification skipped: no webhook secret configured")
-        return True  # Allow in dev if not configured
+    Raises:
+        RuntimeError: If the webhook secret is empty or unset (fail closed).
+    """
+    webhook_secret = secret if secret is not None else settings.GITHUB_WEBHOOK_SECRET
+    if not webhook_secret:
+        raise RuntimeError("GITHUB_WEBHOOK_SECRET is not configured.")
+
+    if not signature_header:
+        logger.warning("Webhook rejected: missing or empty X-Hub-Signature-256 header")
+        return False
 
     # Expected format: "sha256=<hex_digest>"
     if not signature_header.startswith("sha256="):
@@ -57,7 +61,7 @@ def verify_github_signature(
 
     # Compute HMAC-SHA256
     mac = hmac.new(
-        secret.encode("utf-8"),
+        webhook_secret.encode("utf-8"),
         payload_body,
         hashlib.sha256,
     )

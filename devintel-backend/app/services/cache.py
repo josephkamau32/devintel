@@ -38,6 +38,13 @@ class _InMemoryCache:
         self._store[key] = (value, time.time() + ttl)
         return True
 
+    async def setnx(self, key: str, value: Any = "1", ttl: int = 86400) -> bool:
+        """Set key if not exists with TTL (SETNX). Returns True if set, False if already exists."""
+        if await self.get(key) is not None:
+            return False
+        await self.set(key, value, ttl=ttl)
+        return True
+
     async def delete(self, key: str) -> bool:
         self._store.pop(key, None)
         return True
@@ -103,6 +110,26 @@ class CacheService:
             return True
         except Exception as e:
             logger.error(f"Cache set error: {e}")
+            return False
+
+    async def setnx(
+        self,
+        key: str,
+        value: Any = "1",
+        ttl: int = 86400,
+    ) -> bool:
+        """Set value in cache if key does not exist (SETNX with TTL).
+
+        Returns True if the key was set, False if the key already exists.
+        """
+        if self._mem is not None:
+            return await self._mem.setnx(key, value, ttl=ttl)
+        try:
+            val_str = value if isinstance(value, str) else json.dumps(value)
+            acquired = await self._redis.set(key, val_str, nx=True, ex=ttl)
+            return bool(acquired)
+        except Exception as e:
+            logger.error(f"Cache setnx error: {e}")
             return False
 
     async def delete(self, key: str) -> bool:
