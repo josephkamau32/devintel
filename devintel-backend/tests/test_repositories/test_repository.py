@@ -107,6 +107,7 @@ async def test_get_by_id(db_session, test_repository):
 @pytest.mark.asyncio
 async def test_duplicate_detection(db_session, test_user, test_repository):
     """Test that duplicate repository detection works correctly."""
+    from uuid import uuid4
     repo_repo = RepositoryRepository(db_session)
 
     # Should find the existing repo
@@ -119,6 +120,29 @@ async def test_duplicate_detection(db_session, test_user, test_repository):
     # Should not find for a different user_id (simulate another user)
     not_found = await repo_repo.get_by_full_name(
         full_name=test_repository.full_name,
-        user_id=test_user.id + 999
+        user_id=uuid4()
     )
     assert not_found is None
+
+
+@pytest.mark.asyncio
+async def test_last_indexed_at_datetime_roundtrip(db_session, test_repository):
+    """Test that last_indexed_at stores and retrieves real datetime objects."""
+    from datetime import datetime, timezone
+    repo_repo = RepositoryRepository(db_session)
+
+    now = datetime.now(timezone.utc)
+    updated = await repo_repo.update(
+        test_repository.id,
+        last_indexed_at=now,
+    )
+    await db_session.commit()
+
+    # Read back from database
+    fetched = await repo_repo.get_by_id(test_repository.id)
+    assert fetched is not None
+    assert fetched.last_indexed_at is not None
+    assert isinstance(fetched.last_indexed_at, datetime)
+    # Check timestamp delta is negligible
+    ts_fetched = fetched.last_indexed_at.replace(tzinfo=timezone.utc) if fetched.last_indexed_at.tzinfo is None else fetched.last_indexed_at
+    assert abs((ts_fetched - now).total_seconds()) < 2

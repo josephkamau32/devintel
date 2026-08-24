@@ -354,12 +354,13 @@ async def get_repository_status(
     await check_repo_access(repository, current_user, db)
 
     status_str = repository.indexing_status.value if hasattr(repository.indexing_status, "value") else str(repository.indexing_status or "pending")
+    last_indexed_str = repository.last_indexed_at.isoformat() if hasattr(repository.last_indexed_at, "isoformat") else (str(repository.last_indexed_at) if repository.last_indexed_at else None)
     return IndexingStatusResponse(
         id=repository.id,
         indexing_status=status_str,
         indexing_progress=repository.indexing_progress,
         indexing_error=repository.indexing_error,
-        last_indexed_at=str(repository.last_indexed_at) if repository.last_indexed_at else None,
+        last_indexed_at=last_indexed_str,
         last_indexed_commit_sha=repository.last_indexed_commit_sha,
         indexing_mode=repository.indexing_mode,
     )

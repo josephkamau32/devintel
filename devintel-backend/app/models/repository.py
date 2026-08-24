@@ -1,7 +1,7 @@
 import enum
 from uuid import uuid4
 
-from sqlalchemy import Boolean, Column, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -34,7 +34,7 @@ class Repository(Base, TimestampMixin):
     last_indexed_commit = Column(String(40), nullable=True)
     indexing_progress = Column(Integer, default=0)
     indexing_error = Column(Text, nullable=True)
-    last_indexed_at = Column(String(100), nullable=True)
+    last_indexed_at = Column(DateTime(timezone=True), nullable=True)
     last_indexed_commit_sha = Column(String(40), nullable=True)
     indexing_mode = Column(String(50), nullable=True)
 
