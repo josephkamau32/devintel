@@ -1,6 +1,6 @@
 """Tests for chat endpoints."""
 
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from httpx import AsyncClient
@@ -166,3 +166,50 @@ class TestChatEndpoints:
             response = await authenticated_client.post("/api/v1/chat", json=payload)
             # Should handle error gracefully
             assert response.status_code in [200, 500]
+
+    @pytest.mark.asyncio
+    async def test_chat_stream_error_returns_generic_message_without_leaking_exception(
+        self, async_client: AsyncClient, test_user_token: str, test_repository: Repository, db_session: AsyncSession, caplog
+    ):
+        """Test chat SSE stream error returns generic error payload without leaking internal exception (Finding C)."""
+        test_repository.indexing_status = "complete"
+        await db_session.commit()
+        await db_session.refresh(test_repository)
+
+        with patch("app.api.v1.chat.ChatService") as MockChatService:
+            mock_service = MockChatService.return_value
+            mock_service.retrieve_relevant_chunks = AsyncMock(return_value=[])
+
+            async def mock_failing_stream(*args, **kwargs):
+                raise RuntimeError("Internal secret OpenAI model key leak: sk-secret-12345")
+                yield "never"
+
+            mock_service.stream_chat = mock_failing_stream
+
+            response = await async_client.post(
+                f"/api/v1/chat/{test_repository.id}/stream",
+                json={"question": "What is this?"},
+                headers={
+                    "Authorization": f"Bearer {test_user_token}",
+                    "X-Request-ID": "test-chat-stream-req-123",
+                },
+            )
+
+            assert response.status_code == 200, f"Status: {response.status_code}, Body: {response.text}"
+            assert "text/event-stream" in response.headers.get("content-type", "")
+            response_text = response.text
+
+            # Check that client gets generic error
+            assert "An error occurred while processing your request." in response_text
+            assert "test-chat-stream-req-123" in response_text
+
+            # Check that raw exception and sensitive keys are NOT in response
+            assert "RuntimeError" not in response_text
+            assert "sk-secret-12345" not in response_text
+
+            # Check server-side error was logged
+            assert any(
+                record.levelname == "ERROR" and "test-chat-stream-req-123" in record.message
+                for record in caplog.records
+            )
+

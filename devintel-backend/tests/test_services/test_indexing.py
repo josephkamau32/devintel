@@ -72,3 +72,52 @@ async def test_filter_supported_files():
     assert is_supported_file(Path("code.py"))
     assert is_supported_file(Path("code.js"))
     assert not is_supported_file(Path("image.png"))
+
+
+def test_redact_token_from_url():
+    """Test token redaction helper (F-08)."""
+    # URL with raw token
+    url_with_token = "https://ghp_superSecretToken12345678@github.com/org/repo.git"
+    redacted = IndexingService.redact_token_from_url(url_with_token)
+    assert redacted == "https://github.com/org/repo.git"
+    assert "ghp_superSecretToken12345678" not in redacted
+
+    # URL with username and token
+    url_with_user_token = "https://oauth2:ghp_superSecretToken12345678@github.com/org/repo.git"
+    redacted_user = IndexingService.redact_token_from_url(url_with_user_token)
+    assert redacted_user == "https://github.com/org/repo.git"
+    assert "ghp_superSecretToken12345678" not in redacted_user
+
+    # Complex command text with embedded token
+    error_text = "Cmd('git') failed: ['git', 'clone', 'https://ghp_superSecretToken12345678@github.com/org/repo.git']"
+    redacted_cmd = IndexingService.redact_token_from_url(error_text, "ghp_superSecretToken12345678")
+    assert "ghp_superSecretToken12345678" not in redacted_cmd
+    assert "https://github.com/org/repo.git" in redacted_cmd
+
+
+@pytest.mark.asyncio
+async def test_clone_repository_exception_does_not_leak_token(caplog):
+    """Test that Git clone exception does not leak access token in exception detail or logs (F-08)."""
+    from app.core.exceptions import IndexingError
+
+    secret_token = "ghp_superSecretToken12345678"
+    clone_url = "https://github.com/testowner/testrepo.git"
+
+    def mock_clone_fail(url, to_path, **kwargs):
+        # Simulates GitPython GitCommandError containing the authenticated URL in error message
+        raise RuntimeError(f"Command '['git', 'clone', '{url}']' returned non-zero exit status 128")
+
+    with patch("git.Repo.clone_from", side_effect=mock_clone_fail):
+        with pytest.raises(IndexingError) as exc_info:
+            await IndexingService.clone_repository(clone_url, access_token=secret_token)
+
+        err_detail = exc_info.value.detail
+        err_str = str(exc_info.value)
+
+        # Assert token is completely scrubbed from the exception
+        assert secret_token not in err_detail
+        assert secret_token not in err_str
+
+        # Assert token was not logged to logger
+        assert secret_token not in caplog.text
+

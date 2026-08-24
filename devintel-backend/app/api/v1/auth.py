@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.dependencies import get_current_user
 from app.core.exceptions import AuthenticationError
+from app.core.logging import get_logger
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.auth import (
@@ -24,6 +25,7 @@ from app.schemas.auth import (
 from app.services.auth_service import AuthService
 from app.services.github_service import GitHubService
 
+logger = get_logger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 REFRESH_COOKIE_NAME = "refresh_token"
@@ -117,12 +119,12 @@ async def login(
 
 @router.post("/demo", response_model=TokenResponse)
 async def demo_login(
+    request: Request,
     response: Response,
     db: AsyncSession = Depends(get_db),
 ):
     """One-click demo login — creates or retrieves a demo user for portfolio demos."""
-    import logging as _logging
-    import traceback
+    request_id = getattr(request.state, "request_id", None) or "unknown"
     try:
         service = AuthService(db)
         user, access_token, refresh_token = await service.demo_login()
@@ -133,15 +135,18 @@ async def demo_login(
             user=UserPublic.model_validate(user),
         )
     except Exception as exc:
-        tb = traceback.format_exc()
-        _logging.getLogger(__name__).error("Demo login failed:\n%s", tb)
-        # Surface the real error so we can debug without Render log access
+        logger.error(
+            "Demo login failed [request_id=%s]: %s",
+            request_id,
+            exc,
+            exc_info=True,
+        )
         from fastapi.responses import JSONResponse
         return JSONResponse(
             status_code=500,
             content={
-                "detail": f"Demo login error: {type(exc).__name__}: {exc}",
-                "traceback": tb.split("\n")[-5:],
+                "detail": "An error occurred processing your request.",
+                "request_id": request_id,
             },
         )
 

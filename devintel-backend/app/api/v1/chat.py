@@ -4,7 +4,7 @@ import json
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -35,6 +35,7 @@ class ChatRequest(BaseModel):
 async def stream_chat(
     repository_id: uuid.UUID,
     request: ChatRequest,
+    http_request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -59,7 +60,7 @@ async def stream_chat(
 
     await check_repo_access(repository, current_user, db)
 
-    if repository.indexing_status != "completed":
+    if repository.indexing_status not in ("completed", "complete"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Repository must be fully indexed before using chat.",
@@ -86,6 +87,7 @@ async def stream_chat(
         )
 
     history = [msg.model_dump() for msg in request.chat_history] if request.chat_history else []
+    request_id = getattr(http_request.state, "request_id", None) or "unknown"
 
     async def event_stream():
         try:
@@ -100,12 +102,20 @@ async def stream_chat(
 
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
-        except ValueError as e:
-            payload = json.dumps({"type": "error", "message": str(e)})
-            yield f"data: {payload}\n\n"
         except Exception as e:
-            logger.error(f"Chat stream error: {e}")
-            payload = json.dumps({"type": "error", "message": "An error occurred while generating the response."})
+            logger.error(
+                "Chat stream error [request_id=%s]: %s",
+                request_id,
+                e,
+                exc_info=True,
+            )
+            error_payload = {
+                "type": "error",
+                "message": "An error occurred while processing your request.",
+            }
+            if request_id and request_id != "unknown":
+                error_payload["request_id"] = request_id
+            payload = json.dumps(error_payload)
             yield f"data: {payload}\n\n"
 
     return StreamingResponse(

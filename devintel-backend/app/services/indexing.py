@@ -1,6 +1,7 @@
 """Repository indexing service."""
 
 import os
+import re
 import shutil
 import tempfile
 
@@ -14,8 +15,27 @@ from app.utils.file_parser import parse_repository_files
 logger = get_logger(__name__)
 
 
+def _redact_token_from_url(text: str, token: str = "") -> str:
+    """Strip credentials/tokens from a URL or text containing a URL for safe logging and error reporting."""
+    if not text:
+        return ""
+    sanitized = str(text)
+    if token and len(token) >= 4:
+        sanitized = sanitized.replace(token, "***")
+    # Strip user:token@ or token@ from http/https URLs
+    sanitized = re.sub(r'(https?://)[^/@\s]+@', r'\1', sanitized)
+    # Strip standard GitHub token prefixes if any remain
+    sanitized = re.sub(r'gh[pousr]_[A-Za-z0-9_]{16,}', '***', sanitized)
+    return sanitized
+
+
 class IndexingService:
     """Service for repository indexing operations."""
+
+    @staticmethod
+    def redact_token_from_url(text: str, token: str = "") -> str:
+        """Helper to redact tokens/credentials from URLs or exception strings."""
+        return _redact_token_from_url(text, token=token)
 
     @staticmethod
     async def clone_repository(clone_url: str, access_token: str) -> str:
@@ -28,22 +48,25 @@ class IndexingService:
         try:
             temp_dir = tempfile.mkdtemp(prefix="devintel_")
 
+            auth_clone_url = clone_url
             # Add token to clone URL for private repos
             if access_token and "github.com" in clone_url:
-                clone_url = clone_url.replace(
+                auth_clone_url = clone_url.replace(
                     "https://",
                     f"https://{access_token}@"
                 )
 
-            logger.info(f"Cloning repository to {temp_dir}")
+            safe_url = _redact_token_from_url(clone_url, access_token)
+            logger.info(f"Cloning repository {safe_url} to {temp_dir}")
             import asyncio
-            await asyncio.to_thread(Repo.clone_from, clone_url, temp_dir, depth=1)
+            await asyncio.to_thread(Repo.clone_from, auth_clone_url, temp_dir, depth=1)
 
             return temp_dir
         except Exception as e:
-            logger.error(f"Failed to clone repository: {e}")
+            safe_error = _redact_token_from_url(str(e), access_token)
+            logger.error(f"Failed to clone repository: {safe_error}")
             raise IndexingError(
-                detail=f"Failed to clone repository: {str(e)}",
+                detail=f"Failed to clone repository: {safe_error}",
             )
 
     @staticmethod

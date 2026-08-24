@@ -54,3 +54,28 @@ async def test_delete_by_file_path():
     # This would work if the method is properly integrated
     # For now just ensure the method exists
     assert hasattr(repo, 'delete_by_file_path')
+
+
+def test_clone_repository_at_commit_redacts_token_on_failure(caplog):
+    """Test that incremental clone failure redacts token from logs and IndexingError (F-08)."""
+    from app.core.exceptions import IndexingError
+
+    secret_token = "ghp_incSecretToken99998888"
+    clone_url = "https://github.com/org/repo.git"
+
+    def mock_clone_fail(url, to_path, **kwargs):
+        raise RuntimeError(f"Git failed on '{url}': fatal: Authentication failed")
+
+    with patch("git.Repo.clone_from", side_effect=mock_clone_fail):
+        with pytest.raises(IndexingError) as exc_info:
+            IncrementalIndexer.clone_repository_at_commit(clone_url, secret_token, sha="abc1234")
+
+        err_detail = exc_info.value.detail
+        err_str = str(exc_info.value)
+
+        # Assert token is scrubbed from exception detail and string
+        assert secret_token not in err_detail
+        assert secret_token not in err_str
+
+        # Assert token was not logged to logger
+        assert secret_token not in caplog.text

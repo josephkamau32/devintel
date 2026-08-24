@@ -80,7 +80,8 @@ async def _index_repository_async(
             await db.commit()
 
             # Clone repository
-            logger.info(f"Cloning repository: {clone_url}")
+            safe_url = IndexingService.redact_token_from_url(clone_url, access_token)
+            logger.info(f"Cloning repository: {safe_url}")
             # 10 minute timeout for cloning
             repo_path = await asyncio.wait_for(
                 indexing_service.clone_repository(clone_url, access_token),
@@ -203,8 +204,9 @@ async def _index_repository_async(
             logger.error(f"Timeout indexing repository {repo_id}")
             await _handle_indexing_failure(repo_repo, db, repo_id, error_msg)
         except Exception as e:
-            error_msg = f"Unexpected error: {str(e)}"
-            logger.error(f"Failed to index repository {repo_id}: {e}", exc_info=True)
+            safe_msg = IndexingService.redact_token_from_url(str(e), access_token)
+            error_msg = f"Unexpected error: {safe_msg}"
+            logger.error(f"Failed to index repository {repo_id}: {safe_msg}", exc_info=True)
             await _handle_indexing_failure(repo_repo, db, repo_id, error_msg)
 
         finally:

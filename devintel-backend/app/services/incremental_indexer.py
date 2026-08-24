@@ -19,6 +19,7 @@ from app.db.session import AsyncSessionLocal
 from app.repositories.embedding import EmbeddingRepository
 from app.repositories.repository import RepositoryRepository
 from app.services.embedding import EmbeddingService
+from app.services.indexing import IndexingService
 from app.services.progress_bus import progress_bus
 from app.utils.chunking import smart_chunk_code
 
@@ -185,8 +186,9 @@ async def process_push_event(
         await _handle_incremental_failure(repo_id, error_msg)
         return {"status": "failed", "error": error_msg}
     except Exception as e:
-        error_msg = f"Unexpected error: {str(e)}"
-        logger.error(f"Failed incremental indexing for {repo_id}: {e}", exc_info=True)
+        safe_error = IndexingService.redact_token_from_url(str(e), access_token)
+        error_msg = f"Unexpected error: {safe_error}"
+        logger.error(f"Failed incremental indexing for {repo_id}: {safe_error}", exc_info=True)
         await _handle_incremental_failure(repo_id, error_msg)
         return {"status": "failed", "error": error_msg}
     finally:
@@ -222,15 +224,19 @@ class IncrementalIndexer:
         try:
             temp_dir = tempfile.mkdtemp(prefix="devintel_incremental_")
 
+            auth_clone_url = clone_url
             if access_token and "github.com" in clone_url:
-                clone_url = clone_url.replace(
+                auth_clone_url = clone_url.replace(
                     "https://",
                     f"https://{access_token}@"
                 )
 
+            safe_url = IndexingService.redact_token_from_url(clone_url, access_token)
+            logger.info(f"Cloning repository {safe_url} at commit {sha} to {temp_dir}")
+
             # Clone with depth 1 and specific branch, then fetch the specific commit
             repo = Repo.clone_from(
-                clone_url,
+                auth_clone_url,
                 temp_dir,
                 depth=1,
                 branch="main",
@@ -246,10 +252,10 @@ class IncrementalIndexer:
 
             return temp_dir
         except Exception as e:
-            logger.error(f"Failed to clone repository for incremental indexing: {e}")
+            safe_error = IndexingService.redact_token_from_url(str(e), access_token)
+            logger.error(f"Failed to clone repository for incremental indexing: {safe_error}")
             raise IndexingError(
-                message="Failed to clone repository",
-                details={"error": str(e)},
+                detail=f"Failed to clone repository for incremental indexing: {safe_error}",
             )
 
     @staticmethod

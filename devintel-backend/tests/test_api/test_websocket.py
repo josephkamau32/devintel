@@ -200,6 +200,66 @@ class TestWebSocketRouting:
             except Exception:
                 pass  # Mock may cause unclean close — that's acceptable here
 
+    def test_collab_ws_exception_returns_generic_error(self, caplog):
+        """Test that collaboration WS exception returns generic error and does not leak internal traceback (Finding C)."""
+        session_id = str(uuid4())
+        user_id = str(uuid4())
+        token = _make_token(user_id=user_id)
+
+        mock_user = MagicMock()
+        mock_user.id = user_id
+        mock_user.github_login = "testuser"
+
+        mock_user_repo = MagicMock()
+        mock_user_repo.get_by_id = AsyncMock(return_value=mock_user)
+
+        mock_session = MagicMock()
+        mock_session.id = session_id
+        mock_session.is_active = True
+
+        mock_session_repo = MagicMock()
+        mock_session_repo.get_by_id = AsyncMock(return_value=mock_session)
+
+        mock_collab_service = MagicMock()
+        mock_collab_service.add_message = AsyncMock(
+            side_effect=RuntimeError("Internal Redis DB password leak: redis://:secretpass123@redis:6379")
+        )
+
+        mock_db = MagicMock()
+        mock_db.__aenter__ = AsyncMock(return_value=mock_db)
+        mock_db.__aexit__ = AsyncMock(return_value=False)
+
+        with (
+            patch("app.api.v1.ws.AsyncSessionLocal", return_value=mock_db),
+            patch("app.api.v1.ws.UserRepository", return_value=mock_user_repo),
+            patch("app.api.v1.ws.CollaborationSessionRepository", return_value=mock_session_repo),
+            patch("app.api.v1.ws.CollaborationService", return_value=mock_collab_service),
+        ):
+            client = TestClient(app, raise_server_exceptions=False)
+            with client.websocket_connect(f"/api/v1/ws/collab/{session_id}?token={token}", headers={"X-Request-ID": "ws-req-555"}) as ws:
+                # First receive connection message
+                conn_msg = ws.receive_json()
+                assert conn_msg["type"] == "connected"
+
+                # Send a message to trigger add_message failure
+                ws.send_json({"type": "text", "content": "hello"})
+
+                # Receive error message
+                err_msg = ws.receive_json()
+                assert err_msg["error"] == "An error occurred while processing your request."
+                assert err_msg.get("request_id") == "ws-req-555"
+
+                # Verify secret/exception is NOT leaked in payload
+                assert "secretpass123" not in str(err_msg)
+                assert "RuntimeError" not in str(err_msg)
+
+                # Verify server-side logging
+                assert any(
+                    record.levelname == "ERROR" and "ws-req-555" in record.message
+                    for record in caplog.records
+                )
+
+
 
 # ─── Integration tests (require live Redis) ──────────────────────────────────
 

@@ -159,11 +159,13 @@ async def collaboration_ws(
 
     await websocket.accept()
 
+    request_id = websocket.headers.get("x-request-id") or getattr(getattr(websocket, "state", None), "request_id", None)
     try:
         session_uuid = UUID(session_id)
+        user_uuid = UUID(user_id) if isinstance(user_id, str) else user_id
         async with AsyncSessionLocal() as db:
             user_repo = UserRepository(db)
-            user = await user_repo.get_by_id(user_id)
+            user = await user_repo.get_by_id(user_uuid)
 
             if not user:
                 await websocket.send_json({"error": "User not found"})
@@ -211,10 +213,15 @@ async def collaboration_ws(
                 })
 
     except Exception as e:
-        logger.error(f"Collaboration WS error: {e}")
+        if request_id:
+            logger.error("Collaboration WS error [request_id=%s]: %s", request_id, e, exc_info=True)
+            err_payload = {"error": "An error occurred while processing your request.", "request_id": request_id}
+        else:
+            logger.error("Collaboration WS error: %s", e, exc_info=True)
+            err_payload = {"error": "An error occurred while processing your request."}
         try:
-            await websocket.send_json({"error": str(e)})
-        except:
+            await websocket.send_json(err_payload)
+        except Exception:
             pass
     finally:
         try:

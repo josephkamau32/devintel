@@ -248,3 +248,44 @@ async def test_sql_injection_in_login(async_client: AsyncClient):
         },
     )
     assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_demo_login_success(async_client: AsyncClient):
+    """Test successful demo login."""
+    response = await async_client.post("/api/v1/auth/demo")
+    assert response.status_code == 200
+    data = response.json()
+    assert "access_token" in data
+    assert data["token_type"] == "bearer"
+    assert "demo" in data["user"]["email"]
+
+
+@pytest.mark.asyncio
+async def test_demo_login_exception_hides_traceback_and_returns_generic_error(
+    async_client: AsyncClient, caplog
+):
+    """Test that demo login failure returns only generic error and request_id without traceback leak (F-09)."""
+    sensitive_msg = "Database connection postgresql://admin:super_secret_pw@internal.db:5432/devintel failed"
+    with patch("app.services.auth_service.AuthService.demo_login", side_effect=RuntimeError(sensitive_msg)):
+        response = await async_client.post(
+            "/api/v1/auth/demo",
+            headers={"X-Request-ID": "test-traceback-req-999"},
+        )
+
+        assert response.status_code == 500
+        data = response.json()
+        assert data["detail"] == "An error occurred processing your request."
+        assert data["request_id"] == "test-traceback-req-999"
+
+        # Ensure sensitive info and traceback are NOT leaked to the client
+        assert "traceback" not in data
+        assert "RuntimeError" not in response.text
+        assert "super_secret_pw" not in response.text
+        assert "postgresql://" not in response.text
+
+        # Ensure server-side logs recorded the failure and request_id
+        assert any(
+            record.levelname == "ERROR" and "test-traceback-req-999" in record.message
+            for record in caplog.records
+        )
