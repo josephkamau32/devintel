@@ -29,7 +29,7 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 # The latest migration revision — update this whenever you add a new migration.
-HEAD_REVISION = "20260622_fix_user_cols"
+HEAD_REVISION = "20260824_add_indexing_status"
 
 
 # ── Offline mode (generates SQL scripts, rarely used) ──────────────────────
@@ -106,6 +106,7 @@ async def run_async_migrations() -> None:
     )
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
+        await connection.commit()
     await connectable.dispose()
 
 

@@ -11,6 +11,7 @@ from app.models.cross_repo import CrossRepoKnowledge
 from app.models.embedding import Embedding
 from app.models.generated_test import GeneratedTest
 from app.models.git_history import FileBlame, GitHistory
+from app.models.indexing_job import IndexingJob
 from app.models.migration import MigratedFile, MigrationProject
 from app.models.organization import Organization, OrganizationMember
 from app.models.policy import Policy
@@ -24,5 +25,5 @@ __all__ = [
     "CollaborationSession", "CollaborationMessage",
     "CrossRepoKnowledge", "GitHistory", "FileBlame",
     "MigrationProject", "MigratedFile", "CodeHealth",
-    "ArchitectureDiagram"
+    "ArchitectureDiagram", "IndexingJob"
 ]

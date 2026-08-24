@@ -9,7 +9,7 @@ class RepositoryPublic(BaseModel):
 
     id: UUID
     user_id: UUID
-    github_repo_id: Optional[str] = None
+
     full_name: str
     repo_name: str
     description: Optional[str] = None
@@ -17,9 +17,9 @@ class RepositoryPublic(BaseModel):
     stars: int = 0
     language: Optional[str] = None
     default_branch: str
-    is_private: bool
+
     indexing_status: str
-    last_indexed_commit: Optional[str] = None
+
 
 
 class RepositoryCreate(BaseModel):

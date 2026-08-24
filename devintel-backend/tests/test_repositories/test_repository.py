@@ -146,3 +146,74 @@ async def test_last_indexed_at_datetime_roundtrip(db_session, test_repository):
     # Check timestamp delta is negligible
     ts_fetched = fetched.last_indexed_at.replace(tzinfo=timezone.utc) if fetched.last_indexed_at.tzinfo is None else fetched.last_indexed_at
     assert abs((ts_fetched - now).total_seconds()) < 2
+
+
+@pytest.mark.asyncio
+async def test_indexing_status_enum_roundtrip(db_session):
+    """Verify that writing an IndexingStatus enum member through the ORM
+    round-trips correctly against the String(20) column.
+
+    The column was migrated from Enum(IndexingStatus) to String(20).
+    IndexingStatus(str, enum.Enum) members should serialize to their string
+    value when bound as parameters, and read back as plain str that still
+    compares equal to the enum member (because IndexingStatus inherits str).
+
+    This test is self-contained (no test_user fixture) to avoid the
+    pre-existing bcrypt/passlib hang.
+    """
+    from uuid import uuid4
+    from sqlalchemy import select
+    from app.models.user import User
+    from app.models.repository import Repository
+
+    repo_repo = RepositoryRepository(db_session)
+
+    # Create a minimal user directly (no password hashing)
+    user = User(
+        id=uuid4(),
+        email=f"enum-roundtrip-{uuid4().hex[:8]}@test.com",
+        full_name="Enum Roundtrip User",
+        is_active=True,
+        is_verified=True,
+    )
+    db_session.add(user)
+    await db_session.flush()
+
+    # Create a repository for that user
+    repo = await repo_repo.create(
+        user_id=user.id,
+        repo_name="enum-test-repo",
+        full_name=f"{user.email}/enum-test-repo",
+        url="https://github.com/test/enum-test-repo",
+        default_branch="main",
+    )
+    await db_session.flush()
+
+    # Write an enum member (not a plain string) through repo_repo.update()
+    updated = await repo_repo.update(
+        repo.id,
+        indexing_status=IndexingStatus.INDEXING,
+    )
+    await db_session.commit()
+
+    # Evict the object from the identity map so the next query loads a fresh row
+    db_session.expunge(updated)
+
+    # Fresh query — read back from database (not the identity-mapped object)
+    result = await db_session.execute(
+        select(Repository).where(Repository.id == repo.id)
+    )
+    fetched = result.scalar_one()
+
+    # The value should be a plain Python str, not an IndexingStatus instance
+    assert isinstance(fetched.indexing_status, str)
+    assert fetched.indexing_status == "indexing"
+
+    # Equality with the enum member should still work (IndexingStatus inherits str)
+    assert fetched.indexing_status == IndexingStatus.INDEXING
+
+    # It should NOT be equal to a different enum member
+    assert fetched.indexing_status != IndexingStatus.COMPLETE
+    assert fetched.indexing_status != IndexingStatus.PENDING
+
+
