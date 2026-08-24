@@ -79,3 +79,125 @@ def test_clone_repository_at_commit_redacts_token_on_failure(caplog):
 
         # Assert token was not logged to logger
         assert secret_token not in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_process_push_event_no_files_updates_indexing_status(db_session, test_repository):
+    """Test that process_push_event with no changed files updates indexing_status to COMPLETE in DB."""
+    from app.models.repository import IndexingStatus
+    from app.services.incremental_indexer import process_push_event
+
+    # Setup session context manager mock that yields the real test db_session
+    class SessionCtx:
+        async def __aenter__(self):
+            return db_session
+
+        async def __aexit__(self, *args):
+            pass
+
+    with (
+        patch("app.services.incremental_indexer.AsyncSessionLocal", return_value=SessionCtx()),
+        patch("app.services.incremental_indexer.IncrementalIndexer.clone_repository_at_commit", new_callable=AsyncMock) as mock_clone,
+    ):
+        mock_clone.return_value = "/fake/repo"
+        result = await process_push_event(
+            repo_id=str(test_repository.id),
+            clone_url="https://github.com/testowner/testrepo.git",
+            access_token="dummy_token",
+            changed_files=[],
+            added_files=[],
+            removed_files=[],
+            head_commit_sha="commit_sha_12345",
+        )
+
+        assert result["status"] == "completed"
+        assert result["files_processed"] == 0
+
+        # Query database to confirm indexing_status was updated
+        await db_session.refresh(test_repository)
+        assert test_repository.indexing_status == IndexingStatus.COMPLETE
+        assert test_repository.indexing_progress == 100
+        assert test_repository.last_indexed_commit_sha == "commit_sha_12345"
+
+
+@pytest.mark.asyncio
+async def test_process_push_event_with_files_updates_indexing_status(db_session, test_repository):
+    """Test that process_push_event with changed files processes chunks and sets COMPLETE in DB."""
+    from app.models.repository import IndexingStatus
+    from app.services.incremental_indexer import process_push_event
+
+    class SessionCtx:
+        async def __aenter__(self):
+            return db_session
+
+        async def __aexit__(self, *args):
+            pass
+
+    mock_chunks = [("src/main.py", 0, "def main(): pass")]
+    mock_embeddings = [[0.1] * 1536]
+
+    with (
+        patch("app.services.incremental_indexer.AsyncSessionLocal", return_value=SessionCtx()),
+        patch("app.services.incremental_indexer.IncrementalIndexer.clone_repository_at_commit", new_callable=AsyncMock) as mock_clone,
+        patch("app.services.incremental_indexer.IncrementalIndexer.parse_files", return_value=mock_chunks),
+        patch("app.services.embedding.EmbeddingService.generate_embeddings_batch", new_callable=AsyncMock, return_value=mock_embeddings),
+        patch("app.services.cache.cache.delete_pattern", new_callable=AsyncMock),
+        patch("os.path.exists", return_value=False),
+    ):
+        mock_clone.return_value = "/fake/repo"
+
+        result = await process_push_event(
+            repo_id=str(test_repository.id),
+            clone_url="https://github.com/testowner/testrepo.git",
+            access_token="dummy_token",
+            changed_files=["src/main.py"],
+            added_files=[],
+            removed_files=[],
+            head_commit_sha="commit_sha_67890",
+        )
+
+        assert result["status"] == "completed"
+        assert result["files_processed"] == 1
+        assert result["chunks_created"] == 1
+
+        # Verify DB state
+        await db_session.refresh(test_repository)
+        assert test_repository.indexing_status == IndexingStatus.COMPLETE
+        assert test_repository.indexing_progress == 100
+        assert test_repository.last_indexed_commit_sha == "commit_sha_67890"
+
+
+@pytest.mark.asyncio
+async def test_process_push_event_failure_sets_failed_status(db_session, test_repository):
+    """Test that process_push_event failure sets indexing_status to FAILED in DB."""
+    from app.models.repository import IndexingStatus
+    from app.services.incremental_indexer import process_push_event
+
+    class SessionCtx:
+        async def __aenter__(self):
+            return db_session
+
+        async def __aexit__(self, *args):
+            pass
+
+    with (
+        patch("app.services.incremental_indexer.AsyncSessionLocal", return_value=SessionCtx()),
+        patch("app.services.incremental_indexer.IncrementalIndexer.clone_repository_at_commit", side_effect=RuntimeError("Clone failed")),
+        patch("os.path.exists", return_value=False),
+    ):
+        result = await process_push_event(
+            repo_id=str(test_repository.id),
+            clone_url="https://github.com/testowner/testrepo.git",
+            access_token="dummy_token",
+            changed_files=["src/main.py"],
+            added_files=[],
+            removed_files=[],
+            head_commit_sha="commit_sha_fail",
+        )
+
+        assert result["status"] == "failed"
+
+        # Verify DB state
+        await db_session.refresh(test_repository)
+        assert test_repository.indexing_status == IndexingStatus.FAILED
+        assert "Clone failed" in test_repository.indexing_error

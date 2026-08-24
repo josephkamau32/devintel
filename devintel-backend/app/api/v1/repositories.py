@@ -10,6 +10,7 @@ from app.api.deps import check_repo_access, get_current_user
 from app.core.logging import get_logger
 from app.db.session import get_db
 from app.integrations.github_client import GitHubClient
+from app.models.repository import IndexingStatus
 from app.models.user import User
 from app.repositories.embedding import EmbeddingRepository
 from app.repositories.repository import RepositoryRepository
@@ -52,7 +53,7 @@ async def search_repository(
 
     await check_repo_access(repository, current_user, db)
 
-    if not repository.indexing_status:
+    if repository.indexing_status != IndexingStatus.COMPLETE:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Repository not indexed yet",
@@ -352,12 +353,13 @@ async def get_repository_status(
 
     await check_repo_access(repository, current_user, db)
 
+    status_str = repository.indexing_status.value if hasattr(repository.indexing_status, "value") else str(repository.indexing_status or "pending")
     return IndexingStatusResponse(
         id=repository.id,
-        indexed_status=repository.indexing_status,
+        indexing_status=status_str,
         indexing_progress=repository.indexing_progress,
         indexing_error=repository.indexing_error,
-        last_indexed_at=repository.last_indexed_at,
+        last_indexed_at=str(repository.last_indexed_at) if repository.last_indexed_at else None,
         last_indexed_commit_sha=repository.last_indexed_commit_sha,
         indexing_mode=repository.indexing_mode,
     )

@@ -29,7 +29,7 @@ class TestRepositoryEndpoints:
     async def test_list_repositories_unauthorized(self, async_client: AsyncClient):
         """Test listing repositories without authentication."""
         response = await async_client.get("/api/v1/repos")
-        assert response.status_code == 422
+        assert response.status_code == 401
 
     @pytest.mark.asyncio
     async def test_add_repository(
@@ -46,7 +46,7 @@ class TestRepositoryEndpoints:
         assert response.status_code == 200
         data = response.json()
         assert data["full_name"] == payload["full_name"]
-        assert data["indexed_status"] is False
+        assert data["indexing_status"] == "pending"
         assert data["default_branch"] == "main"
 
     @pytest.mark.asyncio
@@ -144,7 +144,7 @@ class TestRepositoryEndpoints:
     ):
         """Test deleting repository without authentication."""
         response = await async_client.delete(f"/api/v1/repos/{test_repository.id}")
-        assert response.status_code == 422
+        assert response.status_code == 401
 
     @pytest.mark.asyncio
     async def test_repository_permissions(
@@ -155,7 +155,7 @@ class TestRepositoryEndpoints:
         other_user = User(
             github_id="other_123",
             email="other@example.com",
-            name="Other User",
+            full_name="Other User",
             avatar_url="https://example.com/avatar.jpg",
         )
         db_session.add(other_user)

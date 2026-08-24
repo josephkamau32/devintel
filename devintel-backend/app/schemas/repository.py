@@ -57,12 +57,12 @@ class RepositoryListResponse(BaseModel):
 
 class IndexingStatusResponse(BaseModel):
     id: UUID
-    indexed_status: str
+    indexing_status: str
     indexing_progress: int
-    indexing_error: Optional[str]
-    last_indexed_at: Optional[str]
-    last_indexed_commit_sha: Optional[str]
-    indexing_mode: Optional[str]
+    indexing_error: Optional[str] = None
+    last_indexed_at: Optional[str] = None
+    last_indexed_commit_sha: Optional[str] = None
+    indexing_mode: Optional[str] = None
 
 
 class SearchResult(BaseModel):

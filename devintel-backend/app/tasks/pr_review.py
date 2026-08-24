@@ -45,6 +45,7 @@ async def _review_pull_request_async(
     """Async implementation of PR review generation and posting."""
     from app.db.session import AsyncSessionLocal
     from app.integrations.github_client import GitHubClient
+    from app.models.repository import IndexingStatus
     from app.repositories.embedding import EmbeddingRepository
     from app.repositories.repository import RepositoryRepository
     from app.services.pr_review_service import REVIEW_WATERMARK, PRReviewService
@@ -58,7 +59,7 @@ async def _review_pull_request_async(
                 logger.error(f"PR review task: repository not found: {repo_id}")
                 return
 
-            if not repo.indexed_status:
+            if repo.indexing_status != IndexingStatus.COMPLETE:
                 logger.info(
                     f"PR review skipped for {repo.full_name}#{pr_number} "
                     "— repository is not indexed yet."

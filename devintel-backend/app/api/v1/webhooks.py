@@ -10,6 +10,7 @@ from app.core.config import settings
 from app.core.logging import get_logger
 from app.core.webhook import verify_github_signature
 from app.db.session import get_db
+from app.models.repository import IndexingStatus
 from app.repositories.repository import RepositoryRepository
 from app.services.cache import cache
 from app.tasks.indexing import index_repository_task
@@ -217,7 +218,7 @@ async def github_webhook(
             logger.info(f"PR webhook for {repo_full_name} — not connected to DevIntel.")
             return {"status": "ignored", "reason": "Repository not connected."}
 
-        if not repository.indexed_status:
+        if repository.indexing_status != IndexingStatus.COMPLETE:
             logger.info(f"PR webhook for {repo_full_name} — not indexed yet, skipping review.")
             return {"status": "ignored", "reason": "Repository not indexed."}
 

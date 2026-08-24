@@ -111,4 +111,4 @@ async def test_index_repository(client: AsyncClient, auth_token: str):
         # Check status
         status_res = await client.get(f"/api/v1/repos/{repo_id}/status", headers={"Authorization": f"Bearer {auth_token}"})
         assert status_res.status_code == 200
-        assert status_res.json()["indexed_status"] == "pending"
+        assert status_res.json()["indexing_status"] == "indexing"

@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import check_repo_access, get_current_user
 from app.core.logging import get_logger
 from app.db.session import get_db
+from app.models.repository import IndexingStatus
 from app.models.user import User
 from app.repositories.code_health import CodeHealthRepository
 from app.repositories.embedding import EmbeddingRepository
@@ -42,7 +43,7 @@ async def get_code_health(
 
     await check_repo_access(repository, current_user, db)
 
-    if not repository.indexed_status:
+    if repository.indexing_status != IndexingStatus.COMPLETE:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Repository is not indexed yet. Index it first to generate a health report.",
@@ -97,7 +98,7 @@ async def refresh_code_health(
 
     await check_repo_access(repository, current_user, db)
 
-    if not repository.indexed_status:
+    if repository.indexing_status != IndexingStatus.COMPLETE:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Repository must be indexed before running health analysis.",
@@ -140,7 +141,7 @@ async def auto_fix_code_health_issue(
 
     await check_repo_access(repository, current_user, db)
 
-    if not repository.indexed_status:
+    if repository.indexing_status != IndexingStatus.COMPLETE:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Repository must be indexed before running auto-fix.",

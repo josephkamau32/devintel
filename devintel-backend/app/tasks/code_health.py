@@ -29,6 +29,7 @@ async def compute_code_health_task(repo_id: str) -> dict:
 async def _compute_code_health_async(repo_id: str) -> None:
     """Async implementation of code health computation."""
     from app.db.session import AsyncSessionLocal
+    from app.models.repository import IndexingStatus
     from app.repositories.code_health import CodeHealthRepository
     from app.repositories.embedding import EmbeddingRepository
     from app.repositories.repository import RepositoryRepository
@@ -43,7 +44,7 @@ async def _compute_code_health_async(repo_id: str) -> None:
                 logger.error(f"Code health task: repository not found: {repo_id}")
                 return
 
-            if not repo.indexed_status:
+            if repo.indexing_status != IndexingStatus.COMPLETE:
                 logger.info(f"Code health skipped for {repo_id} — not indexed yet.")
                 return
 

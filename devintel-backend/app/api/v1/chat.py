@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import check_repo_access, get_current_user
 from app.core.logging import get_logger
 from app.db.session import get_db
+from app.models.repository import IndexingStatus
 from app.models.user import User
 from app.repositories.embedding import EmbeddingRepository
 from app.repositories.repository import RepositoryRepository
@@ -60,7 +61,7 @@ async def stream_chat(
 
     await check_repo_access(repository, current_user, db)
 
-    if repository.indexing_status not in ("completed", "complete"):
+    if repository.indexing_status != IndexingStatus.COMPLETE:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Repository must be fully indexed before using chat.",
@@ -158,7 +159,7 @@ async def agent_draft(
     if not current_user.github_token_encrypted:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="GitHub token not found. Please re-authenticate.")
 
-    if repository.indexing_status != "complete":
+    if repository.indexing_status != IndexingStatus.COMPLETE:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Repository must be indexed.")
 
     token = decrypt_token(current_user.github_token_encrypted)

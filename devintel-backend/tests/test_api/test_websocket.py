@@ -19,6 +19,8 @@ from fastapi.testclient import TestClient
 
 from app.core.security import create_access_token
 from app.main import app
+from app.models.repository import IndexingStatus
+from app.models.user import User
 
 # ─── Shared helpers ──────────────────────────────────────────────────────────
 
@@ -100,7 +102,7 @@ class TestWebSocketRouting:
 
         mock_repository = MagicMock()
         mock_repository.user_id = uuid4()  # different UUIDs, but we'll use same string below
-        mock_repository.indexed_status = True
+        mock_repository.indexing_status = IndexingStatus.COMPLETE
         mock_repository.indexing_progress = 100
 
         # Override the user_id string comparison
@@ -135,7 +137,7 @@ class TestWebSocketRouting:
 
         mock_repository = MagicMock()
         mock_repository.user_id = uuid4()  # will be compared as string
-        mock_repository.indexed_status = False
+        mock_repository.indexing_status = IndexingStatus.INDEXING
         mock_repository.indexing_progress = 0
 
         # Force the string comparison to fail (simulate different owner)
@@ -169,7 +171,7 @@ class TestWebSocketRouting:
 
         mock_repository = MagicMock()
         mock_repository.user_id = None  # skip ownership check
-        mock_repository.indexed_status = False
+        mock_repository.indexing_status = IndexingStatus.INDEXING
         mock_repository.indexing_progress = 42
 
         mock_repo_repo = MagicMock()

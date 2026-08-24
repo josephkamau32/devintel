@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import check_repo_access, get_current_user
 from app.db.session import get_db
+from app.models.repository import IndexingStatus
 from app.models.user import User
 from app.repositories.architecture import ArchitectureDiagramRepository
 from app.repositories.repository import RepositoryRepository
@@ -36,7 +37,7 @@ async def generate_diagram(
 
     await check_repo_access(repository, current_user, db)
 
-    if not repository.indexed_status:
+    if repository.indexing_status != IndexingStatus.COMPLETE:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Repository must be indexed first")
 
     service = ArchitectureVisualizationService(db)

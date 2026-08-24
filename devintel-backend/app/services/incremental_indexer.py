@@ -16,6 +16,7 @@ from git import Repo
 from app.core.exceptions import IndexingError
 from app.core.logging import get_logger
 from app.db.session import AsyncSessionLocal
+from app.models.repository import IndexingStatus
 from app.repositories.embedding import EmbeddingRepository
 from app.repositories.repository import RepositoryRepository
 from app.services.embedding import EmbeddingService
@@ -60,7 +61,7 @@ async def process_push_event(
             # Update status to in-progress
             await repo_repo.update(
                 UUID(repo_id),
-                indexed_status=False,
+                indexing_status=IndexingStatus.INDEXING,
                 indexing_progress=0,
                 indexing_error=None,
                 indexing_mode="incremental",
@@ -92,7 +93,7 @@ async def process_push_event(
                 logger.info("No files to process in incremental update")
                 await repo_repo.update(
                     UUID(repo_id),
-                    indexed_status=True,
+                    indexing_status=IndexingStatus.COMPLETE,
                     last_indexed_at=datetime.utcnow(),
                     last_indexed_commit_sha=head_commit_sha,
                     indexing_progress=100,
@@ -156,7 +157,7 @@ async def process_push_event(
             # Finalize
             await repo_repo.update(
                 UUID(repo_id),
-                indexed_status=True,
+                indexing_status=IndexingStatus.COMPLETE,
                 last_indexed_at=datetime.utcnow(),
                 last_indexed_commit_sha=head_commit_sha,
                 indexing_progress=100,
@@ -206,6 +207,7 @@ async def _handle_incremental_failure(repo_id: str, error_msg: str) -> None:
             repo_repo = RepositoryRepository(db)
             await repo_repo.update(
                 UUID(repo_id),
+                indexing_status=IndexingStatus.FAILED,
                 indexing_mode="full",  # Fall back to full mode on error
                 indexing_error=error_msg,
                 indexing_progress=0,

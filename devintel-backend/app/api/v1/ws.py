@@ -12,6 +12,7 @@ from jose import JWTError, jwt
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.db.session import AsyncSessionLocal
+from app.models.repository import IndexingStatus
 from app.repositories.collaboration import CollaborationSessionRepository
 from app.repositories.repository import RepositoryRepository
 from app.repositories.user import UserRepository
@@ -78,7 +79,7 @@ async def repo_indexing_progress(
                 return
 
             # If already indexed, send 100 immediately
-            if repository.indexed_status and repository.indexing_progress == 100:
+            if repository.indexing_status == IndexingStatus.COMPLETE and repository.indexing_progress == 100:
                 await websocket.send_json({"progress": 100, "status": "done"})
                 await websocket.close()
                 return

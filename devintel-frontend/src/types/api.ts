@@ -170,7 +170,7 @@ export interface GitHistoryEntry {
 
 export interface IndexingStatusResponse {
   id: string;
-  indexed_status: string;
+  indexing_status: string;
   indexing_progress: number;
   indexing_error: string | null;
   last_indexed_at: string | null;
