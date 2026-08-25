@@ -54,9 +54,16 @@ async def lifespan(app: FastAPI):
         logger.error("Database startup check failed: %s", exc)
         raise
 
+    # Start the durable job poller
+    from app.services.job_poller import start_poller, stop_poller
+    poller_tasks, poller_stop_event = await start_poller()
+
     yield
 
     # --- Shutdown ---
+    # Stop job poller (give in-flight jobs up to 10s to finish)
+    await stop_poller(poller_tasks, poller_stop_event)
+
     from app.core.http_pool import close_http_client
     from app.services.cache import cache
     logger.info("Shutting down: closing connections...")

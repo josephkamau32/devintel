@@ -185,13 +185,13 @@ async def process_push_event(
         error_msg = "Incremental indexing timed out"
         logger.error(f"Timeout for repo {repo_id}")
         await _handle_incremental_failure(repo_id, error_msg)
-        return {"status": "failed", "error": error_msg}
+        raise
     except Exception as e:
         safe_error = IndexingService.redact_token_from_url(str(e), access_token)
         error_msg = f"Unexpected error: {safe_error}"
         logger.error(f"Failed incremental indexing for {repo_id}: {safe_error}", exc_info=True)
         await _handle_incremental_failure(repo_id, error_msg)
-        return {"status": "failed", "error": error_msg}
+        raise
     finally:
         if repo_path and os.path.exists(repo_path):
             try:

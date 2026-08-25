@@ -23,6 +23,7 @@ async def compute_code_health_task(repo_id: str) -> dict:
         await _compute_code_health_async(repo_id)
     except Exception as e:
         logger.error(f"Code health task failed for {repo_id}: {e}", exc_info=True)
+        raise
     return {"status": "completed", "repo_id": repo_id}
 
 
@@ -66,3 +67,4 @@ async def _compute_code_health_async(repo_id: str) -> None:
 
         except Exception as e:
             logger.error(f"Code health analysis failed for {repo_id}: {e}", exc_info=True)
+            raise

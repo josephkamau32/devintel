@@ -33,6 +33,7 @@ async def review_pull_request_task(
         )
     except Exception as e:
         logger.error(f"PR review task failed for {repo_id}#{pr_number}: {e}", exc_info=True)
+        raise
     return {"status": "completed", "repo_id": repo_id, "pr_number": pr_number}
 
 
@@ -120,6 +121,7 @@ async def _review_pull_request_async(
             )
             # Don't retry on review failures — the repo might not be ready
             # or the PR may have been closed
+            raise
 
 
 async def _get_pr_comments(

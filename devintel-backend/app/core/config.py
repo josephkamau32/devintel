@@ -69,6 +69,10 @@ class Settings(BaseSettings):
     SUPPORTED_FILE_EXTENSIONS: list[str] = [".py", ".js", ".jsx", ".ts", ".tsx", ".md", ".json", ".html", ".css", ".go", ".rs", ".java", ".c", ".cpp", ".h", ".hpp"]
     MAX_FILE_SIZE_MB: int = 5
 
+    # Job Poller
+    JOB_POLL_INTERVAL_SECONDS: float = 2.0
+    JOB_POLLER_CONCURRENCY: int = 3
+
     # Webhooks
     # Default empty → webhook validation will reject requests unless explicitly configured
     GITHUB_WEBHOOK_SECRET: str = ""

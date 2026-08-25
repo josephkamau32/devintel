@@ -185,17 +185,16 @@ async def test_process_push_event_failure_sets_failed_status(db_session, test_re
         patch("app.services.incremental_indexer.IncrementalIndexer.clone_repository_at_commit", side_effect=RuntimeError("Clone failed")),
         patch("os.path.exists", return_value=False),
     ):
-        result = await process_push_event(
-            repo_id=str(test_repository.id),
-            clone_url="https://github.com/testowner/testrepo.git",
-            access_token="dummy_token",
-            changed_files=["src/main.py"],
-            added_files=[],
-            removed_files=[],
-            head_commit_sha="commit_sha_fail",
-        )
-
-        assert result["status"] == "failed"
+        with pytest.raises(RuntimeError, match="Clone failed"):
+            await process_push_event(
+                repo_id=str(test_repository.id),
+                clone_url="https://github.com/testowner/testrepo.git",
+                access_token="dummy_token",
+                changed_files=["src/main.py"],
+                added_files=[],
+                removed_files=[],
+                head_commit_sha="commit_sha_fail",
+            )
 
         # Verify DB state
         await db_session.refresh(test_repository)

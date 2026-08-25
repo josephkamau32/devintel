@@ -47,6 +47,7 @@ async def index_repository_task(repo_id: str, clone_url: str, access_token: str 
         await _index_repository_async(repo_id, clone_url, access_token)
     except Exception as e:
         logger.error(f"Indexing task failed for {repo_id}: {e}", exc_info=True)
+        raise
     return {"status": "completed", "repo_id": repo_id}
 
 
@@ -203,11 +204,13 @@ async def _index_repository_async(
             error_msg = "Indexing timed out during processing (cloning or embedding)"
             logger.error(f"Timeout indexing repository {repo_id}")
             await _handle_indexing_failure(repo_repo, db, repo_id, error_msg)
+            raise
         except Exception as e:
             safe_msg = IndexingService.redact_token_from_url(str(e), access_token)
             error_msg = f"Unexpected error: {safe_msg}"
             logger.error(f"Failed to index repository {repo_id}: {safe_msg}", exc_info=True)
             await _handle_indexing_failure(repo_repo, db, repo_id, error_msg)
+            raise
 
         finally:
             # Cleanup
