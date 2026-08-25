@@ -1,6 +1,5 @@
 """Repository management routes."""
 
-import asyncio
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -25,9 +24,9 @@ from app.schemas.repository import (
     SearchResponse,
     SearchResult,
 )
+from app.repositories.indexing_job import IndexingJobRepository
 from app.services.embedding import EmbeddingService
 from app.services.encryption import encryption_service
-from app.tasks.indexing import index_repository_task
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/repos", tags=["Repositories"])
@@ -235,18 +234,21 @@ async def index_repository(
     )
     await db.commit()
 
-    # Trigger background task
-    task_id = str(uuid.uuid4())
-    asyncio.create_task(
-        index_repository_task(
-            repo_id=str(request.repository_id),
-            clone_url=clone_url,
-            access_token=access_token,
-        )
+    # Enqueue durable indexing job
+    job_repo = IndexingJobRepository(db)
+    job = await job_repo.enqueue(
+        repository_id=request.repository_id,
+        job_type="full",
+        payload={
+            "repo_id": str(request.repository_id),
+            "clone_url": clone_url,
+            "access_token": access_token,
+        },
     )
+    await db.commit()
 
     return RepositoryIndexResponse(
-        task_id=task_id,
+        task_id=str(job.id),
         message="Indexing started",
         repository_id=request.repository_id,
     )

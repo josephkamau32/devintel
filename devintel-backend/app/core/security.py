@@ -3,24 +3,31 @@ from datetime import UTC, datetime, timedelta
 from typing import Optional
 from uuid import UUID
 
+import bcrypt
 from cryptography.fernet import Fernet, InvalidToken
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
 # ── Password hashing ──────────────────────────────────────────────────────────
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-
 def hash_password(plain_password: str) -> str:
-    return pwd_context.hash(plain_password)
+    """Hash password using native bcrypt with cost factor 12 (matching passlib default)."""
+    pwd_bytes = plain_password.encode("utf-8")[:72]
+    salt = bcrypt.gensalt(rounds=12)
+    return bcrypt.hashpw(pwd_bytes, salt).decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    """Verify password against bcrypt hash. Returns False safely on any mismatch/malformed hash."""
+    try:
+        return bcrypt.checkpw(
+            plain_password.encode("utf-8")[:72],
+            hashed_password.encode("utf-8"),
+        )
+    except Exception:
+        return False
 
 
 # ── JWT tokens ────────────────────────────────────────────────────────────────

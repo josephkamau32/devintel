@@ -104,16 +104,18 @@ async def refresh_code_health(
             detail="Repository must be indexed before running health analysis.",
         )
 
-    import asyncio
-    import uuid
-
-    from app.tasks.code_health import compute_code_health_task
-    task_id = str(uuid.uuid4())
-    asyncio.create_task(compute_code_health_task(str(repository_id)))
+    from app.repositories.indexing_job import IndexingJobRepository
+    job_repo = IndexingJobRepository(db)
+    job = await job_repo.enqueue(
+        repository_id=repository_id,
+        job_type="code_health",
+        payload={"repo_id": str(repository_id)},
+    )
+    await db.commit()
 
     return {
         "status": "queued",
-        "task_id": task_id,
+        "task_id": str(job.id),
         "message": "Code health analysis has been queued. Results will be available shortly.",
     }
 

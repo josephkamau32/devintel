@@ -79,30 +79,68 @@ class TestRepositoryEndpoints:
 
     @pytest.mark.asyncio
     async def test_trigger_indexing(
-        self, authenticated_client: AsyncClient, test_repository: Repository
+        self, authenticated_client: AsyncClient, test_repository: Repository, db_session: AsyncSession
     ):
-        """Test triggering repository indexing."""
-        with patch("app.api.v1.repositories.asyncio.create_task") as mock_create_task:
-            response = await authenticated_client.post(
-                "/api/v1/repos/index", json={"repository_id": str(test_repository.id)}
-            )
-            assert response.status_code == 200
-            data = response.json()
-            assert "task_id" in data
-            mock_create_task.assert_called_once()
+        """Test triggering repository indexing enqueues a durable job in DB."""
+        response = await authenticated_client.post(
+            "/api/v1/repos/index", json={"repository_id": str(test_repository.id)}
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "task_id" in data
+
+        from app.repositories.indexing_job import IndexingJobRepository
+        job_repo = IndexingJobRepository(db_session)
+        jobs = await job_repo.get_by_repository(test_repository.id)
+        assert len(jobs) == 1
+        job = jobs[0]
+        assert job.job_type == "full"
+        assert job.status == "pending"
+        assert job.payload["repo_id"] == str(test_repository.id)
+        assert str(job.id) == data["task_id"]
 
     @pytest.mark.asyncio
     async def test_trigger_indexing_already_indexed(
-        self, authenticated_client: AsyncClient, indexed_repository: Repository
+        self, authenticated_client: AsyncClient, indexed_repository: Repository, db_session: AsyncSession
     ):
-        """Test triggering indexing on already indexed repository."""
-        with patch("app.api.v1.repositories.asyncio.create_task") as mock_create_task:
-            response = await authenticated_client.post(
-                "/api/v1/repos/index",
-                json={"repository_id": str(indexed_repository.id)},
-            )
-        # Should still allow re-indexing
-        assert response.status_code in [200, 400]
+        """Test triggering indexing on already indexed repository enqueues a new job."""
+        response = await authenticated_client.post(
+            "/api/v1/repos/index",
+            json={"repository_id": str(indexed_repository.id)},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "task_id" in data
+
+        from app.repositories.indexing_job import IndexingJobRepository
+        job_repo = IndexingJobRepository(db_session)
+        jobs = await job_repo.get_by_repository(indexed_repository.id)
+        assert len(jobs) == 1
+        assert jobs[0].job_type == "full"
+        assert str(jobs[0].id) == data["task_id"]
+
+    @pytest.mark.asyncio
+    async def test_refresh_code_health(
+        self, authenticated_client: AsyncClient, indexed_repository: Repository, db_session: AsyncSession
+    ):
+        """Test manually triggering code health re-analysis enqueues a code_health job."""
+        response = await authenticated_client.post(
+            f"/api/v1/repos/{indexed_repository.id}/health/refresh"
+        )
+        assert response.status_code == 202
+        data = response.json()
+        assert data["status"] == "queued"
+        assert "task_id" in data
+
+        from app.repositories.indexing_job import IndexingJobRepository
+        job_repo = IndexingJobRepository(db_session)
+        jobs = await job_repo.get_by_repository(indexed_repository.id)
+        assert len(jobs) == 1
+        job = jobs[0]
+        assert job.job_type == "code_health"
+        assert job.status == "pending"
+        assert job.payload["repo_id"] == str(indexed_repository.id)
+        assert str(job.id) == data["task_id"]
 
     @pytest.mark.asyncio
     async def test_get_repository_by_id(

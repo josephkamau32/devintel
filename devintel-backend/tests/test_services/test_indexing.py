@@ -121,3 +121,46 @@ async def test_clone_repository_exception_does_not_leak_token(caplog):
         # Assert token was not logged to logger
         assert secret_token not in caplog.text
 
+
+@pytest.mark.asyncio
+async def test_indexing_success_enqueues_code_health_job(db_session, test_repository):
+    """Test that successful indexing completion enqueues a durable code_health job."""
+    from unittest.mock import AsyncMock, patch
+    from app.tasks.indexing import index_repository_task
+    from app.repositories.indexing_job import IndexingJobRepository
+
+    class SessionCtx:
+        async def __aenter__(self):
+            return db_session
+
+        async def __aexit__(self, *args):
+            pass
+
+    mock_chunks = [("foo.py", 0, "def foo(): pass")]
+
+    with (
+        patch("app.tasks.indexing.AsyncSessionLocal", return_value=SessionCtx()),
+        patch("app.services.indexing.IndexingService.clone_repository", new_callable=AsyncMock, return_value="/tmp/fake_repo"),
+        patch("app.services.indexing.IndexingService.parse_and_chunk_repository", new_callable=AsyncMock, return_value=mock_chunks),
+        patch("app.services.indexing.IndexingService.cleanup_repository", new_callable=AsyncMock),
+        patch("app.services.embedding.EmbeddingService.generate_embeddings_batch", new_callable=AsyncMock, return_value=[[0.1] * 1536]),
+        patch("app.repositories.embedding.EmbeddingRepository.create_bulk", new_callable=AsyncMock),
+        patch("app.tasks.indexing.Repo") as mock_git_repo,
+    ):
+        mock_git_repo.return_value.head.commit.hexsha = "commit_sha_12345"
+
+        await index_repository_task(
+            repo_id=str(test_repository.id),
+            clone_url=test_repository.url,
+            access_token="",
+        )
+
+    # Verify code_health job was enqueued in database
+    job_repo = IndexingJobRepository(db_session)
+    jobs = await job_repo.get_by_repository(test_repository.id)
+    assert len(jobs) == 1
+    assert jobs[0].job_type == "code_health"
+    assert jobs[0].status == "pending"
+    assert jobs[0].payload["repo_id"] == str(test_repository.id)
+
+

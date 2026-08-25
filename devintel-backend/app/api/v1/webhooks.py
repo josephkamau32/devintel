@@ -1,8 +1,5 @@
 """GitHub Webhook handler — auto re-indexes repositories on push events."""
 
-import asyncio
-import uuid
-
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,9 +8,9 @@ from app.core.logging import get_logger
 from app.core.webhook import verify_github_signature
 from app.db.session import get_db
 from app.models.repository import IndexingStatus
+from app.repositories.indexing_job import IndexingJobRepository
 from app.repositories.repository import RepositoryRepository
 from app.services.cache import cache
-from app.tasks.indexing import index_repository_task
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/webhooks", tags=["Webhooks"])
@@ -146,51 +143,55 @@ async def github_webhook(
 
         # Determine if we should do incremental or full reindex
         # Fall back to full reindex if we don't have a last_indexed_commit_sha
+        job_repo = IndexingJobRepository(db)
         if repository.last_indexed_commit_sha and head_commit_sha:
             # Use incremental indexing
-            from app.services.incremental_indexer import process_push_event
-            task_id = str(uuid.uuid4())
-            asyncio.create_task(
-                process_push_event(
-                    repo_id=str(repository.id),
-                    clone_url=repository.url,
-                    access_token=access_token,
-                    changed_files=list(changed_files),
-                    added_files=list(added_files),
-                    removed_files=list(removed_files),
-                    head_commit_sha=head_commit_sha,
-                )
+            job = await job_repo.enqueue(
+                repository_id=repository.id,
+                job_type="incremental",
+                payload={
+                    "repo_id": str(repository.id),
+                    "clone_url": repository.url,
+                    "access_token": access_token,
+                    "changed_files": list(changed_files),
+                    "added_files": list(added_files),
+                    "removed_files": list(removed_files),
+                    "head_commit_sha": head_commit_sha,
+                },
             )
+            await db.commit()
             logger.info(
                 f"Webhook triggered incremental re-index for {repo_full_name} "
-                f"(repo_id={repository.id}, task_id={task_id})"
+                f"(repo_id={repository.id}, job_id={job.id})"
             )
             return {
                 "status": "queued",
                 "mode": "incremental",
                 "repository": repo_full_name,
-                "task_id": task_id,
+                "task_id": str(job.id),
                 "files_changed": len(changed_files) + len(added_files) + len(removed_files),
             }
         else:
             # Fall back to full reindex
-            task_id = str(uuid.uuid4())
-            asyncio.create_task(
-                index_repository_task(
-                    repo_id=str(repository.id),
-                    clone_url=repository.url,
-                    access_token=access_token,
-                )
+            job = await job_repo.enqueue(
+                repository_id=repository.id,
+                job_type="full",
+                payload={
+                    "repo_id": str(repository.id),
+                    "clone_url": repository.url,
+                    "access_token": access_token,
+                },
             )
+            await db.commit()
             logger.info(
                 f"Webhook triggered full re-index for {repo_full_name} "
-                f"(repo_id={repository.id}, task_id={task_id})"
+                f"(repo_id={repository.id}, job_id={job.id})"
             )
             return {
                 "status": "queued",
                 "mode": "full",
                 "repository": repo_full_name,
-                "task_id": task_id,
+                "task_id": str(job.id),
             }
 
     # --- Pull Request event: trigger AI code review ---
@@ -228,26 +229,29 @@ async def github_webhook(
             logger.warning(f"No access token available for {repo_full_name} — cannot post review.")
             return {"status": "ignored", "reason": "No access token available."}
 
-        # Enqueue PR review task
-        from app.tasks.pr_review import review_pull_request_task
-        task_id = str(uuid.uuid4())
-        asyncio.create_task(
-            review_pull_request_task(
-                repo_id=str(repository.id),
-                pr_number=pr_number,
-                pr_title=pr_title,
-                access_token=access_token,
-            )
+        # Enqueue PR review task (max_attempts=1: PR review is non-retryable)
+        job_repo = IndexingJobRepository(db)
+        job = await job_repo.enqueue(
+            repository_id=repository.id,
+            job_type="pr_review",
+            payload={
+                "repo_id": str(repository.id),
+                "pr_number": pr_number,
+                "pr_title": pr_title,
+                "access_token": access_token,
+            },
+            max_attempts=1,
         )
+        await db.commit()
 
         logger.info(
-            f"Queued PR review for {repo_full_name}#{pr_number} (task_id={task_id})"
+            f"Queued PR review for {repo_full_name}#{pr_number} (job_id={job.id})"
         )
         return {
             "status": "queued",
             "repository": repo_full_name,
             "pr_number": pr_number,
-            "task_id": task_id,
+            "task_id": str(job.id),
         }
 
     # All other events acknowledged but not acted upon

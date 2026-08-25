@@ -101,14 +101,15 @@ async def test_index_repository(client: AsyncClient, auth_token: str):
     }
     repo_res = await client.post("/api/v1/repos", json=repo_data, headers={"Authorization": f"Bearer {auth_token}"})
     repo_id = repo_res.json()["id"]
-    
-    with patch("app.api.v1.repositories.index_repository_task") as mock_task:
-        response = await client.post("/api/v1/repos/index", json={"repository_id": repo_id}, headers={"Authorization": f"Bearer {auth_token}"})
-        
-        assert response.status_code == 200
-        assert response.json()["message"] == "Indexing started"
-        
-        # Check status
-        status_res = await client.get(f"/api/v1/repos/{repo_id}/status", headers={"Authorization": f"Bearer {auth_token}"})
-        assert status_res.status_code == 200
-        assert status_res.json()["indexing_status"] == "indexing"
+
+    response = await client.post("/api/v1/repos/index", json={"repository_id": repo_id}, headers={"Authorization": f"Bearer {auth_token}"})
+
+    assert response.status_code == 200
+    assert response.json()["message"] == "Indexing started"
+    assert "task_id" in response.json()
+
+    # Check status
+    status_res = await client.get(f"/api/v1/repos/{repo_id}/status", headers={"Authorization": f"Bearer {auth_token}"})
+    assert status_res.status_code == 200
+    assert status_res.json()["indexing_status"] == "indexing"
+

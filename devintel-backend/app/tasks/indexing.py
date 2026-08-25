@@ -193,12 +193,17 @@ async def _index_repository_async(
                 analytics_repo = AnalyticsRepository(db)
                 await analytics_repo.increment_repositories_indexed(repo.user_id)
 
+            # Enqueue code health analysis as a follow-up durable job within the same transaction
+            from app.repositories.indexing_job import IndexingJobRepository
+            job_repo = IndexingJobRepository(db)
+            await job_repo.enqueue(
+                repository_id=UUID(repo_id),
+                job_type="code_health",
+                payload={"repo_id": repo_id},
+            )
+
             await db.commit()
             logger.info(f"Successfully indexed repository: {repo_id} ({len(chunks)} chunks)")
-
-            # Fire code health analysis as a follow-up background task
-            from app.tasks.code_health import compute_code_health_task
-            asyncio.create_task(compute_code_health_task(repo_id))
 
         except asyncio.TimeoutError:
             error_msg = "Indexing timed out during processing (cloning or embedding)"
@@ -221,7 +226,7 @@ async def _index_repository_async(
                     logger.error(f"Failed to cleanup repo path {repo_path}: {cleanup_error}")
 
 async def _handle_indexing_failure(repo_repo, db, repo_id, error_msg):
-    """Helper to record indexing failure and enqueue retry."""
+    """Helper to record indexing failure. Retry is handled by the job poller."""
     try:
         await repo_repo.update(
             UUID(repo_id),
@@ -230,14 +235,5 @@ async def _handle_indexing_failure(repo_repo, db, repo_id, error_msg):
             indexing_progress=0,
         )
         await db.commit()
-
-        # Enqueue retry for transient failures
-        from app.services.retry_queue import retry_queue
-        asyncio.create_task(retry_queue.enqueue(
-            "index_repository",
-            args=(repo_id,),
-            kwargs={},
-            attempt=0,
-        ))
     except Exception as update_error:
         logger.error(f"Critical: Failed to update error status for repo {repo_id}: {update_error}")
