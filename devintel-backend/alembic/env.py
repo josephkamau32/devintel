@@ -29,7 +29,7 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 # The latest migration revision — update this whenever you add a new migration.
-HEAD_REVISION = "20260825_drop_broken_repo_vector_index"
+HEAD_REVISION = "20260826_drop_indexed_status_column"
 
 
 # ── Offline mode (generates SQL scripts, rarely used) ──────────────────────

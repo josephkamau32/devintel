@@ -2,7 +2,7 @@
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import check_repo_access, get_current_user
@@ -257,6 +257,7 @@ async def index_repository(
 @router.get("/{repository_id}/pulls", response_model=PullRequestListResponse)
 async def list_repository_pulls(
     repository_id: uuid.UUID,
+    http_request: Request,
     state: str = Query("open", pattern="^(open|closed|all)$"),
     page: int = Query(1, ge=1),
     per_page: int = Query(30, ge=1, le=100),
@@ -290,10 +291,17 @@ async def list_repository_pulls(
             repository_id=repository_id,
         )
     except Exception as e:
-        logger.error(f"Failed to fetch PRs for {repository.full_name}: {e}")
+        request_id = getattr(http_request.state, "request_id", None) or "unknown"
+        logger.error(
+            "Failed to fetch PRs for %s [request_id=%s]: %s",
+            repository.full_name,
+            request_id,
+            e,
+            exc_info=True,
+        )
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Failed to fetch pull requests from GitHub",
+            detail="Failed to fetch pull requests from GitHub. Please try again.",
         )
 
 
@@ -301,6 +309,7 @@ async def list_repository_pulls(
 async def get_pull_request_diff(
     repository_id: uuid.UUID,
     pr_number: int,
+    http_request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -329,10 +338,18 @@ async def get_pull_request_diff(
         )
         return {"diff": diff_text, "pr_number": pr_number, "repository": repository.full_name}
     except Exception as e:
-        logger.error(f"Failed to fetch diff for PR #{pr_number} in {repository.full_name}: {e}")
+        request_id = getattr(http_request.state, "request_id", None) or "unknown"
+        logger.error(
+            "Failed to fetch diff for PR #%s in %s [request_id=%s]: %s",
+            pr_number,
+            repository.full_name,
+            request_id,
+            e,
+            exc_info=True,
+        )
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Failed to fetch pull request diff from GitHub",
+            detail="Failed to fetch pull request diff from GitHub. Please try again.",
         )
 
 

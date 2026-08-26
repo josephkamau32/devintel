@@ -3,7 +3,7 @@
 import asyncio
 import json
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import check_repo_access, get_current_user
@@ -32,6 +32,7 @@ REVIEW_TIMEOUT_SECONDS = 60
 @router.post("", response_model=PRReviewResponse)
 async def review_pull_request(
     request: PRReviewRequest,
+    http_request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -66,10 +67,17 @@ async def review_pull_request(
                 repository.full_name, request.pr_number
             )
         except Exception as e:
-            logger.error(f"Failed to fetch diff for PR #{request.pr_number}: {e}")
+            request_id = getattr(http_request.state, "request_id", None) or "unknown"
+            logger.error(
+                "Failed to fetch diff for PR #%s [request_id=%s]: %s",
+                request.pr_number,
+                request_id,
+                e,
+                exc_info=True,
+            )
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"Failed to fetch PR diff from GitHub: {str(e)}",
+                detail="Failed to fetch PR diff from GitHub. Please try again.",
             )
 
     if not diff_content:
@@ -173,6 +181,7 @@ from app.schemas.pr_review import PullRequestListResponse
 @pulls_router.get("/{repository_id}/pulls", response_model=PullRequestListResponse)
 async def list_pull_requests(
     repository_id: UUID,
+    http_request: Request,
     state: str = "open",
     page: int = 1,
     per_page: int = 30,
@@ -208,10 +217,17 @@ async def list_pull_requests(
             per_page=per_page,
         )
     except Exception as e:
-        logger.error(f"Failed to fetch PRs for {repository.full_name}: {e}")
+        request_id = getattr(http_request.state, "request_id", None) or "unknown"
+        logger.error(
+            "Failed to fetch PRs for %s [request_id=%s]: %s",
+            repository.full_name,
+            request_id,
+            e,
+            exc_info=True,
+        )
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Failed to fetch pull requests from GitHub: {str(e)}",
+            detail="Failed to fetch pull requests from GitHub. Please try again.",
         )
 
     return PullRequestListResponse(

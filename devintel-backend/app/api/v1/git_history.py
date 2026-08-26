@@ -2,10 +2,11 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import check_repo_access, get_current_user
+from app.core.logging import get_logger
 from app.db.session import get_db
 from app.models.user import User
 from app.repositories.git_history import GitHistoryRepository
@@ -19,12 +20,14 @@ from app.schemas.git_history import (
 from app.services.encryption import encryption_service
 from app.services.git_history_service import GitHistoryService
 
+logger = get_logger(__name__)
 router = APIRouter(prefix="/git", tags=["Git History"])
 
 
 @router.post("/blame", response_model=list[FileBlameResponse])
 async def get_file_blame(
     request: BlameRequest,
+    http_request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -51,7 +54,17 @@ async def get_file_blame(
         )
         return [FileBlameResponse.model_validate(r) for r in blame_records]
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        request_id = getattr(http_request.state, "request_id", None) or "unknown"
+        logger.error(
+            "Failed to retrieve file blame [request_id=%s]: %s",
+            request_id,
+            e,
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve blame information for the file.",
+        )
 
 
 @router.get("/history/{repository_id}", response_model=list[GitHistoryResponse])

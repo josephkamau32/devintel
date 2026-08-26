@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import check_repo_access, get_current_user
@@ -128,6 +128,7 @@ from app.services.auto_fix_service import AutoFixService
 async def auto_fix_code_health_issue(
     repository_id: UUID,
     request: AutoFixRequest,
+    http_request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -161,9 +162,14 @@ async def auto_fix_code_health_issue(
         )
         return AutoFixResponse(**result)
     except Exception as e:
-        logger.error(f"Auto-fix failed: {str(e)}")
-        # In production this would distinguish between 4xx and 5xx via a custom APIError
+        request_id = getattr(http_request.state, "request_id", None) or "unknown"
+        logger.error(
+            "Auto-fix failed [request_id=%s]: %s",
+            request_id,
+            e,
+            exc_info=True,
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            detail="Failed to generate auto-fix for code health issue. Please try again.",
         )
