@@ -43,6 +43,10 @@ class GitHubCallbackRequest(BaseModel):
     state: Optional[str] = None
 
 
+class OAuthExchangeRequest(BaseModel):
+    code: str
+
+
 class UserPublic(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

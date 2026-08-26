@@ -38,7 +38,7 @@ async def test_authentication_flow():
     async with AsyncClient(app=app, base_url="http://test") as client:
         # Step 1: Get GitHub OAuth URL
         auth_response = await client.get("/api/v1/auth/github", follow_redirects=False)
-        assert auth_response.status_code == status.HTTP_307_TEMPORARY_REDIRECT
+        assert auth_response.status_code == status.HTTP_302_FOUND
         assert "github.com" in auth_response.headers["location"]
 
 
@@ -75,7 +75,7 @@ async def test_rate_limiting():
 
         # Should eventually hit rate limit
         assert status.HTTP_429_TOO_MANY_REQUESTS in responses or \
-               all(code == status.HTTP_307_TEMPORARY_REDIRECT for code in responses)
+               all(code == status.HTTP_302_FOUND for code in responses)
 
 
 @pytest.mark.asyncio

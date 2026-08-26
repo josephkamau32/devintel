@@ -5,6 +5,7 @@ import secrets
 import time
 from typing import Optional
 from urllib.parse import urlencode
+from uuid import UUID
 
 from fastapi import APIRouter, Cookie, Depends, Request, Response
 from fastapi.responses import RedirectResponse
@@ -16,8 +17,10 @@ from app.core.exceptions import AuthenticationError
 from app.core.logging import get_logger
 from app.db.session import get_db
 from app.models.user import User
+from app.repositories.user_repo import UserRepository
 from app.schemas.auth import (
     LoginRequest,
+    OAuthExchangeRequest,
     RefreshResponse,
     SignupRequest,
     TokenResponse,
@@ -303,8 +306,18 @@ async def github_callback(
             code_verifier=code_verifier,
         )
 
+        exchange_code = secrets.token_urlsafe(32)
+        await cache.set(
+            f"oauth_exchange:{exchange_code}",
+            {
+                "access_token": access_token,
+                "user_id": str(user.id),
+            },
+            ttl=60,
+        )
+
         redirect = RedirectResponse(
-            url=f"{frontend_url}/oauth/callback#access_token={access_token}",
+            url=f"{frontend_url}/oauth/callback#code={exchange_code}",
             status_code=302,
         )
         _set_refresh_cookie(redirect, refresh_token)
@@ -318,3 +331,49 @@ async def github_callback(
         )
         _clear_oauth_state_cookie(redirect)
         return redirect
+
+
+@router.post("/oauth/exchange", response_model=TokenResponse)
+async def oauth_exchange(
+    data: OAuthExchangeRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Exchange a short-lived, single-use OAuth exchange code for a real access token (F-07 fix)."""
+    key = f"oauth_exchange:{data.code}"
+    cached = await cache.get(key)
+    if not cached:
+        raise AuthenticationError("Invalid or expired OAuth exchange code")
+
+    # Single-use enforcement: delete immediately upon lookup (replay prevention)
+    await cache.delete(key)
+
+    if isinstance(cached, str):
+        import json
+
+        try:
+            cached = json.loads(cached)
+        except Exception:
+            pass
+
+    user_id_str = cached.get("user_id") if isinstance(cached, dict) else None
+    access_token = cached.get("access_token") if isinstance(cached, dict) else None
+
+    if not user_id_str or not access_token:
+        raise AuthenticationError("Invalid OAuth exchange data")
+
+    try:
+        user_uuid = UUID(user_id_str)
+    except (ValueError, TypeError):
+        raise AuthenticationError("Invalid user in OAuth exchange data")
+
+    user_repo = UserRepository(db)
+    user = await user_repo.get_by_id(user_uuid)
+    if not user or not user.is_active:
+        raise AuthenticationError("User not found or inactive")
+
+    return TokenResponse(
+        access_token=access_token,
+        token_type="bearer",
+        user=UserPublic.model_validate(user),
+    )
+

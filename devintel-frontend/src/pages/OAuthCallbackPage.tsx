@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { api } from '../lib/axios';
-import type { User } from '../lib/types';
+import type { TokenResponse } from '../lib/types';
 import { Code2 } from 'lucide-react';
 
 export function OAuthCallbackPage() {
@@ -17,24 +17,22 @@ export function OAuthCallbackPage() {
 
     const hash = window.location.hash;
     const params = new URLSearchParams(hash.startsWith('#') ? hash.slice(1) : hash);
-    const token = params.get('access_token');
+    const code = params.get('code');
 
-    // Clear the token from the URL immediately for security
+    // Clear the code from the URL immediately for security
     if (window.history.replaceState) {
       window.history.replaceState(null, '', window.location.pathname);
     }
 
-    if (!token) {
+    if (!code) {
       navigate('/login?error=oauth_failed', { replace: true });
       return;
     }
 
     api
-      .get<User>('/auth/me', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      .post<TokenResponse>('/auth/oauth/exchange', { code })
       .then(({ data }) => {
-        setAuth(token, data);
+        setAuth(data.access_token, data.user);
         navigate('/dashboard', { replace: true });
       })
       .catch(() => {

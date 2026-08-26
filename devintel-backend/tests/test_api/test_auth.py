@@ -197,9 +197,10 @@ async def test_github_oauth_flow(
         cookies={"oauth_state": state},
         follow_redirects=False,
     )
-    # The callback returns a 302 redirect to the frontend with access_token in the URL fragment
+    # The callback returns a 302 redirect to the frontend with code in the URL fragment
     assert response.status_code == 302
-    assert "access_token=" in response.headers["location"]
+    assert "#code=" in response.headers["location"]
+    assert "access_token=" not in response.headers["location"]
 
 
 @pytest.mark.asyncio
@@ -269,7 +270,8 @@ async def test_github_oauth_rejects_replayed_state(
         follow_redirects=False,
     )
     assert res1.status_code == 302
-    assert "access_token=" in res1.headers["location"]
+    assert "#code=" in res1.headers["location"]
+    assert "access_token=" not in res1.headers["location"]
 
     # Second attempt (replay): rejected
     res2 = await async_client.get(
@@ -279,6 +281,137 @@ async def test_github_oauth_rejects_replayed_state(
     )
     assert res2.status_code == 302
     assert "error=oauth_failed" in res2.headers["location"]
+
+
+@pytest.mark.asyncio
+@patch("app.services.github_service.GitHubService.get_primary_email", new_callable=AsyncMock)
+@patch("app.services.github_service.GitHubService.get_github_user", new_callable=AsyncMock)
+@patch("app.services.github_service.GitHubService.exchange_code_for_token", new_callable=AsyncMock)
+async def test_oauth_exchange_success(
+    mock_exchange, mock_get_user, mock_get_email, async_client: AsyncClient
+):
+    """Test full OAuth flow including /oauth/exchange returning TokenResponse."""
+    mock_exchange.return_value = "mock_github_token"
+    mock_get_user.return_value = {
+        "id": 888123,
+        "login": "exchangetestuser",
+        "email": "exchange@example.com",
+        "name": "Exchange User",
+        "avatar_url": "https://avatars.githubusercontent.com/u/888",
+    }
+    mock_get_email.return_value = "exchange@example.com"
+
+    from app.api.v1.auth import _create_oauth_state
+
+    state, nonce = _create_oauth_state()
+
+    response = await async_client.get(
+        f"/api/v1/auth/github/callback?code=mock_code&state={state}",
+        cookies={"oauth_state": state},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    location = response.headers["location"]
+    assert "#code=" in location
+    assert "access_token=" not in location
+
+    code = location.split("#code=")[1]
+
+    exchange_res = await async_client.post(
+        "/api/v1/auth/oauth/exchange",
+        json={"code": code},
+    )
+    assert exchange_res.status_code == 200
+    data = exchange_res.json()
+    assert "access_token" in data
+    assert data["token_type"] == "bearer"
+    assert data["user"]["email"] == "exchange@example.com"
+    assert data["user"]["github_username"] == "exchangetestuser"
+
+
+@pytest.mark.asyncio
+@patch("app.services.github_service.GitHubService.get_primary_email", new_callable=AsyncMock)
+@patch("app.services.github_service.GitHubService.get_github_user", new_callable=AsyncMock)
+@patch("app.services.github_service.GitHubService.exchange_code_for_token", new_callable=AsyncMock)
+async def test_oauth_exchange_single_use_replay_fails(
+    mock_exchange, mock_get_user, mock_get_email, async_client: AsyncClient
+):
+    """Test that an OAuth exchange code can only be used once (replay prevention)."""
+    mock_exchange.return_value = "mock_github_token"
+    mock_get_user.return_value = {
+        "id": 888124,
+        "login": "singleuseuser",
+        "email": "singleuse@example.com",
+        "name": "Single Use",
+        "avatar_url": "https://avatars.githubusercontent.com/u/888124",
+    }
+    mock_get_email.return_value = "singleuse@example.com"
+
+    from app.api.v1.auth import _create_oauth_state
+
+    state, nonce = _create_oauth_state()
+
+    response = await async_client.get(
+        f"/api/v1/auth/github/callback?code=mock_code&state={state}",
+        cookies={"oauth_state": state},
+        follow_redirects=False,
+    )
+    code = response.headers["location"].split("#code=")[1]
+
+    # First exchange succeeds
+    res1 = await async_client.post("/api/v1/auth/oauth/exchange", json={"code": code})
+    assert res1.status_code == 200
+
+    # Second exchange with identical code is rejected (401)
+    res2 = await async_client.post("/api/v1/auth/oauth/exchange", json={"code": code})
+    assert res2.status_code == 401
+    assert "Invalid or expired" in res2.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_oauth_exchange_invalid_code_fails(async_client: AsyncClient):
+    """Test that exchanging a non-existent/invalid code fails with 401."""
+    response = await async_client.post(
+        "/api/v1/auth/oauth/exchange",
+        json={"code": "completely_invalid_random_code_xyz"},
+    )
+    assert response.status_code == 401
+    assert "Invalid or expired" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_oauth_exchange_expired_code_fails(async_client: AsyncClient, test_user: User):
+    """Test that an OAuth exchange code that has exceeded its TTL fails specifically due to expiration."""
+    import asyncio
+    from app.core.security import create_access_token
+    from app.services.cache import cache
+
+    access_token = create_access_token(test_user.id)
+    expired_code = "expired_test_code_12345"
+
+    # Store with 1 second TTL and wait for expiry
+    await cache.set(
+        f"oauth_exchange:{expired_code}",
+        {"access_token": access_token, "user_id": str(test_user.id)},
+        ttl=1,
+    )
+
+    # Verify it exists in cache immediately
+    assert await cache.get(f"oauth_exchange:{expired_code}") is not None
+
+    # Wait past the TTL
+    await asyncio.sleep(1.1)
+
+    # Verify it is expired in cache
+    assert await cache.get(f"oauth_exchange:{expired_code}") is None
+
+    # Attempt exchange with expired code
+    response = await async_client.post(
+        "/api/v1/auth/oauth/exchange",
+        json={"code": expired_code},
+    )
+    assert response.status_code == 401
+    assert "Invalid or expired" in response.json()["detail"]
 
 
 @pytest.mark.asyncio
