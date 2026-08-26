@@ -22,18 +22,24 @@ class GitHubService:
         self.db = db
         self.user_repo = UserRepository(db)
 
-    async def exchange_code_for_token(self, code: str) -> str:
+    async def exchange_code_for_token(
+        self, code: str, code_verifier: Optional[str] = None
+    ) -> str:
         """Exchange GitHub OAuth code for an access token."""
         try:
+            payload = {
+                "client_id": settings.GITHUB_CLIENT_ID,
+                "client_secret": settings.GITHUB_CLIENT_SECRET,
+                "code": code,
+                "redirect_uri": settings.GITHUB_REDIRECT_URI,
+            }
+            if code_verifier:
+                payload["code_verifier"] = code_verifier
+
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     GITHUB_TOKEN_URL,
-                    data={
-                        "client_id": settings.GITHUB_CLIENT_ID,
-                        "client_secret": settings.GITHUB_CLIENT_SECRET,
-                        "code": code,
-                        "redirect_uri": settings.GITHUB_REDIRECT_URI,
-                    },
+                    data=payload,
                     headers={"Accept": "application/json"},
                     timeout=10.0,
                 )
@@ -112,7 +118,9 @@ class GitHubService:
                 return entry["email"]
         return None
 
-    async def authenticate(self, code: str) -> tuple[User, str, str]:
+    async def authenticate(
+        self, code: str, code_verifier: Optional[str] = None
+    ) -> tuple[User, str, str]:
         """
         Full GitHub OAuth flow:
         1. Exchange code for token
@@ -120,7 +128,7 @@ class GitHubService:
         3. Find or create user
         4. Return (user, access_token, refresh_token)
         """
-        github_token = await self.exchange_code_for_token(code)
+        github_token = await self.exchange_code_for_token(code, code_verifier=code_verifier)
         github_user = await self.get_github_user(github_token)
         email = await self.get_primary_email(github_token)
 

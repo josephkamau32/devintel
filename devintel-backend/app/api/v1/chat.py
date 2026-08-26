@@ -193,7 +193,7 @@ async def agent_execute(
     if not repository:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Repository not found")
 
-    await check_repo_access(repository, current_user, db)
+    await check_repo_access(repository, current_user, db, write_access=True)
 
     if not current_user.github_token_encrypted:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="GitHub token not found. Please re-authenticate.")

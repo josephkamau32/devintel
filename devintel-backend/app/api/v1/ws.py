@@ -6,9 +6,10 @@ Uses the in-process ProgressBus instead of Redis pub/sub.
 from datetime import datetime
 from uuid import UUID
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
+from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect, status
 from jose import JWTError, jwt
 
+from app.api.deps import check_repo_access
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.db.session import AsyncSessionLocal
@@ -64,6 +65,7 @@ async def repo_indexing_progress(
     # 3. Verify repo access
     try:
         repo_uuid = UUID(repo_id)
+        user_uuid = UUID(user_id) if isinstance(user_id, str) else user_id
         async with AsyncSessionLocal() as db:
             repo_repo = RepositoryRepository(db)
             repository = await repo_repo.get_by_id(repo_uuid)
@@ -72,8 +74,17 @@ async def repo_indexing_progress(
                 await websocket.close()
                 return
 
-            # Check ownership (user_id match or org membership check skipped for WS simplicity)
-            if repository.user_id and str(repository.user_id) != user_id:
+            user_repo = UserRepository(db)
+            user = await user_repo.get_by_id(user_uuid)
+            if not user:
+                await websocket.send_json({"error": "User not found"})
+                await websocket.close()
+                return
+
+            # Check access (covers personal repos and org membership)
+            try:
+                await check_repo_access(repository, user, db)
+            except HTTPException:
                 await websocket.send_json({"error": "Not authorized"})
                 await websocket.close()
                 return

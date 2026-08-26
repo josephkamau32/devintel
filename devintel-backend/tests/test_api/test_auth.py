@@ -149,20 +149,34 @@ async def test_token_refresh_invalid_token(async_client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_github_login_redirect_sets_cookie_and_pkce(async_client: AsyncClient):
+    """Test that GET /auth/github sets the oauth_state cookie and includes PKCE params."""
+    response = await async_client.get("/api/v1/auth/github", follow_redirects=False)
+    assert response.status_code == 302
+    location = response.headers["location"]
+    assert "code_challenge=" in location
+    assert "code_challenge_method=S256" in location
+    assert "state=" in location
+
+    # Verify oauth_state cookie was set
+    set_cookie_header = response.headers.get("set-cookie", "")
+    assert "oauth_state=" in set_cookie_header or "oauth_state" in response.cookies
+
+
+@pytest.mark.asyncio
 @patch("app.services.github_service.GitHubService.get_primary_email", new_callable=AsyncMock)
 @patch("app.services.github_service.GitHubService.get_github_user", new_callable=AsyncMock)
 @patch("app.services.github_service.GitHubService.exchange_code_for_token", new_callable=AsyncMock)
 async def test_github_oauth_flow(
     mock_exchange, mock_get_user, mock_get_email, async_client: AsyncClient
 ):
-    """Test complete GitHub OAuth flow.
+    """Test complete GitHub OAuth flow with valid state and matching cookie.
 
-    The /github/callback endpoint uses GitHubService.authenticate() which
-    internally calls exchange_code_for_token, get_github_user, and
-    get_primary_email. We mock all three at the service level.
-
-    The endpoint also requires a valid HMAC-signed state parameter for
-    CSRF protection, and returns a 302 redirect (not a JSON response).
+    The /github/callback endpoint validates:
+    1. HMAC-signed state parameter
+    2. Cookie-bound state match (CSRF defense)
+    3. Nonce single-use (replay defense)
+    4. PKCE token exchange
     """
     mock_exchange.return_value = "mock_github_token"
     mock_get_user.return_value = {
@@ -174,18 +188,117 @@ async def test_github_oauth_flow(
     }
     mock_get_email.return_value = "github@example.com"
 
-    # Create a valid HMAC-signed state token
     from app.api.v1.auth import _create_oauth_state
 
-    state = _create_oauth_state()
+    state, nonce = _create_oauth_state()
 
     response = await async_client.get(
         f"/api/v1/auth/github/callback?code=mock_code&state={state}",
+        cookies={"oauth_state": state},
         follow_redirects=False,
     )
     # The callback returns a 302 redirect to the frontend with access_token in the URL fragment
     assert response.status_code == 302
     assert "access_token=" in response.headers["location"]
+
+
+@pytest.mark.asyncio
+async def test_github_oauth_rejects_missing_cookie(async_client: AsyncClient):
+    """Test that a callback with a valid signed state but NO cookie is rejected (CSRF protection)."""
+    from app.api.v1.auth import _create_oauth_state
+
+    state, nonce = _create_oauth_state()
+
+    response = await async_client.get(
+        f"/api/v1/auth/github/callback?code=mock_code&state={state}",
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert "error=oauth_failed" in response.headers["location"]
+
+
+@pytest.mark.asyncio
+async def test_github_oauth_rejects_mismatched_cookie_csrf_attack(async_client: AsyncClient):
+    """
+    Simulate login-CSRF attack:
+    Attacker captures their own valid state token and tricks victim into visiting callback URL.
+    Victim has either no cookie or their own different cookie.
+    Must be rejected.
+    """
+    from app.api.v1.auth import _create_oauth_state
+
+    attacker_state, _ = _create_oauth_state()
+    victim_state, _ = _create_oauth_state()
+
+    # Victim visits URL with attacker's state parameter, but victim's browser sends victim's cookie
+    response = await async_client.get(
+        f"/api/v1/auth/github/callback?code=mock_code&state={attacker_state}",
+        cookies={"oauth_state": victim_state},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert "error=oauth_failed" in response.headers["location"]
+
+
+@pytest.mark.asyncio
+@patch("app.services.github_service.GitHubService.get_primary_email", new_callable=AsyncMock)
+@patch("app.services.github_service.GitHubService.get_github_user", new_callable=AsyncMock)
+@patch("app.services.github_service.GitHubService.exchange_code_for_token", new_callable=AsyncMock)
+async def test_github_oauth_rejects_replayed_state(
+    mock_exchange, mock_get_user, mock_get_email, async_client: AsyncClient
+):
+    """Test that reusing a previously consumed state nonce is rejected (replay attack prevention)."""
+    mock_exchange.return_value = "mock_github_token"
+    mock_get_user.return_value = {
+        "id": 999123,
+        "login": "replayuser",
+        "email": "replay@example.com",
+        "name": "Replay User",
+        "avatar_url": "https://avatars.githubusercontent.com/u/999",
+    }
+    mock_get_email.return_value = "replay@example.com"
+
+    from app.api.v1.auth import _create_oauth_state
+
+    state, nonce = _create_oauth_state()
+
+    # First attempt: succeeds
+    res1 = await async_client.get(
+        f"/api/v1/auth/github/callback?code=mock_code&state={state}",
+        cookies={"oauth_state": state},
+        follow_redirects=False,
+    )
+    assert res1.status_code == 302
+    assert "access_token=" in res1.headers["location"]
+
+    # Second attempt (replay): rejected
+    res2 = await async_client.get(
+        f"/api/v1/auth/github/callback?code=mock_code&state={state}",
+        cookies={"oauth_state": state},
+        follow_redirects=False,
+    )
+    assert res2.status_code == 302
+    assert "error=oauth_failed" in res2.headers["location"]
+
+
+@pytest.mark.asyncio
+async def test_github_oauth_rejects_expired_state(async_client: AsyncClient):
+    """Test that an HMAC-signed state older than _STATE_MAX_AGE is rejected."""
+    import time
+    from app.api.v1.auth import _sign
+
+    old_ts = str(int(time.time()) - 1000)  # >600s ago
+    nonce = "oldnonce12345678"
+    sig = _sign(f"{nonce}.{old_ts}")
+    expired_state = f"{nonce}.{old_ts}.{sig}"
+
+    response = await async_client.get(
+        f"/api/v1/auth/github/callback?code=mock_code&state={expired_state}",
+        cookies={"oauth_state": expired_state},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert "error=oauth_failed" in response.headers["location"]
 
 
 @pytest.mark.asyncio

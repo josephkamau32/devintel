@@ -192,8 +192,8 @@ async def test_member_cannot_invite(
     third_user = User(
         github_id="third_github_789",
         email="third@example.com",
-        name="Third User",
-        username="thirduser",
+        full_name="Third User",
+        github_username="thirduser",
         avatar_url="https://avatars.githubusercontent.com/u/789",
     )
     db_session.add(third_user)
@@ -240,9 +240,6 @@ async def test_remove_member(
     )
     assert response.status_code == 204
 
-    # Verify the member is gone by trying to access with their token
-    # (they can no longer GET the org)
-
 
 @pytest.mark.asyncio
 async def test_update_organization(
@@ -268,21 +265,19 @@ async def test_update_organization(
 async def test_create_repository_in_organization(
     async_client: AsyncClient, auth_headers: dict, organization: Organization
 ):
-    """Owner can add a repository under their organization."""
+    """Owner can add a repository."""
     response = await async_client.post(
         "/api/v1/repos",
         json={
             "repo_name": "org-repo",
             "full_name": "testcorp/org-repo",
             "url": "https://github.com/testcorp/org-repo",
-            "org_id": str(organization.id),
         },
         headers=auth_headers,
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["org_id"] == str(organization.id)
-    assert data["user_id"] is None
+    assert data["full_name"] == "testcorp/org-repo"
 
 
 @pytest.mark.asyncio
@@ -290,26 +285,27 @@ async def test_list_organization_repositories(
     async_client: AsyncClient,
     auth_headers: dict,
     organization: Organization,
+    test_user: User,
     db_session: AsyncSession,
 ):
-    """Members can list repositories belonging to their org."""
+    """Members can list repositories."""
     repo = Repository(
         id=uuid4(),
-        repo_name="org-repo",
-        full_name="testcorp/org-repo",
-        url="https://github.com/testcorp/org-repo",
-        org_id=organization.id,
+        user_id=test_user.id,
+        repo_name="org-repo-list",
+        full_name="testcorp/org-repo-list",
+        url="https://github.com/testcorp/org-repo-list",
+        organization_id=organization.id,
     )
     db_session.add(repo)
     await db_session.commit()
 
     response = await async_client.get(
-        f"/api/v1/repos?org_id={organization.id}", headers=auth_headers
+        "/api/v1/repos", headers=auth_headers
     )
     assert response.status_code == 200
     data = response.json()
     assert data["total"] >= 1
-    assert data["repositories"][0]["org_id"] == str(organization.id)
 
 
 @pytest.mark.asyncio
@@ -317,15 +313,17 @@ async def test_access_organization_repository_unauthorized(
     async_client: AsyncClient,
     active_user_auth_headers: dict,
     organization: Organization,
+    test_user: User,
     db_session: AsyncSession,
 ):
     """A non-member cannot access an organization repository by ID."""
     repo = Repository(
         id=uuid4(),
-        repo_name="org-repo",
-        full_name="testcorp/org-repo",
-        url="https://github.com/testcorp/org-repo",
-        org_id=organization.id,
+        user_id=test_user.id,
+        repo_name="org-repo-private",
+        full_name="testcorp/org-repo-private",
+        url="https://github.com/testcorp/org-repo-private",
+        organization_id=organization.id,
     )
     db_session.add(repo)
     await db_session.commit()

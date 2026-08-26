@@ -142,7 +142,7 @@ async def auto_fix_code_health_issue(
             detail="Repository not found",
         )
 
-    await check_repo_access(repository, current_user, db)
+    await check_repo_access(repository, current_user, db, write_access=True)
 
     if repository.indexing_status != IndexingStatus.COMPLETE:
         raise HTTPException(

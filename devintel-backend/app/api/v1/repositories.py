@@ -402,11 +402,7 @@ async def get_repository(
             detail="Repository not found",
         )
 
-    if repository.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to access this repository",
-        )
+    await check_repo_access(repository, current_user, db)
 
     return RepositoryResponse.model_validate(repository)
 

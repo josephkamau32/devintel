@@ -34,7 +34,7 @@ async def create_migration(
     if not repository:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Repository not found")
 
-    await check_repo_access(repository, current_user, db)
+    await check_repo_access(repository, current_user, db, write_access=True)
 
     service = CodeMigrationService(db)
     project = await service.create_migration_project(
