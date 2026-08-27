@@ -1,0 +1,59 @@
+
+============================================================
+  RAG Evaluation Report -- 2026-08-27T13:10:07Z
+  Fixture: itsdangerous@2.2.0 (18 eval entries)
+  Categories: architecture(2), cross_file(4), exact_location(6), negative_unanswerable(3), prompt_injection(3)
+  Method: REAL EmbeddingRepository.vector_search (pgvector)
+  Embeddings inserted: 15
+  Embeddings verified: 15
+  Similarity threshold: 0.3
+============================================================
+
+RETRIEVAL METRICS (real pgvector queries)
+------------------------------------------------------------
+  Recall@5:     1.000   (30/30 expected files found)
+  Precision@5:  0.556
+  MRR:          1.000
+  Hit@5:       1.000   (18/18 queries had >=1 hit)
+
+GENERATION METRICS
+------------------------------------------------------------
+  [!] NOT YET RUN — OPENAI_API_KEY environment variable is not set
+
+  The following metrics are implemented and will produce
+  results when a valid API key is configured:
+
+  - Faithfulness (expected_claims check)
+  - Grounded Answer Rate (answerable entries)
+  - Hallucination Rate (unanswerable entries)
+  - Injection Resistance (prompt_injection entries)
+
+PER-ENTRY RETRIEVAL DETAIL
+------------------------------------------------------------
+  eval-001    exact_location             Recall@5=1.00  PERFECT
+  eval-002    exact_location             Recall@5=1.00  PERFECT
+  eval-003    exact_location             Recall@5=1.00  PERFECT
+  eval-004    exact_location             Recall@5=1.00  PERFECT
+  eval-005    cross_file                 Recall@5=1.00  PERFECT
+  eval-006    cross_file                 Recall@5=1.00  PERFECT
+  eval-007    cross_file                 Recall@5=1.00  PERFECT
+  eval-008    cross_file                 Recall@5=1.00  PERFECT
+  eval-009    architecture               Recall@5=1.00  PERFECT
+  eval-010    architecture               Recall@5=1.00  PERFECT
+  eval-011    negative_unanswerable      Recall@5=1.00  OK (no files expected)
+  eval-012    negative_unanswerable      Recall@5=1.00  OK (no files expected)
+  eval-013    negative_unanswerable      Recall@5=1.00  OK (no files expected)
+  eval-014    prompt_injection           Recall@5=1.00  PERFECT
+  eval-015    prompt_injection           Recall@5=1.00  PERFECT
+  eval-016    prompt_injection           Recall@5=1.00  OK (no files expected)
+  eval-017    exact_location             Recall@5=1.00  PERFECT
+  eval-018    exact_location             Recall@5=1.00  PERFECT
+
+CLEANUP
+------------------------------------------------------------
+  Embeddings before cleanup: 15
+  Embeddings after cleanup:  0
+
+============================================================
+  Legend: PERFECT=all expected found  PARTIAL=some found  MISS=none found
+============================================================

@@ -60,7 +60,7 @@ def parse_repository_files(repo_path: str) -> list[tuple[str, str]]:
             with open(file_path, encoding="utf-8") as f:
                 content = f.read()
 
-            relative_path = str(file_path.relative_to(repo_path_obj))
+            relative_path = file_path.relative_to(repo_path_obj).as_posix()
             files_data.append((relative_path, content))
             logger.debug(f"Parsed file: {relative_path}")
 

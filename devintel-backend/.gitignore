@@ -74,3 +74,6 @@ dmypy.json
 
 # Docker
 docker-compose.override.yml
+
+# RAG eval fixture — contains synthetic poisoned files, do not publish
+tests/fixtures/eval_repo/

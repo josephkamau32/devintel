@@ -70,7 +70,7 @@ class EmbeddingRepository(BaseRepository[Embedding]):
         result = await self.db.execute(
             query,
             {
-                "query_embedding": query_embedding,
+                "query_embedding": str(query_embedding) if isinstance(query_embedding, list) else query_embedding,
                 "repo_id": str(repo_id),
                 "top_k": top_k,
                 "threshold": active_threshold,
