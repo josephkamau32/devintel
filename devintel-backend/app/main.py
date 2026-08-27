@@ -1,7 +1,7 @@
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request, Response, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
@@ -130,10 +130,35 @@ def create_app() -> FastAPI:
         }
 
     @app.get("/metrics")
-    async def metrics():
-        """Prometheus metrics endpoint."""
-        from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
-        from fastapi.responses import Response
+    async def metrics(request: Request):
+        """Prometheus metrics endpoint protected by API key (F-18).
+
+        Fails closed with 404 Not Found if METRICS_API_KEY is not configured
+        or if the request does not provide a matching key.
+        """
+        import secrets
+        from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+
+        if not settings.METRICS_API_KEY:
+            # Fail closed: return 404 to avoid confirming endpoint existence to probers
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Not Found",
+            )
+
+        # Check X-Metrics-Key header or Authorization: Bearer <key>
+        auth_key = request.headers.get("X-Metrics-Key")
+        if not auth_key:
+            auth_header = request.headers.get("Authorization", "")
+            if auth_header.startswith("Bearer "):
+                auth_key = auth_header[7:].strip()
+
+        if not auth_key or not secrets.compare_digest(auth_key, settings.METRICS_API_KEY):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Not Found",
+            )
+
         return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
     logger.info("%s started. Debug=%s", settings.APP_NAME, settings.DEBUG)

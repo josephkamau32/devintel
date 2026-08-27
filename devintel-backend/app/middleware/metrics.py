@@ -67,11 +67,41 @@ github_api_calls_total = Counter(
 )
 
 
+from starlette.routing import Match
+
+
+def get_route_template(request: Request) -> str:
+    """Extract matched route template to avoid metric cardinality explosion and PII leakage.
+
+    Prefers `request.scope['route'].path` (e.g. `/api/v1/repos/{repository_id}/search`).
+    Falls back to matching against application routes, and finally raw URL path.
+
+    PERFORMANCE NOTE (Big-O complexity):
+    When `scope['route']` is not yet populated before downstream routing, the fallback
+    linearly checks registered routes in `app.routes`. This has an O(N) complexity where
+    N is the number of routes (in this application, N ≈ 20). The microsecond overhead
+    is negligible for web request lifecycles and guarantees matched label symmetry
+    between gauge inc() and dec() calls.
+    """
+    route = request.scope.get("route")
+    if route and hasattr(route, "path"):
+        return route.path
+
+    app = request.scope.get("app") or getattr(request, "app", None)
+    if app and hasattr(app, "routes"):
+        for r in app.routes:
+            match, _ = r.matches(request.scope)
+            if match == Match.FULL and hasattr(r, "path"):
+                return r.path
+
+    return request.url.path
+
+
 class PrometheusMiddleware(BaseHTTPMiddleware):
     """Middleware to collect Prometheus metrics."""
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        """Collect metrics for each request."""
+        """Collect metrics for each request using parameterized route templates."""
         method = request.method
         path = request.url.path
 
@@ -79,8 +109,10 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
         if path == "/metrics":
             return await call_next(request)
 
+        endpoint_template = get_route_template(request)
+
         # Increment in-progress gauge
-        http_requests_in_progress.labels(method=method, endpoint=path).inc()
+        http_requests_in_progress.labels(method=method, endpoint=endpoint_template).inc()
 
         # Time the request
         start_time = time.time()
@@ -93,21 +125,21 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
             logger.error(f"Request failed: {e}")
             raise
         finally:
-            # Record metrics
+            final_endpoint = get_route_template(request)
             duration = time.time() - start_time
 
             http_requests_total.labels(
                 method=method,
-                endpoint=path,
+                endpoint=final_endpoint,
                 status=status_code,
             ).inc()
 
             http_request_duration_seconds.labels(
                 method=method,
-                endpoint=path,
+                endpoint=final_endpoint,
             ).observe(duration)
 
-            http_requests_in_progress.labels(method=method, endpoint=path).dec()
+            http_requests_in_progress.labels(method=method, endpoint=endpoint_template).dec()
 
         return response
 

@@ -5,12 +5,16 @@ global:
     cluster: 'devintel-production'
 
 scrape_configs:
-  # DevIn tel Backend API
+  # DevIntel Backend API
   - job_name: 'devintel-api'
     static_configs:
       - targets: ['backend:8000']
     metrics_path: '/metrics'
     scrape_interval: 10s
+    authorization:
+      type: Bearer
+      # Placeholder: Must match production METRICS_API_KEY configured for devintel-backend
+      credentials: 'devintel-metrics-secret-key-change-in-prod'
 
   # Prometheus self-monitoring
   - job_name: 'prometheus'

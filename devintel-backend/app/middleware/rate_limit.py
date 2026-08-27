@@ -1,8 +1,10 @@
-"""Rate limiting middleware using Redis sliding window counter.
+"""Rate limiting middleware using Redis sliding window counter with in-memory fallback.
 
 Provides per-user rate limiting with configurable limits per endpoint group.
-Falls back to allowing all requests when Redis is unavailable, so the
-application degrades gracefully in environments without Redis (e.g., local dev).
+When Redis is available, it uses Redis sorted sets for distributed sliding-window
+rate limiting. When Redis is unavailable (e.g. offline, connection failure, or
+free-tier environments without Redis), it gracefully falls back to a process-local
+in-memory sliding window rate limiter rather than failing open.
 """
 
 import time
@@ -29,16 +31,78 @@ ENDPOINT_RATE_LIMITS: dict[str, int] = {
     "/api/v1/agent": 10,
 }
 
+# ---------------------------------------------------------------------------
+# In-memory sliding-window fallback store (F-11)
+#
+# Process-local fallback for when Redis is unconfigured or unreachable.
+# LIMITATION NOTE:
+# This in-memory dictionary is strictly process-local and does NOT coordinate
+# rate limits across multiple server instances, worker processes, or containers.
+# In a multi-worker setup without Redis, each worker tracks its own window
+# independently. When Redis is healthy, the distributed Redis-backed limiter is
+# used exclusively.
+# ---------------------------------------------------------------------------
+_in_memory_store: dict[str, list[float]] = {}
+
+
+def reset_in_memory_rate_limit_store() -> None:
+    """Clear in-memory rate limiting store (useful for tests)."""
+    _in_memory_store.clear()
+
+
+def _check_in_memory_rate_limit(
+    window_key: str,
+    rate_limit: int,
+    client_key: str,
+    path: str,
+    request_id: str = "unknown",
+) -> Response | None:
+    """Check and update sliding-window rate limit in memory.
+
+    Returns a 429 JSONResponse if limit is exceeded, or None if allowed.
+    """
+    now = time.time()
+    window_start = now - 60.0  # 60-second sliding window
+
+    # Fetch existing timestamps and prune entries older than window
+    timestamps = _in_memory_store.get(window_key, [])
+    timestamps = [ts for ts in timestamps if ts > window_start]
+
+    if len(timestamps) >= rate_limit:
+        _in_memory_store[window_key] = timestamps
+        logger.warning(
+            "Rate limit exceeded (in-memory fallback)",
+            extra={
+                "client": client_key,
+                "path": path,
+                "limit": rate_limit,
+                "count": len(timestamps),
+            },
+        )
+        return JSONResponse(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            content={
+                "detail": "Rate limit exceeded. Please try again later.",
+                "error_code": "RATE_LIMIT_EXCEEDED",
+                "request_id": request_id,
+            },
+            headers={"Retry-After": "60"},
+        )
+
+    timestamps.append(now)
+    _in_memory_store[window_key] = timestamps
+    return None
+
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
-    """Per-user sliding window rate limiter backed by Redis.
+    """Per-user sliding window rate limiter backed by Redis with in-memory fallback.
 
     Uses a Redis sorted set per user+endpoint to implement a sliding
     window counter. Each request adds a timestamped entry; entries older
     than 60 seconds are pruned on each check.
 
-    When Redis is unavailable, all requests are allowed (fail-open)
-    to avoid breaking the application in environments without Redis.
+    When Redis is unavailable or errors out, requests fall back to an
+    in-memory sliding window counter (F-11) instead of bypassing rate limits.
     """
 
     def __init__(self, app: ASGIApp, default_limit: int = 100):
@@ -77,7 +141,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         client_key = self._get_client_key(request)
         rate_limit = self._get_rate_limit(request.url.path)
-        window_key = f"ratelimit:{client_key}:{request.url.path.split('/')[3] if len(request.url.path.split('/')) > 3 else 'global'}"
+        group = request.url.path.split('/')[3] if len(request.url.path.split('/')) > 3 else 'global'
+        window_key = f"ratelimit:{client_key}:{group}"
+        request_id = getattr(request.state, "request_id", "unknown")
 
         try:
             from app.core.redis_pool import RedisPool
@@ -85,8 +151,20 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             redis_client = await RedisPool.get_client()
 
             if redis_client is None:
-                # No Redis available — fail open
-                return await call_next(request)
+                # No Redis available — activate in-memory fallback (F-11)
+                fallback_response = _check_in_memory_rate_limit(
+                    window_key=window_key,
+                    rate_limit=rate_limit,
+                    client_key=client_key,
+                    path=request.url.path,
+                    request_id=request_id,
+                )
+                if fallback_response is not None:
+                    return fallback_response
+
+                response = await call_next(request)
+                response.headers["X-RateLimit-Limit"] = str(rate_limit)
+                return response
 
             now = time.time()
             window_start = now - 60  # 60-second sliding window
@@ -125,16 +203,23 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     content={
                         "detail": "Rate limit exceeded. Please try again later.",
                         "error_code": "RATE_LIMIT_EXCEEDED",
-                        "request_id": getattr(
-                            request.state, "request_id", "unknown"
-                        ),
+                        "request_id": request_id,
                     },
                     headers={"Retry-After": "60"},
                 )
 
         except Exception as e:
-            # Redis errors should never break the application — fail open
-            logger.error(f"Rate limiting error (failing open): {e}")
+            # Redis errors — fall back to in-memory sliding window limiter (F-11)
+            logger.error(f"Rate limiting Redis error (falling back to in-memory): {e}")
+            fallback_response = _check_in_memory_rate_limit(
+                window_key=window_key,
+                rate_limit=rate_limit,
+                client_key=client_key,
+                path=request.url.path,
+                request_id=request_id,
+            )
+            if fallback_response is not None:
+                return fallback_response
 
         # Add rate limit headers to response
         response = await call_next(request)

@@ -77,6 +77,10 @@ class Settings(BaseSettings):
     # Default empty → webhook validation will reject requests unless explicitly configured
     GITHUB_WEBHOOK_SECRET: str = ""
 
+    # Metrics endpoint protection (F-18)
+    # Default empty → /metrics will fail closed (return 404) unless configured
+    METRICS_API_KEY: str = ""
+
     # CORS — stored as JSON string in env: '["http://localhost:5173"]' or comma-separated string
     CORS_ORIGINS: str | list[str] = ["http://localhost:5173"]
 

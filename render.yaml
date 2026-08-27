@@ -36,6 +36,8 @@ services:
         generateValue: true
       - key: TOKEN_ENCRYPTION_KEY
         sync: false
+      - key: METRICS_API_KEY
+        generateValue: true
 
 databases:
   - name: devintel-db

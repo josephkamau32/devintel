@@ -30,6 +30,15 @@ def event_loop():
     loop.close()
 
 
+@pytest.fixture(autouse=True)
+def reset_rate_limits():
+    """Reset in-memory rate limiting store before and after each test."""
+    from app.middleware.rate_limit import reset_in_memory_rate_limit_store
+    reset_in_memory_rate_limit_store()
+    yield
+    reset_in_memory_rate_limit_store()
+
+
 @pytest_asyncio.fixture(scope="function")
 async def db_session():
     engine = create_async_engine(TEST_DB_URL, echo=False)
