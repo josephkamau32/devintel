@@ -29,10 +29,10 @@ async def test_chat_service_retrieve_chunks():
         (Embedding(id=uuid4(), chunk_text="class TestClass: pass", file_path="test.py", chunk_index=1), 0.90),
     ]
 
-    # Mock embedding repository
     mock_embedding_repo = Mock()
     mock_embedding_repo.vector_search = AsyncMock(return_value=mock_embeddings)
     mock_embedding_repo.get_neighbors = AsyncMock(side_effect=lambda **kwargs: [emb for emb, sim in mock_embeddings if emb.file_path == kwargs.get("file_path") and emb.chunk_index == kwargs.get("chunk_index")])
+    mock_embedding_repo.batch_get_neighbors = AsyncMock(return_value=[emb for emb, sim in mock_embeddings])
 
     # Mock embedding service
     mock_embedding_service = Mock()

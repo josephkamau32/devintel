@@ -77,8 +77,8 @@ async def embedding_repo(db_session: AsyncSession) -> EmbeddingRepository:
 
 @pytest_asyncio.fixture
 async def chat_service() -> ChatService:
-    """Create a ChatService with mocked OpenAI client."""
-    with patch("app.services.chat.OpenAIClient"):
+    """Create a ChatService with mocked orchestrator and embedding service."""
+    with patch("app.services.chat.get_orchestrator"):
         with patch("app.services.chat.EmbeddingService"):
             service = ChatService()
             return service
@@ -246,7 +246,7 @@ class TestRAGPipelineRetrieval:
         )
 
         # Mock cache to simulate cache miss
-        with patch("app.services.chat.cache") as mock_cache:
+        with patch("app.ai.context.pipeline.cache") as mock_cache:
             mock_cache.get = AsyncMock(return_value=None)
             mock_cache.set = AsyncMock()
 
