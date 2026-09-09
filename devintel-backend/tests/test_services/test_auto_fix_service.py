@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.core.exceptions import APIError
+from app.core.exceptions import AuthenticationError
 from app.models.repository import Repository
 from app.models.user import User
 from app.services.auto_fix_service import AutoFixService
@@ -42,7 +42,7 @@ async def test_generate_and_apply_fix_no_token(mock_embedding_cls, mock_orch, mo
     mock_user.github_token_encrypted = None
     service = AutoFixService()
 
-    with pytest.raises(APIError, match="GitHub access token required"):
+    with pytest.raises(AuthenticationError, match="GitHub access token required"):
         await service.generate_and_apply_fix(
             repository=mock_repository,
             issue_description="Fix bug",

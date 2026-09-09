@@ -7,7 +7,7 @@ from typing import Any
 
 from github import GithubException
 
-from app.core.exceptions import APIError
+from app.core.exceptions import APIError, AuthenticationError, NotFoundError
 from app.core.logging import get_logger
 from app.integrations.github_client import GitHubClient
 from app.ai.orchestrator import get_orchestrator
@@ -46,7 +46,7 @@ class AutoFixService:
 
         # Ensure we have a GitHub token for the user
         if not user.github_token_encrypted:
-            raise APIError("GitHub access token required for auto-fix.", status_code=400)
+            raise AuthenticationError("GitHub access token required for auto-fix.")
 
         token = encryption_service.decrypt(user.github_token_encrypted)
         github_client = GitHubClient(token)
@@ -60,7 +60,7 @@ class AutoFixService:
         )
 
         if not hits:
-            raise APIError("Could not find relevant files in the codebase to fix this issue.", status_code=404)
+            raise NotFoundError("Could not find relevant files in the codebase to fix this issue.")
 
         # Deduplicate files from chunks
         relevant_files = list({hit[0].file_path for hit in hits})
@@ -99,13 +99,13 @@ class AutoFixService:
                 logger.warning(f"Failed to read {file_path} from GitHub: {e}")
 
         if not file_contents:
-            raise APIError("Failed to retrieve content for any relevant files.", status_code=500)
+            raise APIError("Failed to retrieve content for any relevant files.")
 
         # 3. Generate fix using LLM
         fix_plan = await self._generate_fix(repository.full_name, issue_description, file_contents)
 
         if not fix_plan or not fix_plan.get("modified_files"):
-            raise APIError("AI could not generate a valid fix for this issue.", status_code=500)
+            raise APIError("AI could not generate a valid fix for this issue.")
 
         # 4. Apply fix (Branch -> Commit -> PR)
         branch_name = f"devintel/auto-fix-{uuid.uuid4().hex[:8]}"
