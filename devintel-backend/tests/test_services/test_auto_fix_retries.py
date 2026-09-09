@@ -1,5 +1,5 @@
 import json
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -7,10 +7,12 @@ from app.services.auto_fix_service import AutoFixService
 
 
 @pytest.mark.asyncio
-async def test_generate_fix_with_linter_retry():
+@patch("app.services.auto_fix_service.get_orchestrator")
+@patch("app.services.auto_fix_service.EmbeddingService")
+async def test_generate_fix_with_linter_retry(mock_embedding_cls, mock_orch):
     """Test that _generate_fix retries when the LLM produces syntax errors."""
     service = AutoFixService()
-    service.openai_client = AsyncMock()
+    service.orchestrator = AsyncMock()
 
     file_contents = {"src/test.py": "def test():\n    pass"}
 
@@ -47,7 +49,7 @@ async def test_generate_fix_with_linter_retry():
         def __init__(self, content):
             self.content = content
 
-    service.openai_client.chat_completion.side_effect = [
+    service.orchestrator.complete.side_effect = [
         MockResponse(json.dumps(bad_json)),
         MockResponse(json.dumps(good_json))
     ]
@@ -58,5 +60,5 @@ async def test_generate_fix_with_linter_retry():
     assert "modified_files" in result
     assert result["modified_files"][0]["new_content"] == "def test():\n    return True"
 
-    # Assert openai was called exactly 2 times (initial failure + 1 retry)
-    assert service.openai_client.chat_completion.call_count == 2
+    # Assert orchestrator was called exactly 2 times (initial failure + 1 retry)
+    assert service.orchestrator.complete.call_count == 2

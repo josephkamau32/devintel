@@ -3,6 +3,12 @@ import { Modal } from './ui/Modal';
 import { useGitHubRepositories, connectRepository } from '../hooks/useRepositories';
 import { Loader2, Plus, Check, Search, AlertCircle, FolderGit2 } from 'lucide-react';
 import { GitHubRepository } from '../types/repository';
+import { AxiosError } from 'axios';
+
+interface ValidationError {
+  field: string;
+  message: string;
+}
 
 interface ConnectRepoModalProps {
   isOpen: boolean;
@@ -29,14 +35,15 @@ export const ConnectRepoModal: React.FC<ConnectRepoModalProps> = ({
     try {
       await connectRepository(repo);
       onConnect();
-    } catch (err: any) {
-      const detail = err.response?.data?.detail;
-      const errors = err.response?.data?.errors;
+    } catch (err: unknown) {
+      const axiosErr = err as AxiosError<{ detail?: string; errors?: ValidationError[] }>;
+      const detail = axiosErr.response?.data?.detail;
+      const errors = axiosErr.response?.data?.errors;
       let message = 'Failed to connect repository';
       if (typeof detail === 'string') {
         message = detail;
       } else if (Array.isArray(errors) && errors.length > 0) {
-        message = errors.map((e: any) => `${e.field}: ${e.message}`).join(', ');
+        message = errors.map((e: ValidationError) => `${e.field}: ${e.message}`).join(', ');
       }
       setError(message);
     } finally {

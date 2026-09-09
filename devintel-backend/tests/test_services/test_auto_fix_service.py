@@ -16,9 +16,9 @@ def mock_user():
     return User(
         id=uuid.uuid4(),
         email="test@example.com",
-        name="Test User",
+        full_name="Test User",
         github_id="12345",
-        github_access_token_encrypted="fake-token",
+        github_token_encrypted="fake-token",
     )
 
 
@@ -35,9 +35,11 @@ def mock_repository(mock_user):
 
 
 @pytest.mark.asyncio
-async def test_generate_and_apply_fix_no_token(mock_repository, mock_user):
+@patch("app.services.auto_fix_service.get_orchestrator")
+@patch("app.services.auto_fix_service.EmbeddingService")
+async def test_generate_and_apply_fix_no_token(mock_embedding_cls, mock_orch, mock_repository, mock_user):
     """Test auto-fix fails if user has no GitHub token."""
-    mock_user.github_access_token_encrypted = None
+    mock_user.github_token_encrypted = None
     service = AutoFixService()
 
     with pytest.raises(APIError, match="GitHub access token required"):
@@ -51,7 +53,7 @@ async def test_generate_and_apply_fix_no_token(mock_repository, mock_user):
 
 @pytest.mark.asyncio
 @patch("app.services.auto_fix_service.GitHubClient")
-@patch("app.services.auto_fix_service.OpenAIClient")
+@patch("app.services.auto_fix_service.get_orchestrator")
 @patch("app.services.auto_fix_service.EmbeddingService")
 @patch("app.services.auto_fix_service.encryption_service")
 async def test_generate_and_apply_fix_success(

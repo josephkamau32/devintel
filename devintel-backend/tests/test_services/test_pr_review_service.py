@@ -18,7 +18,7 @@ from app.services.pr_review_service import REVIEW_WATERMARK, PRReviewService
 def service() -> PRReviewService:
     """Create a PRReviewService with mocked internal clients."""
     with (
-        patch("app.services.pr_review_service.OpenAIClient"),
+        patch("app.services.pr_review_service.get_orchestrator"),
         patch("app.services.pr_review_service.EmbeddingService"),
     ):
         svc = PRReviewService()
@@ -200,8 +200,8 @@ class TestGenerateReview:
 
         mock_response = MagicMock()
         mock_response.content = json.dumps(valid_review_json)
-        service.openai_client = MagicMock()
-        service.openai_client.chat_completion = AsyncMock(return_value=mock_response)
+        service.orchestrator = MagicMock()
+        service.orchestrator.complete = AsyncMock(return_value=mock_response)
 
         result = await service.generate_review(
             repository=sample_repo,
@@ -228,8 +228,8 @@ class TestGenerateReview:
 
         mock_response = MagicMock()
         mock_response.content = json.dumps(valid_review_json)
-        service.openai_client = MagicMock()
-        service.openai_client.chat_completion = AsyncMock(return_value=mock_response)
+        service.orchestrator = MagicMock()
+        service.orchestrator.complete = AsyncMock(return_value=mock_response)
 
         await service.generate_review(
             repository=sample_repo,
@@ -255,8 +255,8 @@ class TestGenerateReview:
 
         mock_response = MagicMock()
         mock_response.content = "Sorry, I cannot generate a review right now."
-        service.openai_client = MagicMock()
-        service.openai_client.chat_completion = AsyncMock(return_value=mock_response)
+        service.orchestrator = MagicMock()
+        service.orchestrator.complete = AsyncMock(return_value=mock_response)
 
         result = await service.generate_review(
             repository=sample_repo,
@@ -288,8 +288,8 @@ class TestGenerateReview:
 
         mock_response = MagicMock()
         mock_response.content = json.dumps(valid_review_json)
-        service.openai_client = MagicMock()
-        service.openai_client.chat_completion = AsyncMock(return_value=mock_response)
+        service.orchestrator = MagicMock()
+        service.orchestrator.complete = AsyncMock(return_value=mock_response)
 
         await service.generate_review(
             repository=sample_repo,

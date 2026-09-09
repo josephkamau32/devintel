@@ -27,7 +27,7 @@ def mock_embedding_repo():
 @pytest.fixture
 def agent_service():
     """AgentService instance with mocked clients."""
-    with patch("app.services.agent.OpenAIClient") as mock_openai, \
+    with patch("app.services.agent.get_orchestrator") as mock_orchestrator, \
          patch("app.services.agent.GitHubClient") as mock_github, \
          patch("app.services.agent.ChatService") as mock_chat:
 
@@ -55,7 +55,6 @@ async def test_draft_pr_plan_success(agent_service, mock_repository, mock_embedd
     """Test successful PR drafting."""
     # Mock LLM response
     mock_response = MagicMock()
-    mock_tool_call = MagicMock()
 
     expected_args = {
         "branch_name": "feature/test",
@@ -64,9 +63,8 @@ async def test_draft_pr_plan_success(agent_service, mock_repository, mock_embedd
         "commit_message": "fix: bug",
         "file_changes": [{"path": "src/main.py", "content": "def main(): return True"}]
     }
-    mock_tool_call.function.arguments = json.dumps(expected_args)
-    mock_response.tool_calls = [mock_tool_call]
-    agent_service.openai_client.chat_completion = AsyncMock(return_value=mock_response)
+    mock_response.tool_calls = [{"function": {"arguments": json.dumps(expected_args)}}]
+    agent_service.orchestrator.complete = AsyncMock(return_value=mock_response)
 
     # Execute
     result = await agent_service.draft_pr_plan(
@@ -78,7 +76,7 @@ async def test_draft_pr_plan_success(agent_service, mock_repository, mock_embedd
     # Asserts
     assert result == expected_args
     agent_service.chat_service.retrieve_relevant_chunks.assert_called_once()
-    agent_service.openai_client.chat_completion.assert_called_once()
+    agent_service.orchestrator.complete.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -86,7 +84,7 @@ async def test_draft_pr_plan_missing_tool_call(agent_service, mock_repository, m
     """Test drafting fails gracefully if LLM returns text instead of a tool call."""
     mock_response = MagicMock()
     mock_response.tool_calls = None
-    agent_service.openai_client.chat_completion = AsyncMock(return_value=mock_response)
+    agent_service.orchestrator.complete = AsyncMock(return_value=mock_response)
 
     with pytest.raises(ValueError, match="failed to generate a Pull Request instruction"):
         await agent_service.draft_pr_plan(
@@ -100,7 +98,6 @@ async def test_draft_pr_plan_missing_tool_call(agent_service, mock_repository, m
 async def test_draft_pr_plan_empty_files(agent_service, mock_repository, mock_embedding_repo):
     """Test drafting fails if no file changes are proposed."""
     mock_response = MagicMock()
-    mock_tool_call = MagicMock()
 
     expected_args = {
         "branch_name": "feature/test",
@@ -109,9 +106,8 @@ async def test_draft_pr_plan_empty_files(agent_service, mock_repository, mock_em
         "commit_message": "Empty",
         "file_changes": []
     }
-    mock_tool_call.function.arguments = json.dumps(expected_args)
-    mock_response.tool_calls = [mock_tool_call]
-    agent_service.openai_client.chat_completion = AsyncMock(return_value=mock_response)
+    mock_response.tool_calls = [{"function": {"arguments": json.dumps(expected_args)}}]
+    agent_service.orchestrator.complete = AsyncMock(return_value=mock_response)
 
     with pytest.raises(ValueError, match="did not suggest any file changes"):
         await agent_service.draft_pr_plan(

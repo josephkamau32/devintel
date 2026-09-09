@@ -17,7 +17,7 @@ from app.services.code_health_service import PROBE_QUERIES, CodeHealthService
 @pytest.fixture
 def service() -> CodeHealthService:
     with (
-        patch("app.services.code_health_service.OpenAIClient"),
+        patch("app.services.code_health_service.get_orchestrator"),
         patch("app.services.code_health_service.EmbeddingService"),
     ):
         svc = CodeHealthService()
@@ -246,8 +246,8 @@ class TestAnalyze:
 
         mock_llm_response = MagicMock()
         mock_llm_response.content = json.dumps(valid_health_json)
-        service.openai_client = MagicMock()
-        service.openai_client.chat_completion = AsyncMock(return_value=mock_llm_response)
+        service.orchestrator = MagicMock()
+        service.orchestrator.complete = AsyncMock(return_value=mock_llm_response)
 
         result = await service.analyze(
             repository=sample_repo,
@@ -287,8 +287,8 @@ class TestAnalyze:
         service.embedding_service.generate_embedding = AsyncMock(return_value=[0.0] * 1536)
 
         # LLM should NOT be called when no chunks available
-        service.openai_client = MagicMock()
-        service.openai_client.chat_completion = AsyncMock()
+        service.orchestrator = MagicMock()
+        service.orchestrator.complete = AsyncMock()
 
         await service.analyze(
             repository=sample_repo,
@@ -297,7 +297,7 @@ class TestAnalyze:
         )
 
         mock_health_repo.upsert.assert_called_once()
-        service.openai_client.chat_completion.assert_not_called()
+        service.orchestrator.complete.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_analyze_deduplicates_chunks(self, service, sample_repo, valid_health_json):
@@ -332,8 +332,8 @@ class TestAnalyze:
 
         mock_llm_response = MagicMock()
         mock_llm_response.content = json.dumps(valid_health_json)
-        service.openai_client = MagicMock()
-        service.openai_client.chat_completion = AsyncMock(return_value=mock_llm_response)
+        service.orchestrator = MagicMock()
+        service.orchestrator.complete = AsyncMock(return_value=mock_llm_response)
 
         await service.analyze(
             repository=sample_repo,
