@@ -139,14 +139,17 @@ Provide a review as a JSON object with these exact keys:
 }}
 """
 
-    # Call OpenAI with timeout and structured JSON output
-    openai_client = OpenAIClient()
+    # Call AI via the centralized orchestrator (same pattern as PRReviewService)
+    from app.ai.orchestrator import get_orchestrator
+
+    orchestrator = get_orchestrator()
     try:
-        response = await asyncio.wait_for(
-            openai_client.chat_completion(
+        ai_response = await asyncio.wait_for(
+            orchestrator.complete(
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.3,
                 json_mode=True,
+                agent="pr_review",
             ),
             timeout=REVIEW_TIMEOUT_SECONDS,
         )
@@ -159,13 +162,13 @@ Provide a review as a JSON object with these exact keys:
 
     # Parse response
     try:
-        review_data = json.loads(response)
+        review_data = json.loads(ai_response.content)
         return PRReviewResponse(**review_data)
     except Exception as e:
         logger.error(f"Failed to parse PR review response: {e}")
         # Fallback
         return PRReviewResponse(
-            summary=response[:500],
+            summary=ai_response.content[:500],
             potential_issues=[],
             refactoring_suggestions=[],
             security_warnings=[],

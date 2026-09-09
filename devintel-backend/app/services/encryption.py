@@ -79,8 +79,16 @@ def get_encryption_service() -> EncryptionService:
     if _encryption_service is None:
         key = settings.TOKEN_ENCRYPTION_KEY
         if not key:
-            # Generate a key for development (WARNING: tokens will be lost on restart)
-            logger.warning("TOKEN_ENCRYPTION_KEY not set, using temporary key")
+            # Fail-fast in production/staging — a random key means every restart
+            # silently loses the ability to decrypt stored GitHub tokens.
+            if settings.ENVIRONMENT in ("production", "staging"):
+                raise RuntimeError(
+                    "TOKEN_ENCRYPTION_KEY must be set in production/staging. "
+                    "Generate one with: python -c "
+                    "'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'"
+                )
+            # Local dev: generate a temporary key (tokens will be lost on restart)
+            logger.warning("TOKEN_ENCRYPTION_KEY not set, using temporary key (dev only)")
             key = Fernet.generate_key().decode()
         _encryption_service = EncryptionService(key)
     return _encryption_service

@@ -8,6 +8,7 @@
     "build": "tsc && vite build",
     "postbuild": "node scripts/postbuild.cjs",
     "preview": "vite preview",
+    "lint": "eslint .",
     "test": "vitest"
   },
   "dependencies": {
