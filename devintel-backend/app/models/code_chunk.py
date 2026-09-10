@@ -17,7 +17,7 @@ class VectorType(TypeDecorator):
         if dialect.name == "sqlite":
             return dialect.type_descriptor(String())
         else:
-            return dialect.type_descriptor(Vector(1536))
+            return dialect.type_descriptor(Vector(768))
 
 
 class CodeChunk(Base, TimestampMixin):

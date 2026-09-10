@@ -38,11 +38,20 @@ class Settings(BaseSettings):
     GITHUB_CLIENT_SECRET: str
     GITHUB_REDIRECT_URI: str
 
+    # AI Provider selection ("gemini" or "openai")
+    AI_PROVIDER: str = "gemini"
+    EMBEDDING_DIMENSIONS: int = 768  # Gemini gemini-embedding-001 (Matryoshka: native 3072, reduced to 768)
+
     # OpenAI
-    OPENAI_API_KEY: str
+    OPENAI_API_KEY: str = ""
     OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
     OPENAI_MAX_TOKENS: int = 1000
     OPENAI_CHAT_MODEL: str = "gpt-4o"
+
+    # Gemini
+    GEMINI_API_KEY: str = ""
+    GEMINI_CHAT_MODEL: str = "gemini-3.6-flash"
+    GEMINI_EMBEDDING_MODEL: str = "gemini-embedding-001"
 
     # Environment
     ENVIRONMENT: str = "development"

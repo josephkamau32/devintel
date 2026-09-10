@@ -27,10 +27,21 @@ from app.ai.models import (
     EmbeddingResponse,
 )
 from app.ai.providers.base import BaseAIProvider
-from app.ai.providers.openai_provider import OpenAIProvider
+from app.core.config import settings
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
+
+
+def _create_default_provider() -> BaseAIProvider:
+    """Create the default AI provider based on the AI_PROVIDER setting."""
+    provider_name = getattr(settings, "AI_PROVIDER", "gemini").lower()
+    if provider_name == "openai":
+        from app.ai.providers.openai_provider import OpenAIProvider
+        return OpenAIProvider()
+    else:
+        from app.ai.providers.gemini_provider import GeminiProvider
+        return GeminiProvider()
 
 
 class AIOrchestrator:
@@ -47,7 +58,7 @@ class AIOrchestrator:
     """
 
     def __init__(self, provider: Optional[BaseAIProvider] = None) -> None:
-        self._provider = provider or OpenAIProvider()
+        self._provider = provider or _create_default_provider()
 
     @property
     def provider(self) -> BaseAIProvider:

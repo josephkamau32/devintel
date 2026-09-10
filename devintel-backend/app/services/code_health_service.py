@@ -190,7 +190,8 @@ Be objective, use the sampled code as evidence. Score 0=very poor, 50=average, 1
             response = await self.orchestrator.complete(
                 messages=messages,
                 temperature=0.05,
-                max_tokens=800,
+                max_tokens=2000,
+                json_mode=True,
                 agent="code_health",
             )
             raw = response.content

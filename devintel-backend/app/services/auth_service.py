@@ -89,6 +89,18 @@ class AuthService:
 
         logger.info("Demo user login: id=%s", user.id)
 
+        # Cheap existence check: verify demo user has a completed indexed repository
+        from app.repositories.repository import RepositoryRepository
+        from app.models.repository import IndexingStatus
+        repo_repo = RepositoryRepository(self.db)
+        demo_repos = await repo_repo.get_by_user(user.id)
+        has_indexed = any(r.indexing_status == IndexingStatus.COMPLETE for r in demo_repos)
+        if not has_indexed:
+            logger.warning(
+                "Demo user %s has no indexed repositories. Run 'python scripts/seed_demo.py' to seed demo repository.",
+                user.id,
+            )
+
         access_token = create_access_token(user.id)
         refresh_token = create_refresh_token(user.id)
         return user, access_token, refresh_token

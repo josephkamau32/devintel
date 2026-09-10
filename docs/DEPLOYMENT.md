@@ -165,16 +165,6 @@ services:
       - key: JWT_SECRET_KEY
         generateValue: true
 
-  # Celery Worker
-  - type: worker
-    name: devintel-worker
-    env: docker
-    dockerfilePath: ./devintel-backend/docker/Dockerfile.worker
-    envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: devintel-db
-          property: connectionString
 
 databases:
   - name: devintel-db
@@ -219,13 +209,6 @@ services:
     instance_count: 1
     instance_size_slug: basic-xxs
 
-  - name: worker
-    source:
-      repo_clone_url: https://github.com/yourusername/devintel
-      branch: main
-    dockerfile_path: devintel-backend/docker/Dockerfile.worker
-    instance_count: 1
-    instance_size_slug: basic-xxs
 
 databases:
   - engine: PG

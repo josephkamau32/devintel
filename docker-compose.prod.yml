@@ -23,7 +23,7 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  # Redis for caching and Celery queues
+  # Redis for caching (optional — app degrades gracefully without it)
   redis:
     image: redis:7-alpine
     restart: unless-stopped
@@ -60,8 +60,7 @@ services:
       - DEBUG=false
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-devintel}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-devintel_db}
       - REDIS_URL=redis://:${REDIS_PASSWORD:-changeme}@redis:6379/0
-      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-changeme}@redis:6379/1
-      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD:-changeme}@redis:6379/2
+
       # MUST be set in production to protect /metrics endpoint (F-18)
       - METRICS_API_KEY=${METRICS_API_KEY:-devintel-metrics-secret-key-change-in-prod}
     env_file:
@@ -92,46 +91,7 @@ services:
           cpus: '2'
           memory: 2G
 
-  # Celery Worker (handles repository indexing tasks)
-  worker:
-    build:
-      context: ./devintel-backend
-      dockerfile: Dockerfile
-      target: production
-    restart: unless-stopped
-    command: celery -A app.tasks.celery worker --loglevel=info --concurrency=4
-    environment:
-      - ENVIRONMENT=production
-      - DEBUG=false
-      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-devintel}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-devintel_db}
-      - REDIS_URL=redis://:${REDIS_PASSWORD:-changeme}@redis:6379/0
-      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-changeme}@redis:6379/1
-      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD:-changeme}@redis:6379/2
-    env_file:
-      - .env.production
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    healthcheck:
-      test: [ "CMD-SHELL", "celery -A app.tasks.celery inspect ping -d celery@$$HOSTNAME" ]
-      interval: 60s
-      timeout: 15s
-      retries: 3
-      start_period: 60s
-    networks:
-      - devintel-network
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "50m"
-        max-file: "5"
-    deploy:
-      resources:
-        limits:
-          cpus: '4'
-          memory: 4G
+
 
   # Nginx Reverse Proxy + Frontend serving
   # Note: Place your SSL certs at ./nginx/ssl/fullchain.pem and ./nginx/ssl/privkey.pem

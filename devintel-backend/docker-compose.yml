@@ -1,4 +1,3 @@
-version: '3.8'
 
 services:
   postgres:
@@ -63,39 +62,6 @@ services:
     networks:
       - devintel-network
 
-  worker:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.worker
-    container_name: devintel_worker
-    env_file:
-      - .env
-    volumes:
-      - ./app:/app/app
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    command: celery -A app.tasks.celery worker --loglevel=info --concurrency=4
-    networks:
-      - devintel-network
-
-  flower:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.worker
-    container_name: devintel_flower
-    ports:
-      - "5555:5555"
-    env_file:
-      - .env
-    depends_on:
-      - redis
-      - worker
-    command: celery -A app.tasks.celery flower --port=5555
-    networks:
-      - devintel-network
 
 volumes:
   postgres_data:

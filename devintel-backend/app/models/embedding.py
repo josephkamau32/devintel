@@ -32,8 +32,8 @@ class Embedding(Base, UUIDMixin, TimestampMixin):
     chunk_index: Mapped[int] = mapped_column(Integer, nullable=False)
     chunk_text: Mapped[str] = mapped_column(Text, nullable=False)
 
-    # Vector embedding (1536 dimensions for OpenAI text-embedding-3-small)
-    embedding: Mapped[Vector] = mapped_column(Vector(1536), nullable=False)
+    # Vector embedding (dimension set by EMBEDDING_DIMENSIONS in config)
+    embedding: Mapped[Vector] = mapped_column(Vector(768), nullable=False)
 
     # Relationships
     repository: Mapped["Repository"] = relationship("Repository", back_populates="embeddings")

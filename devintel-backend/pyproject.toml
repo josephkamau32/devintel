@@ -100,7 +100,6 @@ disallow_untyped_defs = true
 [[tool.mypy.overrides]]
 module = [
     "redis.*",
-    "celery.*",
     "pgvector.*",
     "tree_sitter.*",
     "tree_sitter_language_pack.*",

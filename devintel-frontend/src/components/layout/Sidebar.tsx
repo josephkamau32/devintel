@@ -4,8 +4,7 @@ import {
   FolderGit2,
   Sparkles,
   Network,
-  Shield,
-  Gauge,
+  Activity,
   MessageSquareText,
   BarChart3,
   Settings,
@@ -30,8 +29,7 @@ const navItems = [
 
 const workspaceItems = [
   { to: '/architecture', icon: Network, label: 'Architecture' },
-  { to: '/security', icon: Shield, label: 'Security' },
-  { to: '/performance', icon: Gauge, label: 'Performance' },
+  { to: '/health', icon: Activity, label: 'Code Health' },
   { to: '/reviews', icon: MessageSquareText, label: 'Reviews' },
 ];
 
@@ -107,7 +105,7 @@ export function Sidebar({ collapsed, onToggle, repoCount }: SidebarProps) {
               return (
                 <NavLink
                   key={item.to}
-                  to={`/repositories/${repoMatch![1]}${item.to === '/architecture' ? '/architecture' : item.to === '/security' ? '/health' : item.to === '/performance' ? '/health' : '/reviews'}`}
+                  to={`/repositories/${repoMatch![1]}${item.to}`}
                   className={({ isActive }) =>
                     clsx(
                       'sidebar-nav-item',
