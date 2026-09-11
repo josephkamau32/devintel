@@ -68,7 +68,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check deployment configuration
+        id: check-config
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          if [ -z "$SSH_HOST" ] || [ -z "$SSH_KEY" ]; then
+            echo "configured=false" >> $GITHUB_OUTPUT
+            echo "::notice::VPS deployment secrets (SSH_HOST, SSH_PRIVATE_KEY) are not configured."
+          else
+            echo "configured=true" >> $GITHUB_OUTPUT
+          fi
+
       - name: Download frontend dist
+        if: steps.check-config.outputs.configured == 'true'
         uses: actions/download-artifact@v4
         with:
           name: frontend-dist
@@ -76,6 +90,7 @@ jobs:
 
       # Copy the built frontend to the server
       - name: Upload frontend dist to server
+        if: steps.check-config.outputs.configured == 'true'
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -87,6 +102,7 @@ jobs:
 
       # SSH in and do the deploy
       - name: Deploy via SSH
+        if: steps.check-config.outputs.configured == 'true'
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -126,10 +142,18 @@ jobs:
 
             echo "🚀 Deploy complete!"
 
-      - name: Notify success
-        if: success()
+      - name: Report skipped VPS deployment
+        if: steps.check-config.outputs.configured == 'false'
         run: |
-          echo "✅ Deployment to production completed successfully"
+          echo "ℹ️ VPS deployment is not configured (SSH_HOST / SSH_PRIVATE_KEY secrets not set)."
+          echo "ℹ️ Production environment runs on Render (Backend) and Vercel (Frontend)."
+          echo "ℹ️ Render auto-deploys from the GitHub main branch upon push."
+          echo "ℹ️ This step is skipped gracefully and is not an error state."
+
+      - name: Notify success
+        if: success() && steps.check-config.outputs.configured == 'true'
+        run: |
+          echo "✅ VPS deployment completed successfully"
           echo "Commit: ${{ github.sha }}"
           echo "Triggered by: ${{ github.actor }}"
 
