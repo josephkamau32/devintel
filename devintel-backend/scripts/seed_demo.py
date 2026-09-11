@@ -258,34 +258,38 @@ async def seed_demo():
         print(f"  Security Score:       {health_result.get('security_score', 'N/A')}")
         print(f"  Summary:              {health_result.get('summary', 'N/A')[:120]}...")
 
-        # 8. Seed Architecture Diagram
-        print("\n7. Seeding Architecture Diagram...")
-        mermaid_code = """graph TD
-    Client["DevIntel Frontend (React + Vite)"] --> Gateway["FastAPI REST & SSE Gateway (app/api)"]
-    Gateway --> Auth["Auth & Session Service (app/services/auth_service.py)"]
-    Gateway --> Chat["AI Chat Orchestrator (app/ai/orchestrator.py)"]
-    Gateway --> Health["Code Health Analyzer (app/services/code_health_service.py)"]
-    Gateway --> Indexer["Incremental Indexer (app/services/indexing.py)"]
-    
-    Chat --> RAG["RAG Pipeline & Vector Search (app/repositories/embedding.py)"]
-    RAG --> PGVector[("PostgreSQL 16 + pgvector")]
-    Chat --> Provider["AI Provider (Gemini / OpenAI)"]
-    
-    Indexer --> Chunker["Smart Code Chunker (app/utils/chunking.py)"]
-    Chunker --> Embeddings["Embedding Service (app/services/embedding.py)"]
-    Embeddings --> PGVector
-"""
+        # 8. Generate REAL Architecture Diagram from stored embeddings
+        print("\n7. Generating Real Architecture Diagram (from stored embeddings)...")
+        from app.services.architecture_service import CodeStructureAnalyzer, ArchitectureVisualizationService
+
+        arch_analyzer = CodeStructureAnalyzer()
+        arch_structure = await arch_analyzer.from_embeddings(
+            repo_id=repo.id,
+            session=session,
+        )
+        arch_service = ArchitectureVisualizationService(session)
+        mermaid_code = arch_service._generate_mermaid_from_structure(arch_structure, "mermaid")
+
+        print(f"  Modules found:  {len(arch_structure.get('modules', {}))}")
+        print(f"  Edges found:    {len(arch_structure.get('edges', []))}")
+        stats = arch_structure.get("stats", {})
+        print(f"  Total classes:  {stats.get('total_classes', 0)}")
+        print(f"  Total functions:{stats.get('total_functions', 0)}")
+        if arch_structure.get("capping_note"):
+            print(f"  Capping note:   {arch_structure['capping_note']}")
+
+        # Delete any existing diagrams and replace with real one
         existing_diagrams = await arch_repo.get_by_repo(repo.id)
-        if not existing_diagrams:
-            await arch_repo.create(
-                repo_id=repo.id,
-                name="DevIntel Core Architecture",
-                diagram_type="mermaid",
-                mermaid_code=mermaid_code,
-            )
-            print("  Architecture diagram created successfully.")
-        else:
-            print("  Architecture diagram already exists.")
+        if existing_diagrams:
+            await arch_repo.delete_by_repo(repo.id)
+            print("  Replaced old static diagram.")
+        await arch_repo.create(
+            repo_id=repo.id,
+            name="DevIntel Core Architecture",
+            diagram_type="mermaid",
+            mermaid_code=mermaid_code,
+        )
+        print("  Real architecture diagram created successfully.")
 
         # 9. Mark Repository as COMPLETE
         print("\n8. Finalizing Repository Status...")
