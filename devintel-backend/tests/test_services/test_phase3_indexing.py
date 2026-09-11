@@ -13,6 +13,8 @@ from app.utils.file_parser import (
     should_ignore_path,
     parse_repository_files,
 )
+from app.ai.models import EmbeddingResponse
+from app.core.config import settings
 from app.services.embedding import EmbeddingService
 from app.services.indexing import IndexingService
 
@@ -232,31 +234,35 @@ class TestEmbeddingService:
 
     @pytest.mark.asyncio
     async def test_generate_single_embedding(self):
-        """generate_embedding returns a list of 1536 floats."""
+        """generate_embedding returns a list of floats matching configured dimensions."""
         service = EmbeddingService()
-        with patch(
-            "app.integrations.openai_client.OpenAIClient.generate_embedding",
+        with patch.object(
+            service.orchestrator,
+            "embed",
             new_callable=AsyncMock,
         ) as mock_gen:
-            mock_gen.return_value = [0.1] * 1536
+            mock_gen.return_value = [0.1] * settings.EMBEDDING_DIMENSIONS
             result = await service.generate_embedding("def hello(): pass")
-        assert len(result) == 1536
+        assert len(result) == settings.EMBEDDING_DIMENSIONS
         assert all(isinstance(v, float) for v in result)
-        mock_gen.assert_called_once_with("def hello(): pass")
+        mock_gen.assert_called_once_with("def hello(): pass", agent="embedding")
 
     @pytest.mark.asyncio
     async def test_generate_embeddings_batch_all_texts(self):
         """Batch generation processes all input texts."""
         service = EmbeddingService()
         texts = [f"chunk {i}" for i in range(10)]
-        with patch(
-            "app.integrations.openai_client.OpenAIClient.generate_embeddings_batch",
+        with patch.object(
+            service.orchestrator,
+            "embed_batch",
             new_callable=AsyncMock,
         ) as mock_batch:
-            mock_batch.return_value = [[0.5] * 1536 for _ in range(10)]
+            mock_batch.return_value = EmbeddingResponse(
+                embeddings=[[0.5] * settings.EMBEDDING_DIMENSIONS for _ in range(10)]
+            )
             results = await service.generate_embeddings_batch(texts, batch_size=10)
         assert len(results) == 10
-        assert all(len(e) == 1536 for e in results)
+        assert all(len(e) == settings.EMBEDDING_DIMENSIONS for e in results)
 
     @pytest.mark.asyncio
     async def test_batch_respects_batch_size(self):
@@ -265,12 +271,15 @@ class TestEmbeddingService:
         texts = [f"text {i}" for i in range(25)]
         call_counts = []
 
-        async def mock_batch_fn(batch):
+        async def mock_batch_fn(batch, agent=None, model=None):
             call_counts.append(len(batch))
-            return [[0.1] * 1536 for _ in batch]
+            return EmbeddingResponse(
+                embeddings=[[0.1] * settings.EMBEDDING_DIMENSIONS for _ in batch]
+            )
 
-        with patch(
-            "app.integrations.openai_client.OpenAIClient.generate_embeddings_batch",
+        with patch.object(
+            service.orchestrator,
+            "embed_batch",
             side_effect=mock_batch_fn,
         ):
             results = await service.generate_embeddings_batch(texts, batch_size=10)
@@ -290,10 +299,15 @@ class TestEmbeddingService:
         async def on_progress(current, total):
             progress_calls.append((current, total))
 
-        with patch(
-            "app.integrations.openai_client.OpenAIClient.generate_embeddings_batch",
-            new_callable=AsyncMock,
-            return_value=[[0.1] * 1536 for _ in range(10)],
+        async def mock_batch_fn(batch, agent=None, model=None):
+            return EmbeddingResponse(
+                embeddings=[[0.1] * settings.EMBEDDING_DIMENSIONS for _ in range(len(batch))]
+            )
+
+        with patch.object(
+            service.orchestrator,
+            "embed_batch",
+            side_effect=mock_batch_fn,
         ):
             await service.generate_embeddings_batch(
                 texts, batch_size=10, on_progress=on_progress

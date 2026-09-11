@@ -133,8 +133,10 @@ async def test_process_push_event_with_files_updates_indexing_status(db_session,
         async def __aexit__(self, *args):
             pass
 
+    from app.core.config import settings
+
     mock_chunks = [("src/main.py", 0, "def main(): pass")]
-    mock_embeddings = [[0.1] * 1536]
+    mock_embeddings = [[0.1] * settings.EMBEDDING_DIMENSIONS]
 
     with (
         patch("app.services.incremental_indexer.AsyncSessionLocal", return_value=SessionCtx()),
