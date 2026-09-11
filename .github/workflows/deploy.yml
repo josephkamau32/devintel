@@ -25,6 +25,9 @@ jobs:
   build-frontend:
     name: Build Frontend
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./devintel-frontend
 
     steps:
       - uses: actions/checkout@v4
@@ -33,6 +36,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
+          cache-dependency-path: 'devintel-frontend/package-lock.json'
 
       - name: Install dependencies
         run: npm ci
@@ -49,7 +53,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: frontend-dist
-          path: dist/
+          path: devintel-frontend/dist/
           retention-days: 1
 
   # ──────────────────────────────────────────────
@@ -78,7 +82,7 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: "dist/"
-          target: "/opt/devintel/dist/"
+          target: "/opt/devintel/devintel-frontend/dist/"
           strip_components: 1
 
       # SSH in and do the deploy
@@ -94,6 +98,10 @@ jobs:
 
             echo "📦 Pulling latest code..."
             git pull origin main
+
+            # Ensure frontend dist is mirrored to /opt/devintel/dist if expected
+            mkdir -p /opt/devintel/dist
+            cp -r /opt/devintel/devintel-frontend/dist/* /opt/devintel/dist/ 2>/dev/null || true
 
             echo "🔨 Building and starting services..."
             docker compose -f docker-compose.prod.yml pull --quiet
