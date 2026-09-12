@@ -132,11 +132,12 @@ class GeminiProvider(BaseAIProvider):
                 system_instruction=system_instruction,
             )
 
-            async for chunk in self._client.aio.models.generate_content_stream(
+            stream_response = await self._client.aio.models.generate_content_stream(
                 model=model,
                 contents=contents,
                 config=config,
-            ):
+            )
+            async for chunk in stream_response:
                 if chunk.text:
                     yield chunk.text
 
