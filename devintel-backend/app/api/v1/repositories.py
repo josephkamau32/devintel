@@ -179,6 +179,7 @@ async def create_repository(
         stars=repo_data.stars,
         language=repo_data.language,
         default_branch=repo_data.default_branch,
+        indexing_mode="full",
     )
 
     return RepositoryResponse.model_validate(repository)

@@ -37,7 +37,7 @@ class Repository(Base, TimestampMixin):
     indexing_error = Column(Text, nullable=True)
     last_indexed_at = Column(DateTime(timezone=True), nullable=True)
     last_indexed_commit_sha = Column(String(40), nullable=True)
-    indexing_mode = Column(String(50), nullable=True)
+    indexing_mode = Column(String(50), nullable=False, default="full", server_default="full")
 
     user = relationship("User", back_populates="repositories")
     organization = relationship("Organization", back_populates="repositories")

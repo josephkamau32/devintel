@@ -145,6 +145,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         window_key = f"ratelimit:{client_key}:{group}"
         request_id = getattr(request.state, "request_id", "unknown")
 
+        rate_limit_response = None
         try:
             from app.core.redis_pool import RedisPool
 
@@ -152,76 +153,72 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
             if redis_client is None:
                 # No Redis available — activate in-memory fallback (F-11)
-                fallback_response = _check_in_memory_rate_limit(
+                rate_limit_response = _check_in_memory_rate_limit(
                     window_key=window_key,
                     rate_limit=rate_limit,
                     client_key=client_key,
                     path=request.url.path,
                     request_id=request_id,
                 )
-                if fallback_response is not None:
-                    return fallback_response
+            else:
+                now = time.time()
+                window_start = now - 60  # 60-second sliding window
 
-                response = await call_next(request)
-                response.headers["X-RateLimit-Limit"] = str(rate_limit)
-                return response
+                # Use a pipeline for atomic operations
+                pipe = redis_client.pipeline()
 
-            now = time.time()
-            window_start = now - 60  # 60-second sliding window
+                # Remove entries older than the window
+                pipe.zremrangebyscore(window_key, 0, window_start)
 
-            # Use a pipeline for atomic operations
-            pipe = redis_client.pipeline()
+                # Count current entries in the window
+                pipe.zcard(window_key)
 
-            # Remove entries older than the window
-            pipe.zremrangebyscore(window_key, 0, window_start)
+                # Add current request timestamp
+                pipe.zadd(window_key, {str(now): now})
 
-            # Count current entries in the window
-            pipe.zcard(window_key)
+                # Set TTL on the key (auto-cleanup)
+                pipe.expire(window_key, 120)
 
-            # Add current request timestamp
-            pipe.zadd(window_key, {str(now): now})
+                results = await pipe.execute()
+                current_count = results[1]  # zcard result
 
-            # Set TTL on the key (auto-cleanup)
-            pipe.expire(window_key, 120)
-
-            results = await pipe.execute()
-            current_count = results[1]  # zcard result
-
-            if current_count >= rate_limit:
-                # Calculate retry-after based on oldest entry in window
-                logger.warning(
-                    "Rate limit exceeded",
-                    extra={
-                        "client": client_key,
-                        "path": request.url.path,
-                        "limit": rate_limit,
-                        "count": current_count,
-                    },
-                )
-                return JSONResponse(
-                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                    content={
-                        "detail": "Rate limit exceeded. Please try again later.",
-                        "error_code": "RATE_LIMIT_EXCEEDED",
-                        "request_id": request_id,
-                    },
-                    headers={"Retry-After": "60"},
-                )
+                if current_count >= rate_limit:
+                    # Calculate retry-after based on oldest entry in window
+                    logger.warning(
+                        "Rate limit exceeded",
+                        extra={
+                            "client": client_key,
+                            "path": request.url.path,
+                            "limit": rate_limit,
+                            "count": current_count,
+                        },
+                    )
+                    rate_limit_response = JSONResponse(
+                        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                        content={
+                            "detail": "Rate limit exceeded. Please try again later.",
+                            "error_code": "RATE_LIMIT_EXCEEDED",
+                            "request_id": request_id,
+                        },
+                        headers={"Retry-After": "60"},
+                    )
 
         except Exception as e:
             # Redis errors — fall back to in-memory sliding window limiter (F-11)
             logger.error(f"Rate limiting Redis error (falling back to in-memory): {e}")
-            fallback_response = _check_in_memory_rate_limit(
+            rate_limit_response = _check_in_memory_rate_limit(
                 window_key=window_key,
                 rate_limit=rate_limit,
                 client_key=client_key,
                 path=request.url.path,
                 request_id=request_id,
             )
-            if fallback_response is not None:
-                return fallback_response
 
-        # Add rate limit headers to response
+        if rate_limit_response is not None:
+            return rate_limit_response
+
+        # Request is permitted — call downstream handler exactly once. Any downstream
+        # exception propagates naturally to FastAPI exception handlers without invoking call_next twice.
         response = await call_next(request)
         response.headers["X-RateLimit-Limit"] = str(rate_limit)
         return response
