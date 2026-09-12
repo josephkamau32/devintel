@@ -16,7 +16,7 @@ python-multipart==0.0.9
 email-validator==2.1.1
 
 # HTTP client (for GitHub API calls)
-httpx==0.26.0
+httpx==0.28.1
 PyGithub==2.2.0
 
 # AI
@@ -24,7 +24,7 @@ openai==1.12.0
 google-genai==2.22.0
 
 # Config
-pydantic==2.6.1
+pydantic==2.13.5
 pydantic-settings==2.1.0
 python-dotenv==1.0.1
 

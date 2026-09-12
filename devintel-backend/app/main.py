@@ -124,7 +124,7 @@ def create_app() -> FastAPI:
         return {
             "status": "ok",
             "app": settings.APP_NAME,
-            "version": "1.0.0",
+            "version": "1.0.1",
             "environment": "production" if not settings.DEBUG else "development",
             "timestamp": time.time(),
         }
