@@ -20,13 +20,23 @@ def hash_password(plain_password: str) -> str:
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify password against bcrypt hash. Returns False safely on any mismatch/malformed hash."""
+    """Verify password against bcrypt hash. Returns False safely on any mismatch/malformed hash.
+
+    Pre-validates the hash format before calling bcrypt.checkpw to avoid a Rust-level
+    panic (pyo3_runtime.PanicException) in bcrypt 4.x when the salt is malformed or too
+    short.  The bcrypt spec requires exactly 60 characters for $2b$/$2a$ hashes.
+    """
     try:
+        # Pre-validate: bcrypt hashes must start with a known prefix and be exactly 60 chars.
+        if not hashed_password or len(hashed_password) != 60:
+            return False
+        if not hashed_password.startswith(("$2b$", "$2a$", "$2y$")):
+            return False
         return bcrypt.checkpw(
             plain_password.encode("utf-8")[:72],
             hashed_password.encode("utf-8"),
         )
-    except Exception:
+    except (Exception, BaseException):  # noqa: BLE001 — catch pyo3 PanicException too
         return False
 
 

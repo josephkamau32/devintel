@@ -2,9 +2,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/axios';
 import { RepositoryListResponse, GitHubRepository } from '../types/repository';
 
+const ACTIVE_INDEXING_STATUSES = new Set(['pending', 'indexing', 'cloning', 'chunking', 'embedding']);
+
 /**
- * Fetch connected repositories — migrated from SWR to TanStack Query
- * for consistency with the rest of the app's data fetching.
+ * Fetch connected repositories — migrated from SWR to TanStack Query.
+ * Automatically polls every 3 seconds while any repository is actively indexing.
  */
 export function useRepositories(page: number = 1, limit: number = 50) {
   const queryResult = useQuery<RepositoryListResponse>({
@@ -15,6 +17,14 @@ export function useRepositories(page: number = 1, limit: number = 50) {
     },
     staleTime: 1000 * 30, // 30s — repos change infrequently
     refetchOnWindowFocus: true,
+    // Poll every 3 seconds while any repo is actively indexing so the card status updates.
+    refetchInterval: (query) => {
+      const repos = query.state.data?.repositories ?? [];
+      const hasActive = repos.some((r: { indexing_status: string }) =>
+        ACTIVE_INDEXING_STATUSES.has(r.indexing_status)
+      );
+      return hasActive ? 3000 : false;
+    },
   });
 
   return {

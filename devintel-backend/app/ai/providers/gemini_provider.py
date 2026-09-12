@@ -196,8 +196,12 @@ class GeminiProvider(BaseAIProvider):
                 )
                 return [emb.values for emb in response.embeddings]
             except ClientError as e:
-                if e.status == 429 and attempt < max_retries - 1:
-                    wait = min(2 ** (attempt + 1), 60)
+                # google-genai ClientError uses e.code (int), not e.status.
+                # e.status is always None in this SDK version.
+                err_code = getattr(e, "code", None) or getattr(e, "status", None)
+                is_rate_limit = err_code == 429 or "429" in str(e) or "quota" in str(e).lower()
+                if is_rate_limit and attempt < max_retries - 1:
+                    wait = min(2 ** (attempt + 2), 120)  # 4s, 8s, 16s, 32s, 120s
                     logger.warning(
                         "Gemini rate limited (attempt %d/%d), waiting %ds...",
                         attempt + 1, max_retries, wait,

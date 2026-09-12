@@ -58,17 +58,26 @@ export const RepositoryCard: React.FC<RepositoryCardProps> = ({ repository, onIn
           label: 'Failed',
         };
       case 'pending':
-      case 'indexing':
-      case 'cloning':
-      case 'chunking':
-      case 'embedding':
         return {
           icon: <Loader2 className="w-3.5 h-3.5 animate-spin-slow" />,
           color: 'text-status-info',
           bg: 'bg-status-info-muted',
           border: 'border-status-info/20',
-          label: status.charAt(0).toUpperCase() + status.slice(1),
+          label: 'Queued',
         };
+      case 'indexing':
+      case 'cloning':
+      case 'chunking':
+      case 'embedding': {
+        const pct = repository.indexing_progress ?? 0;
+        return {
+          icon: <Loader2 className="w-3.5 h-3.5 animate-spin-slow" />,
+          color: 'text-status-info',
+          bg: 'bg-status-info-muted',
+          border: 'border-status-info/20',
+          label: pct > 0 ? `${status.charAt(0).toUpperCase() + status.slice(1)} ${pct}%` : status.charAt(0).toUpperCase() + status.slice(1),
+        };
+      }
       default:
         return {
           icon: null,
@@ -153,13 +162,34 @@ export const RepositoryCard: React.FC<RepositoryCardProps> = ({ repository, onIn
           <Activity className="h-4 w-4 text-text-quaternary flex-shrink-0" />
           <p className="text-xs text-text-tertiary">Health analysis will run automatically.</p>
         </div>
-      ) : !isIndexing ? (
+      ) : isIndexing ? (
+        /* Progress bar during active indexing */
+        <div className="mb-3 space-y-1.5">
+          <div className="flex justify-between items-center">
+            <p className="text-xs text-text-tertiary">{repository.indexing_status === 'pending' ? 'Queued…' : 'Indexing…'}</p>
+            {(repository.indexing_progress ?? 0) > 0 && (
+              <span className="text-xs font-medium text-brand-400">{repository.indexing_progress}%</span>
+            )}
+          </div>
+          <div className="w-full h-1.5 bg-surface-4 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-brand-500 rounded-full transition-all duration-500 ease-out"
+              style={{ width: `${Math.max(repository.indexing_progress ?? 0, 5)}%` }}
+            />
+          </div>
+        </div>
+      ) : repository.indexing_status === 'failed' && repository.indexing_error ? (
+        /* Error detail for failed repos */
+        <div className="mb-3 p-3 bg-status-error-muted border border-status-error/20 rounded-lg">
+          <p className="text-xs text-status-error line-clamp-3 leading-relaxed">{repository.indexing_error}</p>
+        </div>
+      ) : (
         <div className="flex-1 flex items-center justify-center py-4">
           <p className="text-xs text-text-quaternary text-center">
             {repository.description || 'Index this repository to generate intelligence.'}
           </p>
         </div>
-      ) : null}
+      )}
 
       {/* Actions */}
       <div className="flex items-center gap-2 mt-auto pt-3 border-t border-border">

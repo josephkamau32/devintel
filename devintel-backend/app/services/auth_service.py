@@ -55,6 +55,13 @@ class AuthService:
         """
         user = await self.user_repo.get_by_email(data.email)
 
+        # GitHub-OAuth-only accounts have no hashed_password. Give a clear message
+        # rather than a misleading "Invalid email or password".
+        if user and user.hashed_password is None:
+            raise AuthenticationError(
+                "This account was created with GitHub. Please sign in with GitHub."
+            )
+
         password_ok = verify_password(
             data.password,
             user.hashed_password if user and user.hashed_password else "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW",

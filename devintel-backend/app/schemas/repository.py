@@ -19,7 +19,8 @@ class RepositoryPublic(BaseModel):
     default_branch: str
 
     indexing_status: str
-
+    indexing_progress: int = 0
+    indexing_error: Optional[str] = None
 
 
 class RepositoryCreate(BaseModel):

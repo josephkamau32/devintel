@@ -13,6 +13,8 @@ export interface Repository {
   default_branch: string;
   is_private: boolean;
   indexing_status: IndexingStatus;
+  indexing_progress: number;
+  indexing_error: string | null;
   last_indexed_commit: string | null;
 }
 
