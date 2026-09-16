@@ -1,6 +1,7 @@
 import json
+import os
 
-from pydantic import field_validator
+from pydantic import ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -13,6 +14,7 @@ class Settings(BaseSettings):
 
     # App
     APP_NAME: str = "DevIntel AI"
+    ENVIRONMENT: str = "development"
     DEBUG: bool = False
     API_V1_PREFIX: str = "/api/v1"
 
@@ -53,8 +55,7 @@ class Settings(BaseSettings):
     GEMINI_CHAT_MODEL: str = "gemini-3.6-flash"
     GEMINI_EMBEDDING_MODEL: str = "gemini-embedding-001"
 
-    # Environment
-    ENVIRONMENT: str = "development"
+    # Logging
     LOG_LEVEL: str = "INFO"
     LOG_FORMAT: str = "json"
 
@@ -108,8 +109,13 @@ class Settings(BaseSettings):
 
     @field_validator("DATABASE_URL")
     @classmethod
-    def validate_db_url(cls, v):
+    def validate_db_url(cls, v: str, info: ValidationInfo) -> str:
         from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
+
+        env = info.data.get("ENVIRONMENT") or os.getenv("ENVIRONMENT", "development")
+        if v.startswith(("sqlite://", "sqlite+aiosqlite://")):
+            if env == "testing":
+                return v
 
         # Render provides postgres://, we need postgresql+asyncpg://
         if v.startswith("postgres://"):

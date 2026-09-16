@@ -11,7 +11,7 @@ authors = [
 
 dependencies = [
     # Web framework
-    "fastapi==0.109.2",
+    "fastapi>=0.115.0",
     "uvicorn[standard]==0.27.1",
     # Database
     "sqlalchemy==2.0.27",

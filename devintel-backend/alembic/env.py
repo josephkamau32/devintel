@@ -53,7 +53,8 @@ def do_run_migrations(connection) -> None:
     from sqlalchemy import inspect as sa_inspect
 
     # ── Ensure pgvector extension is enabled ──────────────────────────
-    connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+    if connection.dialect.name == "postgresql":
+        connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
 
     inspector = sa_inspect(connection)
     existing_tables = inspector.get_table_names()
@@ -61,7 +62,7 @@ def do_run_migrations(connection) -> None:
     has_alembic = "alembic_version" in existing_tables
 
     # ── Widen version_num column if it exists ──────────────────────────
-    if has_alembic:
+    if has_alembic and connection.dialect.name == "postgresql":
         connection.execute(
             text("ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(128)")
         )

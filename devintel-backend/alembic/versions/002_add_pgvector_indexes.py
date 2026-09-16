@@ -17,6 +17,9 @@ depends_on = None
 
 def upgrade() -> None:
     """Add ANN indexes for pgvector similarity search."""
+    if op.get_bind().dialect.name != "postgresql":
+        return
+
     # Create IVFFlat index for faster similarity search
     # lists parameter: number of clusters (recommended: rows/1000, min 10)
     # For 100k embeddings, use lists=100
@@ -43,6 +46,9 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Remove ANN indexes."""
+    if op.get_bind().dialect.name != "postgresql":
+        return
+
     op.execute("DROP INDEX IF EXISTS idx_embeddings_repo_vector;")
     op.execute("DROP INDEX IF EXISTS idx_embeddings_repo_id;")
     op.execute("DROP INDEX IF EXISTS embeddings_vector_idx;")

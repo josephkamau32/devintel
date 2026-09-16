@@ -63,8 +63,8 @@ def create_admin_user(email: str, password: str) -> dict:
     }
 '''
 
-# Deterministic 1536-dim vector for mocking
-DETERMINISTIC_EMBEDDING = [0.01 * (i % 100) for i in range(1536)]
+# Deterministic 768-dim vector for mocking
+DETERMINISTIC_EMBEDDING = [0.01 * (i % 100) for i in range(768)]
 
 
 # ── Fixtures ────────────────────────────────────────────────────────────────

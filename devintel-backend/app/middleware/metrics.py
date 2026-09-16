@@ -73,26 +73,30 @@ from starlette.routing import Match
 def get_route_template(request: Request) -> str:
     """Extract matched route template to avoid metric cardinality explosion and PII leakage.
 
-    Prefers `request.scope['route'].path` (e.g. `/api/v1/repos/{repository_id}/search`).
-    Falls back to matching against application routes, and finally raw URL path.
+    Prefers matching against application routes (supporting both standard Starlette
+    routes and FastAPI >=0.115 `_IncludedRouter` contexts), falling back to raw URL path.
 
     PERFORMANCE NOTE (Big-O complexity):
-    When `scope['route']` is not yet populated before downstream routing, the fallback
-    linearly checks registered routes in `app.routes`. This has an O(N) complexity where
-    N is the number of routes (in this application, N ≈ 20). The microsecond overhead
-    is negligible for web request lifecycles and guarantees matched label symmetry
-    between gauge inc() and dec() calls.
+    When matching registered routes, this has an O(N) complexity where N is the number
+    of routes. The sub-millisecond overhead is negligible for web request lifecycles
+    and guarantees matched label symmetry between gauge inc() and dec() calls.
     """
-    route = request.scope.get("route")
-    if route and hasattr(route, "path"):
-        return route.path
-
     app = request.scope.get("app") or getattr(request, "app", None)
     if app and hasattr(app, "routes"):
         for r in app.routes:
-            match, _ = r.matches(request.scope)
-            if match == Match.FULL and hasattr(r, "path"):
-                return r.path
+            if hasattr(r, "effective_route_contexts"):
+                for ctx in r.effective_route_contexts():
+                    match, _ = ctx.matches(request.scope)
+                    if match == Match.FULL:
+                        return ctx.path_format
+            elif hasattr(r, "matches"):
+                match, _ = r.matches(request.scope)
+                if match == Match.FULL and hasattr(r, "path"):
+                    return r.path
+
+    route = request.scope.get("route")
+    if route and hasattr(route, "path"):
+        return route.path
 
     return request.url.path
 

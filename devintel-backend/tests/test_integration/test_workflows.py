@@ -2,7 +2,7 @@
 
 import pytest
 from fastapi import status
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 
 from app.main import app
 
@@ -35,7 +35,7 @@ async def test_full_repository_workflow(async_client: AsyncClient, test_user_tok
 @pytest.mark.asyncio
 async def test_authentication_flow():
     """Test GitHub OAuth authentication flow."""
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         # Step 1: Get GitHub OAuth URL
         auth_response = await client.get("/api/v1/auth/github", follow_redirects=False)
         assert auth_response.status_code == status.HTTP_302_FOUND
@@ -66,7 +66,7 @@ async def test_chat_without_repository(async_client: AsyncClient, test_user_toke
 @pytest.mark.asyncio
 async def test_rate_limiting():
     """Test rate limiting on auth endpoints."""
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         # Make multiple rapid requests
         responses = []
         for _ in range(10):
@@ -81,7 +81,7 @@ async def test_rate_limiting():
 @pytest.mark.asyncio
 async def test_health_endpoint():
     """Test application health check."""
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.get("/health")
 
         assert response.status_code == status.HTTP_200_OK

@@ -10,9 +10,15 @@ from app.core.config import settings
 engine_args = {
     "echo": settings.DEBUG,
     "pool_pre_ping": True,
-    "pool_size": settings.DATABASE_POOL_SIZE,
-    "max_overflow": settings.DATABASE_MAX_OVERFLOW,
 }
+
+if settings.DATABASE_URL.startswith("sqlite"):
+    from sqlalchemy.pool import StaticPool
+    engine_args["poolclass"] = StaticPool
+    engine_args["connect_args"] = {"check_same_thread": False}
+else:
+    engine_args["pool_size"] = settings.DATABASE_POOL_SIZE
+    engine_args["max_overflow"] = settings.DATABASE_MAX_OVERFLOW
 
 # Create async engine
 engine = create_async_engine(settings.DATABASE_URL, **engine_args)

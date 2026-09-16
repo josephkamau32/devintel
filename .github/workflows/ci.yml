@@ -113,7 +113,7 @@ jobs:
           echo "CHUNK_SIZE=700" >> .env
           echo "CHUNK_OVERLAP=120" >> .env
           echo "TOP_K_CHUNKS=6" >> .env
-          echo "EMBEDDING_DIMENSIONS=1536" >> .env
+          echo "EMBEDDING_DIMENSIONS=768" >> .env
           echo "SUPPORTED_FILE_EXTENSIONS=.py,.js,.ts,.tsx,.jsx,.java,.go,.rs,.rb,.md,.json,.yaml,.yml" >> .env
           echo "IGNORED_DIRECTORIES=node_modules,.git,dist,build,venv,.venv,__pycache__,.pytest_cache" >> .env
           echo "MAX_FILE_SIZE_MB=10" >> .env
