@@ -32,6 +32,8 @@ from app.ai.providers.base import BaseAIProvider
 from app.core.config import settings
 from app.core.exceptions import (
     CircuitBreakerError as CircuitBreakerException,
+)
+from app.core.exceptions import (
     EmbeddingError,
     ExternalServiceError,
 )

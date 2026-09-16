@@ -22,7 +22,6 @@ Usage::
 from __future__ import annotations
 
 import time
-import traceback
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 

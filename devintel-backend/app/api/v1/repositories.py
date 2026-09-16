@@ -12,6 +12,7 @@ from app.integrations.github_client import GitHubClient
 from app.models.repository import IndexingStatus
 from app.models.user import User
 from app.repositories.embedding import EmbeddingRepository
+from app.repositories.indexing_job import IndexingJobRepository
 from app.repositories.repository import RepositoryRepository
 from app.schemas.pr_review import PullRequestListResponse, PullRequestResponse
 from app.schemas.repository import (
@@ -24,7 +25,6 @@ from app.schemas.repository import (
     SearchResponse,
     SearchResult,
 )
-from app.repositories.indexing_job import IndexingJobRepository
 from app.services.embedding import EmbeddingService
 from app.services.encryption import encryption_service
 

@@ -368,7 +368,7 @@ class CodeStructureAnalyzer:
             "external_deps": external_deps,
             "capping_note": capping_note,
             "stats": {
-                "total_files": len(set(s.file_path for s in graph.symbols)),
+                "total_files": len({s.file_path for s in graph.symbols}),
                 "total_classes": len(graph.get_classes()),
                 "total_functions": len(graph.get_functions()),
                 "total_imports": len(graph.imports),

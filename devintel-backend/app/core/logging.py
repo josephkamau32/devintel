@@ -25,7 +25,6 @@ from typing import Any, Optional
 
 from app.core.config import settings
 
-
 # ---------------------------------------------------------------------------
 # Context variables for structured logging
 # ---------------------------------------------------------------------------

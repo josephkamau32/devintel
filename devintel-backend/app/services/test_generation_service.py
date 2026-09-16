@@ -3,9 +3,9 @@
 from typing import Any
 from uuid import UUID
 
+from app.ai.orchestrator import get_orchestrator
 from app.core.exceptions import APIError
 from app.core.logging import get_logger
-from app.ai.orchestrator import get_orchestrator
 from app.models.generated_test import TestStatus
 from app.models.repository import Repository
 from app.repositories.generated_test import GeneratedTestRepository

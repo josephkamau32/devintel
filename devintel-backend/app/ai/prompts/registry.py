@@ -17,7 +17,6 @@ Optional fields:
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from string import Template
 from typing import Any, Optional

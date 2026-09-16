@@ -6,13 +6,11 @@ between feature services and the underlying provider implementations.
 
 from __future__ import annotations
 
-import time
 from enum import Enum
 from typing import Any, Optional
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
-
 
 # ---------------------------------------------------------------------------
 # Enumerations

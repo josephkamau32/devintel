@@ -15,7 +15,7 @@ import json
 import re
 import uuid
 from datetime import datetime
-from typing import Any, Optional
+from typing import Optional
 
 from app.ai.evaluation import (
     DimensionScore,

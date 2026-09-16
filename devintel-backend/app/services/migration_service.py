@@ -2,8 +2,8 @@
 
 from uuid import UUID
 
-from app.core.logging import get_logger
 from app.ai.orchestrator import get_orchestrator
+from app.core.logging import get_logger
 from app.models.migration import MigratedFile, MigrationProject
 from app.models.repository import Repository
 from app.repositories.embedding import EmbeddingRepository

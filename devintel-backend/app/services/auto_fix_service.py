@@ -7,10 +7,10 @@ from typing import Any
 
 from github import GithubException
 
+from app.ai.orchestrator import get_orchestrator
 from app.core.exceptions import APIError, AuthenticationError, NotFoundError
 from app.core.logging import get_logger
 from app.integrations.github_client import GitHubClient
-from app.ai.orchestrator import get_orchestrator
 from app.models.repository import Repository
 from app.models.user import User
 from app.repositories.embedding import EmbeddingRepository

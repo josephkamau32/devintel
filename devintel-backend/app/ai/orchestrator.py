@@ -20,7 +20,6 @@ from typing import Optional
 from app.ai.metrics import record_ai_request
 from app.ai.models import (
     AIMessage,
-    AIProvider as AIProviderEnum,
     CompletionRequest,
     CompletionResponse,
     EmbeddingRequest,

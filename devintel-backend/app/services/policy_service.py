@@ -6,8 +6,8 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
-from app.core.logging import get_logger
 from app.ai.orchestrator import get_orchestrator
+from app.core.logging import get_logger
 from app.models.policy import Policy, PolicyRuleType
 from app.repositories.policy import PolicyRepository
 

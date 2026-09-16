@@ -63,7 +63,7 @@ class SandboxService:
                     proc.communicate(),
                     timeout=SandboxService.TEST_TIMEOUT
                 )
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 proc.kill()
                 return {
                     "passed": False,

@@ -95,7 +95,7 @@ async def run_worker_loop(
                     await asyncio.wait_for(
                         stop_event.wait(), timeout=poll_interval,
                     )
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     pass  # normal: just means poll_interval elapsed
                 continue
 
@@ -142,7 +142,7 @@ async def run_worker_loop(
                     await asyncio.wait_for(
                         stop_event.wait(), timeout=poll_interval,
                     )
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     pass
 
     logger.info("Worker %s stopped.", worker_id)

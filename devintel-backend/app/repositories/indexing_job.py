@@ -1,10 +1,10 @@
 """Indexing job repository for durable asynchronous repository indexing tasks."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any, Optional
 from uuid import UUID
 
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.indexing_job import IndexingJob
@@ -59,7 +59,7 @@ class IndexingJobRepository(BaseRepository[IndexingJob]):
         if job is None:
             return None
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         job.status = "running"
         job.locked_at = now
         job.locked_by = worker_id
@@ -75,7 +75,7 @@ class IndexingJobRepository(BaseRepository[IndexingJob]):
         if not job:
             return None
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         job.status = "complete"
         job.completed_at = now
         job.locked_at = None
@@ -110,7 +110,7 @@ class IndexingJobRepository(BaseRepository[IndexingJob]):
         Resets jobs to 'pending' if attempt_count < max_attempts, or marks them
         as 'failed' if attempts are exhausted. Returns the count of recovered jobs.
         """
-        cutoff = datetime.now(timezone.utc) - timedelta(minutes=stale_after_minutes)
+        cutoff = datetime.now(UTC) - timedelta(minutes=stale_after_minutes)
 
         stmt = (
             select(IndexingJob)

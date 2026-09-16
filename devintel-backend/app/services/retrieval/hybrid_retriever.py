@@ -1,6 +1,5 @@
 """Hybrid retriever combining vector, BM25, and call-graph search."""
 
-import asyncio
 from enum import Enum
 from typing import Optional
 from uuid import UUID

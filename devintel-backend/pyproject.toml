@@ -19,10 +19,10 @@ dependencies = [
     "alembic==1.13.1",
     "pgvector==0.2.4",
     # Auth & Security
-    "python-jose[cryptography]==3.3.0",
+    "python-jose[cryptography]==3.5.0",
     "bcrypt==4.0.1",
-    "cryptography==42.0.2",
-    "python-multipart==0.0.9",
+    "cryptography==50.0.1",
+    "python-multipart==0.0.32",
     "email-validator==2.1.1",
     # HTTP client (for GitHub API calls)
     "httpx==0.28.1",
@@ -40,7 +40,7 @@ dependencies = [
     "structlog==24.1.0",
     "tenacity==8.2.3",
     "tiktoken==0.6.0",
-    "GitPython==3.1.41",
+    "GitPython==3.1.62",
     "tree-sitter==0.25.2",
     "tree-sitter-language-pack==0.13.0",
     "prometheus-client==0.20.0",
@@ -70,6 +70,8 @@ ignore = [
     "E712",   # Comparison to True — SQLAlchemy filter pattern
     "E722",   # Bare except — intentional in WebSocket handlers
     "UP007",  # Use X | Y — existing codebase uses Optional[X] consistently
+    "UP045",  # Use X | None — successor to UP007, existing codebase uses Optional[X] consistently
+    "UP042",  # Class inherits from str and Enum — standard SQLAlchemy/Pydantic enum pattern
     "UP006",  # Use list instead of List — existing codebase pattern
     "UP035",  # typing.List deprecated — existing codebase pattern
     "UP015",  # Unnecessary open mode — style preference

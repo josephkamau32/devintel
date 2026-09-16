@@ -153,7 +153,7 @@ Provide a review as a JSON object with these exact keys:
             ),
             timeout=REVIEW_TIMEOUT_SECONDS,
         )
-    except asyncio.TimeoutError:
+    except TimeoutError:
         logger.error(f"PR review timed out after {REVIEW_TIMEOUT_SECONDS}s")
         raise HTTPException(
             status_code=status.HTTP_504_GATEWAY_TIMEOUT,

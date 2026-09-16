@@ -8,7 +8,12 @@ from sqlalchemy import text
 
 from app.api.v1.router import api_router
 from app.core.config import settings
-from app.core.exceptions import AppException, app_exception_handler, unhandled_exception_handler, validation_exception_handler
+from app.core.exceptions import (
+    AppException,
+    app_exception_handler,
+    unhandled_exception_handler,
+    validation_exception_handler,
+)
 from app.middleware.metrics import PrometheusMiddleware
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.security import (
@@ -137,6 +142,7 @@ def create_app() -> FastAPI:
         or if the request does not provide a matching key.
         """
         import secrets
+
         from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
         if not settings.METRICS_API_KEY:

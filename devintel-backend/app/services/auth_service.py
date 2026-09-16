@@ -97,8 +97,8 @@ class AuthService:
         logger.info("Demo user login: id=%s", user.id)
 
         # Cheap existence check: verify demo user has a completed indexed repository
-        from app.repositories.repository import RepositoryRepository
         from app.models.repository import IndexingStatus
+        from app.repositories.repository import RepositoryRepository
         repo_repo = RepositoryRepository(self.db)
         demo_repos = await repo_repo.get_by_user(user.id)
         has_indexed = any(r.indexing_status == IndexingStatus.COMPLETE for r in demo_repos)

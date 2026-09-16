@@ -85,9 +85,7 @@ def _verify_oauth_state(state: str) -> bool:
     expected = _sign(f"{nonce}.{ts}")
     if not hmac.compare_digest(sig, expected):
         return False
-    if abs(time.time() - int(ts)) > _STATE_MAX_AGE:
-        return False
-    return True
+    return abs(time.time() - int(ts)) <= _STATE_MAX_AGE
 
 
 def _create_pkce_pair() -> tuple[str, str]:

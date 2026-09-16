@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import time
 from collections.abc import AsyncGenerator
-from typing import Any, Optional
 
 from google import genai
 from google.genai import types
@@ -184,6 +183,7 @@ class GeminiProvider(BaseAIProvider):
     ) -> list[list[float]]:
         """Embed texts with retry + exponential backoff for rate limits."""
         import asyncio
+
         from google.genai.errors import ClientError
 
         for attempt in range(max_retries):

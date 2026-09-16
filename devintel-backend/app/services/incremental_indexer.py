@@ -181,7 +181,7 @@ async def process_push_event(
                 "chunks_deleted": total_deleted,
             }
 
-    except asyncio.TimeoutError:
+    except TimeoutError:
         error_msg = "Incremental indexing timed out"
         logger.error(f"Timeout for repo {repo_id}")
         await _handle_incremental_failure(repo_id, error_msg)

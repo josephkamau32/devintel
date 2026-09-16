@@ -3,9 +3,9 @@
 import json
 from typing import Any
 
+from app.ai.orchestrator import get_orchestrator
 from app.core.logging import get_logger
 from app.integrations.github_client import GitHubClient
-from app.ai.orchestrator import get_orchestrator
 from app.models.repository import Repository
 from app.repositories.embedding import EmbeddingRepository
 from app.services.chat import ChatService

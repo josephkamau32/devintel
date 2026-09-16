@@ -139,7 +139,7 @@ class EmbeddingRepository(BaseRepository[Embedding]):
         Returns:
             Deduplicated list of Embedding objects, ordered by file_path and chunk_index.
         """
-        from sqlalchemy import or_, and_
+        from sqlalchemy import and_, or_
 
         if not chunks:
             return []

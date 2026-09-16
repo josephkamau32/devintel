@@ -4,9 +4,8 @@ import json
 from typing import Any
 from uuid import UUID
 
-from app.core.logging import get_logger
 from app.ai.orchestrator import get_orchestrator
-from app.ai.response_parser import parse_json_response
+from app.core.logging import get_logger
 from app.models.repository import Repository
 from app.repositories.embedding import EmbeddingRepository
 from app.services.embedding import EmbeddingService

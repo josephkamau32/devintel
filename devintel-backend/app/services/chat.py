@@ -1,19 +1,16 @@
 """Chat service for RAG."""
 
-import hashlib
-import json
 import re
 from collections.abc import AsyncGenerator
 from uuid import UUID
 
 import tiktoken
 
+from app.ai.orchestrator import get_orchestrator
 from app.core.config import settings
 from app.core.logging import get_logger
-from app.ai.orchestrator import get_orchestrator
 from app.models.embedding import Embedding
 from app.repositories.embedding import EmbeddingRepository
-from app.services.cache import cache
 from app.services.embedding import EmbeddingService
 
 logger = get_logger(__name__)

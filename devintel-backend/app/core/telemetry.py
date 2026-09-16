@@ -25,7 +25,6 @@ Usage::
 from __future__ import annotations
 
 import os
-from typing import Optional
 
 from app.core.logging import get_logger
 

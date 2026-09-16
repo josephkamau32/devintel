@@ -4,8 +4,8 @@ from typing import Any, Optional
 
 from pydantic import BaseModel
 
+from app.ai.orchestrator import get_orchestrator
 from app.core.logging import get_logger
-from app.ai.orchestrator import AIOrchestrator, get_orchestrator
 from app.models.repository import Repository
 from app.repositories.embedding import EmbeddingRepository
 

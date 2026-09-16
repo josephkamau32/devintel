@@ -205,7 +205,7 @@ async def _index_repository_async(
             await db.commit()
             logger.info(f"Successfully indexed repository: {repo_id} ({len(chunks)} chunks)")
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             error_msg = "Indexing timed out during processing (cloning or embedding)"
             logger.error(f"Timeout indexing repository {repo_id}")
             await _handle_indexing_failure(repo_repo, db, repo_id, error_msg)
