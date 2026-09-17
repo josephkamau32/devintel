@@ -67,7 +67,8 @@ class CacheService:
         if settings.REDIS_URL and settings.ENVIRONMENT != "testing":
             try:
                 import redis.asyncio as aioredis
-                self._redis = aioredis.from_url(
+                from_url_fn: Any = aioredis.from_url
+                self._redis = from_url_fn(
                     settings.REDIS_URL,
                     encoding="utf-8",
                     decode_responses=True,
