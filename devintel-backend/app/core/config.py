@@ -3,7 +3,34 @@ import os
 from typing import Any
 
 from pydantic import ValidationInfo, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic.fields import FieldInfo
+from pydantic_settings import (
+    BaseSettings,
+    DotEnvSettingsSource,
+    EnvSettingsSource,
+    PydanticBaseSettingsSource,
+    SettingsConfigDict,
+)
+
+
+class CustomEnvSettings(EnvSettingsSource):
+    def decode_complex_value(self, field_name: str, field: FieldInfo, value: Any) -> Any:
+        try:
+            return super().decode_complex_value(field_name, field, value)
+        except Exception:
+            if isinstance(value, str):
+                return [s.strip() for s in value.split(",") if s.strip()]
+            return value
+
+
+class CustomDotEnvSettings(DotEnvSettingsSource):
+    def decode_complex_value(self, field_name: str, field: FieldInfo, value: Any) -> Any:
+        try:
+            return super().decode_complex_value(field_name, field, value)
+        except Exception:
+            if isinstance(value, str):
+                return [s.strip() for s in value.split(",") if s.strip()]
+            return value
 
 
 class Settings(BaseSettings):
@@ -11,7 +38,24 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
+        extra="ignore",
     )
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        return (
+            init_settings,
+            CustomEnvSettings(settings_cls),
+            CustomDotEnvSettings(settings_cls),
+            file_secret_settings,
+        )
 
     # App
     APP_NAME: str = "DevIntel AI"
