@@ -100,7 +100,7 @@ class Settings(BaseSettings):
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
-    def parse_cors(cls, v):
+    def parse_cors(cls, v: Any) -> Any:
         if isinstance(v, str):
             try:
                 return json.loads(v)

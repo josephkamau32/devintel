@@ -17,7 +17,7 @@ logger = get_logger(__name__)
 class TestGenerationService:
     """Generate and execute tests for code changes."""
 
-    def __init__(self, db_session):
+    def __init__(self, db_session: Any) -> None:
         self.db = db_session
         self.orchestrator = get_orchestrator()
 

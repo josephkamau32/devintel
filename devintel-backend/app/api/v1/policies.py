@@ -1,3 +1,5 @@
+from typing import Any
+
 """Policy routes."""
 
 from uuid import UUID
@@ -26,7 +28,7 @@ async def list_policies(
     repository_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     """List policies for a repository."""
     repo_repo = RepositoryRepository(db)
     repository = await repo_repo.get_by_id(repository_id)
@@ -48,7 +50,7 @@ async def create_policy(
     policy_data: PolicyCreate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     """Create a policy rule."""
     repo_repo = RepositoryRepository(db)
     repository = await repo_repo.get_by_id(repository_id)
@@ -79,7 +81,7 @@ async def update_policy(
     policy_data: PolicyCreate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     """Update a policy rule."""
     repo_repo = RepositoryRepository(db)
     repository = await repo_repo.get_by_id(repository_id)
@@ -112,7 +114,7 @@ async def delete_policy(
     policy_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     """Delete a policy rule."""
     repo_repo = RepositoryRepository(db)
     repository = await repo_repo.get_by_id(repository_id)
@@ -135,7 +137,7 @@ async def check_policies(
     request: PolicyCheckRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     """Check a diff against repository policies."""
     repo_repo = RepositoryRepository(db)
     repository = await repo_repo.get_by_id(repository_id)

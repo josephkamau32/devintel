@@ -1,3 +1,5 @@
+from typing import Any
+
 """Code migration service for AI-powered migration."""
 
 from uuid import UUID
@@ -16,7 +18,7 @@ logger = get_logger(__name__)
 class CodeMigrationService:
     """Service for AI-powered code migration between technologies."""
 
-    def __init__(self, db_session):
+    def __init__(self, db_session: Any) -> None:
         self.db = db_session
         self.orchestrator = get_orchestrator()
 
@@ -149,7 +151,7 @@ Provide the fully migrated code for {project.target_tech}."""
 
 
 # Add get_distinct_file_paths method to EmbeddingRepository
-def get_distinct_file_paths(self, repo_id: UUID) -> list[str]:
+def get_distinct_file_paths(self: Any, repo_id: UUID) -> list[str]:
     """Get distinct file paths for a repository."""
     from sqlalchemy import distinct, select
     result = self.db.execute(

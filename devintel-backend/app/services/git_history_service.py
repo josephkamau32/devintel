@@ -15,7 +15,7 @@ logger = get_logger(__name__)
 class GitHistoryService:
     """Service for git history indexing and blame analysis."""
 
-    def __init__(self, db_session, github_token: Optional[str] = None):
+    def __init__(self, db_session: Any, github_token: Optional[str] = None) -> None:
         self.db = db_session
         self.github_client = GitHubClient(github_token) if github_token else None
 

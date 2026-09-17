@@ -1,3 +1,5 @@
+from typing import Any
+
 """Security middleware for the application."""
 
 import time
@@ -183,7 +185,7 @@ class AuditLoggingMiddleware(BaseHTTPMiddleware):
 class SQLInjectionDetectionMiddleware(BaseHTTPMiddleware):
     """Middleware to detect and block potential SQL injection attempts."""
 
-    def __init__(self, app, block_on_detection: bool = True):
+    def __init__(self, app: Any, block_on_detection: bool = True) -> None:
         """Initialize SQL injection detection middleware.
 
         Args:

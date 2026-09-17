@@ -124,7 +124,7 @@ async def process_push_event(
                 embedding_service = EmbeddingService()
                 chunk_texts = [chunk[2] for chunk in chunks]
 
-                async def update_progress(current: int, total: int):
+                async def update_progress(current: int, total: int) -> None:
                     progress = 40 + int((current / total) * 50)
                     await repo_repo.update(UUID(repo_id), indexing_progress=progress)
                     await db.commit()

@@ -12,7 +12,7 @@ logger = get_logger(__name__)
 class CrossRepoKnowledgeService:
     """Service for discovering patterns across repositories."""
 
-    def __init__(self, db_session):
+    def __init__(self, db_session: Any) -> None:
         self.db = db_session
         self.hybrid_retriever = HybridRetriever()
 

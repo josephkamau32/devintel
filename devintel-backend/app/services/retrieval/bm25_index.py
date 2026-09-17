@@ -21,12 +21,12 @@ logger = get_logger(__name__)
 class ScoredChunk:
     """Container for a scored chunk."""
 
-    def __init__(self, embedding, score: float, source: str = "bm25"):
+    def __init__(self, embedding: Any, score: float, source: str = "bm25") -> None:
         self.embedding = embedding
         self.score = score
         self.source = source
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"ScoredChunk(file={self.embedding.file_path}, score={self.score:.4f}, source={self.source})"
 
 

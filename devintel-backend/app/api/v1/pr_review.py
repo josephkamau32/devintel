@@ -1,3 +1,5 @@
+from typing import Any
+
 """PR review routes."""
 
 import asyncio
@@ -35,7 +37,7 @@ async def review_pull_request(
     http_request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     """Review a pull request using AI."""
     # Get repository
     repo_repo = RepositoryRepository(db)
@@ -190,7 +192,7 @@ async def list_pull_requests(
     per_page: int = 30,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     """List pull requests for a repository from GitHub."""
     repo_repo = RepositoryRepository(db)
     repository = await repo_repo.get_by_id(repository_id)

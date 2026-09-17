@@ -1,3 +1,5 @@
+from typing import Any
+
 """Code Health API endpoint — GET /repos/{id}/health."""
 
 from uuid import UUID
@@ -23,7 +25,7 @@ async def get_code_health(
     repository_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     """
     Return the latest code health analysis for a repository.
 
@@ -85,7 +87,7 @@ async def refresh_code_health(
     repository_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     """Manually trigger a code health re-analysis for a repository."""
     repo_repo = RepositoryRepository(db)
     repository = await repo_repo.get_by_id(repository_id)
@@ -131,7 +133,7 @@ async def auto_fix_code_health_issue(
     http_request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     """Automatically generate and propose a fix for a specific code health issue."""
     repo_repo = RepositoryRepository(db)
     repository = await repo_repo.get_by_id(repository_id)

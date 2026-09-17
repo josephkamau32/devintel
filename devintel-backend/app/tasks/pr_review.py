@@ -127,13 +127,13 @@ async def _review_pull_request_async(
 
 
 async def _get_pr_comments(
-    github_client,
+    github_client: Any,
     full_name: str,
     pr_number: int,
 ) -> list[str]:
     """Return list of existing comment bodies on a PR."""
     try:
-        def _fetch_comments():
+        def _fetch_comments() -> str:
             repo = github_client.client.get_repo(full_name)
             pr = repo.get_pull(pr_number)
             return [c.body for c in pr.get_issue_comments()]

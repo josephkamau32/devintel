@@ -1,3 +1,5 @@
+from typing import Any
+
 """Rate limiting middleware using Redis sliding window counter with in-memory fallback.
 
 Provides per-user rate limiting with configurable limits per endpoint group.

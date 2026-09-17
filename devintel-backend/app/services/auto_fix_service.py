@@ -75,7 +75,7 @@ class AutoFixService:
         # For safety, let's just use the PyGithub client directly to get the default branch.
 
 
-        def _get_repo_details():
+        def _get_repo_details() -> str:
             repo = github_client.client.get_repo(repository.full_name)
             return {"default_branch": repo.default_branch}
 
@@ -88,7 +88,7 @@ class AutoFixService:
 
         for file_path in relevant_files:
             try:
-                def _get_file_content(path=file_path):
+                def _get_file_content(path: str = file_path) -> str:
                     repo = github_client.client.get_repo(repository.full_name)
                     contents = repo.get_contents(path, ref=base_branch)
                     return contents.decoded_content.decode("utf-8")

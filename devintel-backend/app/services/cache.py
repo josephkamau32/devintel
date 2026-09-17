@@ -168,10 +168,10 @@ class CacheService:
             logger.error(f"Cache delete_pattern error: {e}")
             return False
 
-    async def get_or_set(
+    async def get_or_set(  # type: ignore[override]
         self,
         key: str,
-        factory,
+        factory: Any,
         ttl: int = settings.REDIS_CACHE_TTL,
     ) -> Any:
         """Cache-aside helper: return cached value or compute and store it.

@@ -26,7 +26,7 @@ class RedisPool:
     _client = None
 
     @classmethod
-    async def get_pool(cls):
+    async def get_pool(cls) -> None:
         """Get or create Redis connection pool."""
         if not _REDIS_AVAILABLE or not settings.REDIS_URL:
             return None
@@ -48,7 +48,7 @@ class RedisPool:
         return cls._pool
 
     @classmethod
-    async def get_client(cls):
+    async def get_client(cls) -> None:
         """Get Redis client from pool."""
         if not _REDIS_AVAILABLE or not settings.REDIS_URL:
             return None
@@ -58,7 +58,7 @@ class RedisPool:
         return cls._client
 
     @classmethod
-    async def close(cls):
+    async def close(cls) -> None:
         """Close Redis connection pool."""
         if cls._client:
             await cls._client.close()

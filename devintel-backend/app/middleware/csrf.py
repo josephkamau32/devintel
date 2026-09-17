@@ -1,3 +1,5 @@
+from typing import Any
+
 """CSRF protection middleware."""
 
 import secrets
@@ -38,7 +40,7 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         "/api/v1/",
     )
 
-    def __init__(self, app, secret_key: str):
+    def __init__(self, app: Any, secret_key: str) -> None:
         """
         Initialize CSRF middleware.
 

@@ -1,7 +1,7 @@
 """Policy checker service for validating code against custom rules."""
 
 import re
-from typing import Optional
+from typing import Any, Optional
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -29,7 +29,7 @@ class PolicyViolation(BaseModel):
 class PolicyChecker:
     """Check code diffs against configured policies."""
 
-    def __init__(self, db_session):
+    def __init__(self, db_session: Any) -> None:
         self.db = db_session
         self.orchestrator = get_orchestrator()
 
@@ -52,7 +52,7 @@ class PolicyChecker:
 
         return violations
 
-    def _get_checker(self, rule_type: str):
+    def _get_checker(self, rule_type: str) -> Any:
         """Get the appropriate checker function for a rule type."""
         checkers = {
             PolicyRuleType.NO_PATTERN: self._check_no_pattern,

@@ -19,7 +19,7 @@ logger = get_logger(__name__)
 class ChatService:
     """Service for RAG-powered chat."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize service."""
         self.orchestrator = get_orchestrator()
         self.embedding_service = EmbeddingService()

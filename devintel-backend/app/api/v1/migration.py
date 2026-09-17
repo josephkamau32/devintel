@@ -1,3 +1,5 @@
+from typing import Any
+
 """Code migration API routes."""
 
 from uuid import UUID
@@ -26,7 +28,7 @@ async def create_migration(
     request: MigrationProjectCreate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     """Create a new migration project."""
     repo_repo = RepositoryRepository(db)
     repository = await repo_repo.get_by_id(request.repository_id)
@@ -51,7 +53,7 @@ async def generate_migration_plan(
     project_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     """Generate migration plan for a project."""
     project_repo = MigrationProjectRepository(db)
     project = await project_repo.get_by_id(project_id)
@@ -74,7 +76,7 @@ async def get_migration_status(
     repository_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     """Get migration status for a repository."""
     repo_repo = RepositoryRepository(db)
     repository = await repo_repo.get_by_id(repository_id)

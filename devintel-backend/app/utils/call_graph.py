@@ -1,7 +1,7 @@
 """Call graph extraction using Tree-Sitter."""
 
 import os
-from typing import Optional
+from typing import Any, Optional
 
 import tree_sitter_language_pack as tslp
 from tree_sitter import Language, Parser
@@ -47,7 +47,7 @@ def extract_call_graph(code: str, file_path: str) -> list[tuple[str, str, str]]:
 
     calls = []
 
-    def extract_calls(node, caller_stack=None):
+    def extract_calls(node: Any, caller_stack: list[str] | None = None) -> None:
         """Recursively extract function calls from AST."""
         if caller_stack is None:
             caller_stack = []
@@ -78,7 +78,7 @@ def extract_call_graph(code: str, file_path: str) -> list[tuple[str, str, str]]:
         for child in node.children:
             extract_calls(child, caller_stack.copy())
 
-    def walk(node):
+    def walk(node: Any) -> None:
         """Walk the tree and extract calls."""
         extract_calls(node)
         for child in node.children:

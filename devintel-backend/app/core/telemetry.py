@@ -25,6 +25,7 @@ Usage::
 from __future__ import annotations
 
 import os
+from typing import Any
 
 from app.core.logging import get_logger
 
@@ -38,7 +39,7 @@ def is_otel_enabled() -> bool:
     return os.environ.get("OTEL_ENABLED", "false").lower() in ("true", "1", "yes")
 
 
-def init_telemetry(app=None) -> None:
+def init_telemetry(app: Any = None) -> None:
     """Initialize OpenTelemetry instrumentation.
 
     Args:
@@ -119,7 +120,7 @@ def init_telemetry(app=None) -> None:
         _initialized = True
 
 
-def get_tracer(name: str):
+def get_tracer(name: str) -> None:
     """Get an OpenTelemetry tracer.
 
     Returns a no-op tracer if OTel is not enabled, so callers
@@ -139,27 +140,27 @@ def get_tracer(name: str):
 class _NoOpSpan:
     """No-op span for when OTel is disabled."""
 
-    def set_attribute(self, key, value):
+    def set_attribute(self, key: str, value: Any) -> None:
         pass
 
-    def set_status(self, status):
+    def set_status(self, status: Any) -> None:
         pass
 
-    def record_exception(self, exception):
+    def record_exception(self, exception: BaseException) -> None:
         pass
 
-    def __enter__(self):
+    def __enter__(self) -> "_NoOpSpan":
         return self
 
-    def __exit__(self, *args):
+    def __exit__(self, *args: Any) -> None:
         pass
 
 
 class _NoOpTracer:
     """No-op tracer for when OTel is disabled."""
 
-    def start_as_current_span(self, name, **kwargs):
+    def start_as_current_span(self, name: str, **kwargs: Any) -> _NoOpSpan:
         return _NoOpSpan()
 
-    def start_span(self, name, **kwargs):
+    def start_span(self, name: str, **kwargs: Any) -> _NoOpSpan:
         return _NoOpSpan()

@@ -65,7 +65,7 @@ def chunk_code_with_tree_sitter(code: str, file_path: str, max_tokens: int = 700
 
     current_lang_targets = target_types.get(lang_name, [])
 
-    def find_split_points(node: Node):
+    def find_split_points(node: Node) -> list[str]:
         if node.type in current_lang_targets:
             split_offsets.add(node.start_byte)
             split_offsets.add(node.end_byte)

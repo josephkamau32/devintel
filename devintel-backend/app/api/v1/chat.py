@@ -2,7 +2,7 @@
 
 import json
 import uuid
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
@@ -39,7 +39,7 @@ async def stream_chat(
     http_request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     """
     Stream an AI chat response for a repository using RAG.
 
@@ -90,7 +90,7 @@ async def stream_chat(
     history = [msg.model_dump() for msg in request.chat_history] if request.chat_history else []
     request_id = getattr(http_request.state, "request_id", None) or "unknown"
 
-    async def event_stream():
+    async def event_stream() -> dict[str, Any]:
         try:
             async for chunk in chat_service.stream_chat(
                 repo_name=repository.full_name,
@@ -146,7 +146,7 @@ async def agent_draft(
     request: AgentDraftRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     """Generate a draft PR proposal for user review."""
     repo_repo = RepositoryRepository(db)
     repository = await repo_repo.get_by_id(request.repository_id)
@@ -185,7 +185,7 @@ async def agent_execute(
     request: AgentExecuteRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     """Execute an approved draft PR on GitHub. Optionally generates tests first."""
     repo_repo = RepositoryRepository(db)
     repository = await repo_repo.get_by_id(request.repository_id)

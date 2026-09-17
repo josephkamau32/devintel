@@ -10,7 +10,7 @@ files using Tree-Sitter.  Provides the data model that powers:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Any, Optional
 
 from app.core.logging import get_logger
 from app.utils.call_graph import get_language_for_extension
@@ -103,7 +103,7 @@ def extract_symbols(code: str, file_path: str) -> tuple[list[Symbol], list[Impor
     symbols: list[Symbol] = []
     imports: list[ImportRef] = []
 
-    def _walk(node, parent_name: Optional[str] = None):
+    def _walk(node: Any, parent_name: Optional[str] = None) -> list[Any]:
         # Classes
         if node.type in ("class_definition", "class_declaration"):
             name_node = node.child_by_field_name("name")

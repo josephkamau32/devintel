@@ -234,7 +234,7 @@ class OrganizationService:
     @staticmethod
     async def remove_member(
         db: AsyncSession, org_id: UUID, admin_user_id: UUID, target_user_id: UUID
-    ):
+    ) -> None:
         """Remove a member (requires OWNER or ADMIN, or self-leave)."""
         if admin_user_id != target_user_id:
             await OrganizationService.check_user_role(

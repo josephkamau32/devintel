@@ -12,7 +12,7 @@ logger = get_logger(__name__)
 class EmbeddingService:
     """Service for generating and searching embeddings."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize service."""
         self.orchestrator = get_orchestrator()
 

@@ -133,7 +133,7 @@ async def _index_repository_async(
 
             chunk_texts = [chunk[2] for chunk in chunks]
 
-            async def update_embedding_progress(current: int, total: int):
+            async def update_embedding_progress(current: int, total: int) -> None:
                 # Map current progress between 40% and 80%
                 progress = 40 + int((current / total) * 40)
                 await repo_repo.update(UUID(repo_id), indexing_progress=progress)
@@ -227,7 +227,7 @@ async def _index_repository_async(
                 except Exception as cleanup_error:
                     logger.error(f"Failed to cleanup repo path {repo_path}: {cleanup_error}")
 
-async def _handle_indexing_failure(repo_repo, db, repo_id, error_msg):
+async def _handle_indexing_failure(repo_repo: Any, db: Any, repo_id: Any, error_msg: str) -> None:
     """Helper to record indexing failure. Retry is handled by the job poller."""
     try:
         await repo_repo.update(

@@ -19,7 +19,7 @@ logger = get_logger(__name__)
 class AgentRouter:
     """Routes queries to the appropriate specialized agent."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.agents = {
             "architect": ArchitectAgent(),
             "security": SecurityAuditorAgent(),

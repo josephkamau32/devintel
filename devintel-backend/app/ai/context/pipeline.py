@@ -47,7 +47,7 @@ class ContextPipeline:
 
     def __init__(
         self,
-        embedding_service,
+        embedding_service: Any,
         *,
         compressor: Optional[ContextCompressor] = None,
         reranker: Optional[ContextReranker] = None,
@@ -60,7 +60,7 @@ class ContextPipeline:
         self,
         repo_id: UUID,
         query: str,
-        embedding_repo,
+        embedding_repo: Any,
         *,
         top_k: int = 5,
         expand: bool = True,
@@ -125,7 +125,7 @@ class ContextPipeline:
         self,
         repo_id: UUID,
         results: list[tuple[Any, float]],
-        embedding_repo,
+        embedding_repo: Any,
         radius: int = 1,
     ) -> list[tuple[Any, float]]:
         """Expand results with adjacent chunks using a single batched query.
@@ -169,7 +169,7 @@ class ContextPipeline:
     async def _try_cache(
         self,
         cache_key: str,
-        embedding_repo,
+        embedding_repo: Any,
     ) -> list[tuple[Any, float]] | None:
         """Try to load results from cache."""
         cached_raw = await cache.get(cache_key)

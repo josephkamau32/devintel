@@ -117,7 +117,7 @@ class CodeHealthService:
         seen_ids: set[Any] = set()
         results: list[Any] = []
 
-        async def _run_probe(query: str):
+        async def _run_probe(query: str) -> list[Any]:
             try:
                 emb = await self.embedding_service.generate_embedding(query)
                 hits = await embedding_repo.vector_search(
@@ -246,7 +246,7 @@ Be objective, use the sampled code as evidence. Score 0=very poor, 50=average, 1
         return self._record_to_dict(record)
 
     @staticmethod
-    def _record_to_dict(record) -> dict[str, Any]:
+    def _record_to_dict(record: Any) -> dict[str, Any]:
         return {
             "id": str(record.id),
             "repo_id": str(record.repo_id),

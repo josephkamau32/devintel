@@ -46,7 +46,7 @@ class GitHubClient:
     ) -> list[dict[str, Any]]:
         """Get user repositories with true pagination."""
         try:
-            def _fetch_repos_page():
+            def _fetch_repos_page() -> dict[str, Any]:
                 user = self.client.get_user()
                 repos = user.get_repos(type="all", sort="updated", direction="desc")
                 # Use PyGithub's native pagination — O(1) API call per page
@@ -84,7 +84,7 @@ class GitHubClient:
     ) -> list[dict[str, Any]]:
         """Get pull requests for a specific repository with true pagination."""
         try:
-            def _fetch_pulls_page():
+            def _fetch_pulls_page() -> dict[str, Any]:
                 repo = self.client.get_repo(full_name)
                 pulls = repo.get_pulls(state=state, sort="created", direction="desc")
                 page_data = pulls.get_page(page - 1)
@@ -117,7 +117,7 @@ class GitHubClient:
         """Get the diff for a pull request."""
         try:
             # Offload sync PyGithub calls to thread
-            def _get_pr_diff_url():
+            def _get_pr_diff_url() -> dict[str, Any]:
                 repo = self.client.get_repo(full_name)
                 pr = repo.get_pull(pr_number)
                 return pr.diff_url
@@ -152,7 +152,7 @@ class GitHubClient:
     ) -> dict[str, Any]:
         """Post a comment on a pull request."""
         try:
-            def _do_post_comment():
+            def _do_post_comment() -> dict[str, Any]:
                 repo = self.client.get_repo(full_name)
                 pr = repo.get_pull(pr_number)
                 comment = pr.create_issue_comment(body)
@@ -173,7 +173,7 @@ class GitHubClient:
     ) -> list[dict[str, Any]]:
         """Get the list of files changed in a pull request with their patches."""
         try:
-            def _do_get_files():
+            def _do_get_files() -> dict[str, Any]:
                 repo = self.client.get_repo(full_name)
                 pr = repo.get_pull(pr_number)
                 files = pr.get_files()
@@ -203,7 +203,7 @@ class GitHubClient:
     async def create_branch(self, full_name: str, base_branch: str, new_branch_name: str) -> str:
         """Create a new branch from a base branch."""
         try:
-            def _do_create_branch():
+            def _do_create_branch() -> dict[str, Any]:
                 repo = self.client.get_repo(full_name)
                 # Ensure refs/heads/ prefix
                 new_ref = f"refs/heads/{new_branch_name}" if not new_branch_name.startswith("refs/") else new_branch_name
@@ -233,7 +233,7 @@ class GitHubClient:
         file_changes: [{"path": "src/main.py", "content": "print('hello')"}]
         """
         try:
-            def _do_create_commit():
+            def _do_create_commit() -> dict[str, Any]:
                 repo = self.client.get_repo(full_name)
 
                 # Get the branch reference
@@ -288,7 +288,7 @@ class GitHubClient:
     ) -> dict[str, Any]:
         """Create a new Pull Request."""
         try:
-            def _do_create_pr():
+            def _do_create_pr() -> dict[str, Any]:
                 repo = self.client.get_repo(full_name)
                 pr = repo.create_pull(
                     title=title,
@@ -317,7 +317,7 @@ class GitHubClient:
     ) -> list[dict[str, Any]]:
         """Get commit history for a repository."""
         try:
-            def _do_get_commits():
+            def _do_get_commits() -> dict[str, Any]:
                 repo = self.client.get_repo(full_name)
                 commits = repo.get_commits(per_page=per_page)
                 return [
@@ -355,7 +355,7 @@ class GitHubClient:
     ) -> list[dict[str, Any]]:
         """Get blame information for a file."""
         try:
-            def _do_get_blame():
+            def _do_get_blame() -> dict[str, Any]:
                 repo = self.client.get_repo(full_name)
                 contents = repo.get_contents(file_path, ref=ref)
 

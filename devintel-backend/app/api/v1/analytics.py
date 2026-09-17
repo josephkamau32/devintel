@@ -1,3 +1,5 @@
+from typing import Any
+
 """Analytics routes."""
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -16,7 +18,7 @@ router = APIRouter(prefix="/analytics", tags=["Analytics"])
 async def get_analytics_dashboard(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     """Get real-time analytics for the user dashboard."""
     analytics_repo = AnalyticsRepository(db)
     try:

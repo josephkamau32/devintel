@@ -1,3 +1,5 @@
+from typing import Any
+
 """Prometheus metrics middleware for monitoring."""
 
 import time
@@ -148,27 +150,27 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
         return response
 
 
-def track_cache_hit():
+def track_cache_hit() -> Any:
     """Increment cache hit counter."""
     cache_hits_total.inc()
 
 
-def track_cache_miss():
+def track_cache_miss() -> Any:
     """Increment cache miss counter."""
     cache_misses_total.inc()
 
 
-def track_embedding_operation(operation: str):
+def track_embedding_operation(operation: str) -> Any:
     """Track embedding operations."""
     embedding_operations_total.labels(operation=operation).inc()
 
 
-def track_github_api_call(endpoint: str):
+def track_github_api_call(endpoint: str) -> Any:
     """Track GitHub API calls."""
     github_api_calls_total.labels(endpoint=endpoint).inc()
 
 
-def update_db_pool_metrics(total: int, active: int):
+def update_db_pool_metrics(total: int, active: int) -> Any:
     """Update database connection pool metrics."""
     db_connections_total.set(total)
     db_connections_active.set(active)

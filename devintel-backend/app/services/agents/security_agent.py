@@ -21,7 +21,7 @@ class SecurityAuditorAgent(BaseAgent):
         "sanitize", "validate", "authenticate", "authorize", "permission",
     ]
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
     def get_toolset(self) -> list[dict[str, Any]]:

@@ -24,7 +24,7 @@ async def github_webhook(
     x_hub_signature_256: str = Header(default="", alias="X-Hub-Signature-256"),
     x_github_event: str = Header(default="", alias="X-GitHub-Event"),
     x_github_delivery: str = Header(default="", alias="X-GitHub-Delivery"),
-):
+) -> dict[str, Any]:
     """Handle GitHub webhook events.
 
     Currently handles:
@@ -259,7 +259,7 @@ async def github_webhook(
     return {"status": "ignored", "event": event}
 
 
-async def _get_repo_access_token(repository, db) -> str:
+async def _get_repo_access_token(repository: Any, db: Any) -> str:
     """
     Retrieve and decrypt the GitHub access token for the repository owner.
     For org repos, tries the first member with a stored token.

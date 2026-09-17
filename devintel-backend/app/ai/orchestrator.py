@@ -76,10 +76,10 @@ class AIOrchestrator:
         max_tokens: int = 1000,
         json_mode: bool = False,
         tools: Optional[list[dict[str, Any]]] = None,
-        tool_choice: Optional[object] = None,
+        tool_choice: Optional[Any] = None,
         agent: Optional[str] = None,
-        repo_id=None,
-        user_id=None,
+        repo_id: Optional[Any] = None,
+        user_id: Optional[Any] = None,
     ) -> CompletionResponse:
         """Execute a chat completion through the provider.
 

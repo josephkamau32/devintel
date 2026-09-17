@@ -28,7 +28,7 @@ router = APIRouter(tags=["WebSocket"])
 async def repo_indexing_progress(
     websocket: WebSocket,
     repo_id: str,
-):
+) -> None:
     """
     WebSocket endpoint for real-time indexing progress updates.
 
@@ -142,7 +142,7 @@ async def repo_indexing_progress(
 async def collaboration_ws(
     websocket: WebSocket,
     session_id: str,
-):
+) -> None:
     """
     WebSocket endpoint for real-time collaboration.
 

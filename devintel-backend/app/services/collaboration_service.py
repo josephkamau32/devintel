@@ -1,6 +1,6 @@
 """Collaboration service for real-time sessions."""
 
-from typing import Optional
+from typing import Any, Optional
 from uuid import UUID
 
 from app.core.logging import get_logger
@@ -18,7 +18,7 @@ logger = get_logger(__name__)
 class CollaborationService:
     """Service for managing real-time collaboration sessions."""
 
-    def __init__(self, db_session):
+    def __init__(self, db_session: Any) -> None:
         self.db = db_session
 
     async def create_session(

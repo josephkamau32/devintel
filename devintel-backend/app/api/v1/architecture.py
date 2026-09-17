@@ -1,3 +1,5 @@
+from typing import Any
+
 """Architecture visualization API routes."""
 
 from uuid import UUID
@@ -27,7 +29,7 @@ async def generate_diagram(
     request: DiagramGenerateRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     """Generate an architecture diagram for a repository."""
     repo_repo = RepositoryRepository(db)
     repository = await repo_repo.get_by_id(request.repository_id)
@@ -55,7 +57,7 @@ async def list_diagrams(
     repository_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     """List all architecture diagrams for a repository."""
     repo_repo = RepositoryRepository(db)
     repository = await repo_repo.get_by_id(repository_id)
@@ -78,7 +80,7 @@ async def get_diagram(
     diagram_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     """Get a specific architecture diagram."""
     diagram_repo = ArchitectureDiagramRepository(db)
     diagram = await diagram_repo.get_by_id(diagram_id)

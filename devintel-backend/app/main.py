@@ -2,6 +2,7 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request, Response, status
+from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
@@ -32,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> None:
     """Verify database connectivity on startup.
 
     Schema management is handled entirely by Alembic (run in start.sh
@@ -124,7 +125,7 @@ def create_app() -> FastAPI:
     app.include_router(api_router)
 
     @app.get("/health")
-    async def health():
+    async def health() -> None:
         import time
         return {
             "status": "ok",
@@ -135,7 +136,7 @@ def create_app() -> FastAPI:
         }
 
     @app.get("/metrics")
-    async def metrics(request: Request):
+    async def metrics(request: Request) -> JSONResponse:
         """Prometheus metrics endpoint protected by API key (F-18).
 
         Fails closed with 404 Not Found if METRICS_API_KEY is not configured

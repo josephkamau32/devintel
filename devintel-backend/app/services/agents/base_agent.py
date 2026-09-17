@@ -26,7 +26,7 @@ class BaseAgent:
 
     AGENT_TYPE = "base"
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.orchestrator = get_orchestrator()
 
     def get_toolset(self) -> list[dict[str, Any]]:

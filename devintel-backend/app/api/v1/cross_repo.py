@@ -1,3 +1,5 @@
+from typing import Any
+
 """Cross-repository knowledge API routes."""
 
 
@@ -22,7 +24,7 @@ async def find_cross_repo_patterns(
     request: CrossRepoPatternRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     """Find similar code patterns across repositories."""
     repo_repo = RepositoryRepository(db)
     repository = await repo_repo.get_by_id(request.repository_id)

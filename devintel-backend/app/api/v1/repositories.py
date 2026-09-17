@@ -1,3 +1,5 @@
+from typing import Any
+
 """Repository management routes."""
 
 import uuid
@@ -39,7 +41,7 @@ async def search_repository(
     top_k: int = Query(10, ge=1, le=50),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     """Semantic search across indexed code in a repository."""
     # Check access
     repo_repo = RepositoryRepository(db)
@@ -109,7 +111,7 @@ async def list_github_repositories(
     page: int = Query(1, ge=1),
     per_page: int = Query(30, ge=1, le=100),
     current_user: User = Depends(get_current_user),
-):
+) -> dict[str, Any]:
     """Fetch repositories from the user's GitHub account."""
     token = _get_github_token(current_user)
 
@@ -131,7 +133,7 @@ async def list_repositories(
     limit: int = Query(50, ge=1, le=100),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     """List repositories (personal)."""
     repo_repo = RepositoryRepository(db)
 
@@ -154,7 +156,7 @@ async def create_repository(
     repo_data: RepositoryCreate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     """Add a repository."""
     repo_repo = RepositoryRepository(db)
 
@@ -190,7 +192,7 @@ async def index_repository(
     request: RepositoryIndexRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     """Trigger repository indexing."""
     repo_repo = RepositoryRepository(db)
 
@@ -264,7 +266,7 @@ async def list_repository_pulls(
     per_page: int = Query(30, ge=1, le=100),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     """List pull requests for a repository."""
     repo_repo = RepositoryRepository(db)
     repository = await repo_repo.get_by_id(repository_id)
@@ -313,7 +315,7 @@ async def get_pull_request_diff(
     http_request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     """Get the unified diff for a pull request.
 
     Returns raw patch text so the frontend can render a syntax-highlighted diff.
@@ -359,7 +361,7 @@ async def get_repository_status(
     repository_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     """Get repository indexing status (lightweight polling endpoint)."""
     repo_repo = RepositoryRepository(db)
 
@@ -391,7 +393,7 @@ async def get_repository(
     repository_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     """Get a repository by ID."""
     repo_repo = RepositoryRepository(db)
 
@@ -413,7 +415,7 @@ async def delete_repository(
     repository_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     """Delete a repository."""
     repo_repo = RepositoryRepository(db)
 

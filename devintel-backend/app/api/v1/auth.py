@@ -3,7 +3,7 @@ import hashlib
 import hmac
 import secrets
 import time
-from typing import Optional
+from typing import Any, Optional
 from urllib.parse import urlencode
 from uuid import UUID
 
@@ -137,7 +137,7 @@ async def signup(
     data: SignupRequest,
     response: Response,
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     service = AuthService(db)
     user, access_token, refresh_token = await service.signup(data)
     _set_refresh_cookie(response, refresh_token)
@@ -153,7 +153,7 @@ async def login(
     data: LoginRequest,
     response: Response,
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     service = AuthService(db)
     user, access_token, refresh_token = await service.login(data)
     _set_refresh_cookie(response, refresh_token)
@@ -169,7 +169,7 @@ async def demo_login(
     request: Request,
     response: Response,
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     """One-click demo login — creates or retrieves a demo user for portfolio demos."""
     request_id = getattr(request.state, "request_id", None) or "unknown"
     try:
@@ -203,7 +203,7 @@ async def refresh_token(
     response: Response,
     refresh_token: Optional[str] = Cookie(None, alias=REFRESH_COOKIE_NAME),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     if not refresh_token:
         raise AuthenticationError("No refresh token provided")
 
@@ -214,18 +214,18 @@ async def refresh_token(
 
 
 @router.post("/logout")
-async def logout(response: Response):
+async def logout(response: Response) -> dict[str, Any]:
     _clear_refresh_cookie(response)
     return {"message": "Logged out successfully"}
 
 
 @router.get("/me", response_model=UserPublic)
-async def get_me(current_user: User = Depends(get_current_user)):
+async def get_me(current_user: User = Depends(get_current_user)) -> dict[str, Any]:
     return UserPublic.model_validate(current_user)
 
 
 @router.get("/github")
-async def github_login():
+async def github_login() -> dict[str, Any]:
     """Redirect to GitHub for OAuth authorization with cookie-bound state and PKCE."""
     state, nonce = _create_oauth_state()
     code_verifier, code_challenge = _create_pkce_pair()
@@ -257,7 +257,7 @@ async def github_callback(
     state: Optional[str] = None,
     oauth_state: Optional[str] = Cookie(None, alias=OAUTH_STATE_COOKIE_NAME),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     """Handle GitHub OAuth callback with state validation, cookie binding, replay protection, and PKCE."""
     frontend_url = settings.FRONTEND_URL
 
@@ -335,7 +335,7 @@ async def github_callback(
 async def oauth_exchange(
     data: OAuthExchangeRequest,
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     """Exchange a short-lived, single-use OAuth exchange code for a real access token (F-07 fix)."""
     key = f"oauth_exchange:{data.code}"
     cached = await cache.get(key)

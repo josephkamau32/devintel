@@ -1,7 +1,7 @@
 """API dependencies."""
 
 from collections.abc import Collection
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
@@ -16,7 +16,7 @@ __all__ = ["get_current_user", "get_current_user_optional", "check_repo_access"]
 
 
 async def check_repo_access(
-    repository,
+    repository: Any,
     current_user: User,
     db: AsyncSession,
     required_roles: Optional[Collection[OrganizationRole | str]] = None,

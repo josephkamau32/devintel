@@ -17,7 +17,7 @@ class VectorType(TypeDecorator[str]):
     impl = String
     cache_ok = True
 
-    def load_dialect_impl(self, dialect):
+    def load_dialect_impl(self, dialect: Any) -> Any:
         if dialect.name == "sqlite":
             return dialect.type_descriptor(String())
         else:

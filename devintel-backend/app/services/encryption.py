@@ -1,6 +1,6 @@
 """Encryption utilities for securing sensitive data like GitHub tokens."""
 
-from typing import Optional
+from typing import Any, Optional
 
 from cryptography.fernet import Fernet
 
@@ -96,7 +96,7 @@ def get_encryption_service() -> EncryptionService:
 
 # For backwards compatibility - provides lazy initialization
 class _LazyEncryptionService:
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
         return getattr(get_encryption_service(), name)
 
 

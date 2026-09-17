@@ -59,7 +59,7 @@ _circuit_breaker = OpenAICircuitBreaker()
 class OpenAIClient:
     """OpenAI API client wrapper with circuit breaker and retry logic."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize OpenAI client."""
         self.client = openai.AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
 
