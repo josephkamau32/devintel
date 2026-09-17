@@ -19,7 +19,12 @@ class EncryptionService:
         if not enc_key:
             enc_key = Fernet.generate_key().decode()
             logger.warning("Using auto-generated encryption key")
-        self.cipher = Fernet(enc_key.encode())
+        try:
+            self.cipher = Fernet(enc_key.encode())
+        except Exception as e:
+            logger.warning(f"Invalid Fernet key ({e}), falling back to auto-generated key")
+            enc_key = Fernet.generate_key().decode()
+            self.cipher = Fernet(enc_key.encode())
         logger.info("Encryption service initialized")
 
     def encrypt(self, plaintext: str) -> str:

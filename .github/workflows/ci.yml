@@ -107,7 +107,7 @@ jobs:
           echo "JWT_ALGORITHM=HS256" >> .env
           echo "JWT_ACCESS_TOKEN_EXPIRE_MINUTES=15" >> .env
           echo "JWT_REFRESH_TOKEN_EXPIRE_DAYS=7" >> .env
-          echo "TOKEN_ENCRYPTION_KEY=test_token_encryption_key_must_be_32_bytes_len" >> .env
+          echo "TOKEN_ENCRYPTION_KEY=Cdj7ksHf8AKJdKuy3IE3GUMMm9WiESxaJ-47PiOMVCw=" >> .env
           echo "CORS_ORIGINS=[\"http://localhost:3000\",\"http://localhost:5173\"]" >> .env
           echo "CORS_ALLOW_CREDENTIALS=True" >> .env
           echo "RATE_LIMIT_PER_MINUTE=100" >> .env
