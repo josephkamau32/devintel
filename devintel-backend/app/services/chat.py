@@ -31,7 +31,7 @@ class ChatService:
             return 0
         return len(self._encoding.encode(text))
 
-    def count_messages_tokens(self, messages: list) -> int:
+    def count_messages_tokens(self, messages: list[dict[str, str]]) -> int:
         """Count total tokens across a list of chat messages."""
         total = 0
         for msg in messages:
@@ -73,7 +73,7 @@ class ChatService:
 
         return question
 
-    def validate_context_window(self, messages: list, max_tokens: int = 120000) -> list:
+    def validate_context_window(self, messages: list[dict[str, str]], max_tokens: int = 120000) -> list[dict[str, str]]:
         """
         Validate that messages fit within the model's context window.
 
@@ -156,7 +156,7 @@ Rules:
         repo_name: str,
         question: str,
         context_chunks: list[tuple[Embedding, float]],
-        chat_history: list = None,
+        chat_history: list[dict[str, str]] | None = None,
     ) -> AsyncGenerator[str, None]:
         """Stream chat response with multi-turn memory and safety checks."""
         # Prompt injection defense

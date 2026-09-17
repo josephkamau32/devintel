@@ -1,7 +1,7 @@
 """Code Health repository — CRUD operations for CodeHealth records."""
 
 from datetime import UTC, datetime
-from typing import Optional
+from typing import Any, Optional
 from uuid import UUID
 
 from sqlalchemy import select
@@ -25,7 +25,7 @@ class CodeHealthRepository(BaseRepository[CodeHealth]):
         )
         return result.scalar_one_or_none()
 
-    async def upsert(self, repo_id: UUID, data: dict) -> CodeHealth:
+    async def upsert(self, repo_id: UUID, data: dict[str, Any]) -> CodeHealth:
         """
         Insert or update the code health record for a repository.
         Uses PostgreSQL's ON CONFLICT DO UPDATE for atomic upsert.

@@ -1,5 +1,7 @@
 """Sandbox service for executing generated tests."""
 
+from typing import Any
+
 import asyncio
 import json
 import os
@@ -20,7 +22,7 @@ class SandboxService:
         test_content: str,
         patched_files: dict[str, str],
         test_file_path: str,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """
         Run tests in isolated temporary directory.
 

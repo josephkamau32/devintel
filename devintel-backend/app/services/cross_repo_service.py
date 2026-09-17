@@ -59,7 +59,7 @@ class CrossRepoKnowledgeService:
     async def build_knowledge_base(
         self,
         repository: Repository,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Build cross-repo knowledge base for a repository."""
         # This would analyze patterns and store them for future similarity search
         # For now, return a placeholder

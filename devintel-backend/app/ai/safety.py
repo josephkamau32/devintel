@@ -23,7 +23,7 @@ logger = get_logger(__name__)
 # Secret patterns
 # ---------------------------------------------------------------------------
 
-_SECRET_PATTERNS: list[tuple[str, re.Pattern]] = [
+_SECRET_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     # API keys and tokens
     ("AWS Access Key", re.compile(r"AKIA[0-9A-Z]{16}")),
     ("AWS Secret Key", re.compile(r"(?i)aws[_\-]?secret[_\-]?access[_\-]?key\s*[=:]\s*['\"]?([A-Za-z0-9/+=]{40})")),

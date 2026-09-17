@@ -1,5 +1,6 @@
 import json
 import os
+from typing import Any
 
 from pydantic import ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -109,7 +110,7 @@ class Settings(BaseSettings):
 
     @field_validator("DATABASE_URL")
     @classmethod
-    def validate_db_url(cls, v: str, info: ValidationInfo) -> str:
+    def validate_db_url(cls, v: str, info: ValidationInfo[Any]) -> str:
         from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
         env = info.data.get("ENVIRONMENT") or os.getenv("ENVIRONMENT", "development")

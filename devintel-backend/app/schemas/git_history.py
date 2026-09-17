@@ -1,7 +1,7 @@
 """Git history schemas."""
 
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -55,4 +55,4 @@ class BlameContextResponse(BaseModel):
     commit_message: Optional[str]
     author: Optional[str]
     introduced_at: Optional[datetime]
-    commit_data: Optional[dict] = None
+    commit_data: Optional[dict[str, Any]] = None

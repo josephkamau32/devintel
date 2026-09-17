@@ -114,8 +114,8 @@ class CodeHealthService:
         """Run all probe queries in parallel and deduplicate results."""
         import asyncio
 
-        seen_ids: set = set()
-        results: list = []
+        seen_ids: set[Any] = set()
+        results: list[Any] = []
 
         async def _run_probe(query: str):
             try:
@@ -140,7 +140,7 @@ class CodeHealthService:
 
         return results
 
-    def _build_context(self, chunks: list, max_chars: int = 12000) -> str:
+    def _build_context(self, chunks: list[Any], max_chars: int = 12000) -> str:
         """Build a compact context string from sampled chunks."""
         parts, total_chars = [], 0
         for chunk in chunks:

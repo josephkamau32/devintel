@@ -62,7 +62,7 @@ class AgentRouter:
         query: str,
         repo: Repository,
         embedding_repo: EmbeddingRepository,
-        chat_history: Optional[list[dict]] = None,
+        chat_history: Optional[list[dict[str, str]]] = None,
         agent_type: Optional[str] = None,
     ) -> AgentResponse:
         """Route query to agent and return response."""

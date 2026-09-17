@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import time
 from collections.abc import AsyncGenerator
-from typing import Optional
+from typing import Any, Optional
 
 from app.ai.metrics import record_ai_request
 from app.ai.models import (
@@ -69,13 +69,13 @@ class AIOrchestrator:
 
     async def complete(
         self,
-        messages: list[AIMessage] | list[dict],
+        messages: list[AIMessage] | list[dict[str, str]],
         *,
         model: Optional[str] = None,
         temperature: float = 0.7,
         max_tokens: int = 1000,
         json_mode: bool = False,
-        tools: Optional[list[dict]] = None,
+        tools: Optional[list[dict[str, Any]]] = None,
         tool_choice: Optional[object] = None,
         agent: Optional[str] = None,
         repo_id=None,
@@ -168,7 +168,7 @@ class AIOrchestrator:
 
     async def stream(
         self,
-        messages: list[AIMessage] | list[dict],
+        messages: list[AIMessage] | list[dict[str, str]],
         *,
         model: Optional[str] = None,
         temperature: float = 0.7,
@@ -285,7 +285,7 @@ def get_orchestrator() -> AIOrchestrator:
 # ---------------------------------------------------------------------------
 
 
-def _normalize_messages(messages: list) -> list[AIMessage]:
+def _normalize_messages(messages: list[AIMessage | dict[str, str]]) -> list[AIMessage]:
     """Accept either AIMessage objects or plain dicts.
 
     Also sanitizes message content to redact secrets before sending

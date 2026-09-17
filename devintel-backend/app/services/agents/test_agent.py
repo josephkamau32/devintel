@@ -24,7 +24,7 @@ class TestEngineerAgent(BaseAgent):
     def __init__(self):
         super().__init__()
 
-    def get_toolset(self) -> list[dict]:
+    def get_toolset(self) -> list[dict[str, Any]]:
         return [
             {
                 "type": "function",
@@ -70,7 +70,7 @@ Generate comprehensive test suggestions and identify uncovered code paths."""
         query: str,
         repo: Repository,
         embedding_repo: EmbeddingRepository,
-        chat_history: Optional[list[dict]] = None,
+        chat_history: Optional[list[dict[str, str]]] = None,
     ) -> AgentResponse:
         from app.services.retrieval.hybrid_retriever import HybridRetriever
         retriever = HybridRetriever(embedding_repo)

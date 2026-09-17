@@ -1,6 +1,6 @@
 import logging
 from datetime import UTC, datetime, timedelta
-from typing import Optional
+from typing import Any, Optional
 from uuid import UUID
 
 import bcrypt
@@ -41,7 +41,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 # ── JWT tokens ────────────────────────────────────────────────────────────────
-def _create_token(data: dict, expires_delta: timedelta) -> str:
+def _create_token(data: dict[str, Any], expires_delta: timedelta) -> str:
     to_encode = data.copy()
     expire = datetime.now(UTC) + expires_delta
     to_encode.update({"exp": expire, "iat": datetime.now(UTC)})

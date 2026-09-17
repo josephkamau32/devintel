@@ -1,7 +1,7 @@
 """Git history service for indexing and blame analysis."""
 
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from app.core.logging import get_logger
 from app.integrations.github_client import GitHubClient
@@ -24,7 +24,7 @@ class GitHistoryService:
         repository: Repository,
         github_token: Optional[str] = None,
         max_commits: int = 500,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """
         Index git commit history for a repository.
 
@@ -158,7 +158,7 @@ class GitHistoryService:
         repository: Repository,
         file_path: str,
         line_number: int,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """
         Get git history context for a specific line.
 

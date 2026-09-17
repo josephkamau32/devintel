@@ -1,5 +1,7 @@
 """GitHub Webhook handler — auto re-indexes repositories on push events."""
 
+from typing import Any
+
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -93,7 +95,7 @@ async def github_webhook(
         head_commit_sha: str = payload.get("after", "")
 
         # Extract changed files from commits
-        commits: list[dict] = payload.get("commits", [])
+        commits: list[dict[str, Any]] = payload.get("commits", [])
         changed_files = set()
         added_files = set()
         removed_files = set()
@@ -196,8 +198,8 @@ async def github_webhook(
     # --- Pull Request event: trigger AI code review ---
     if event == "pull_request":
         action: str = payload.get("action", "")
-        pr_data: dict = payload.get("pull_request", {})
-        repo_data: dict = payload.get("repository", {})
+        pr_data: dict[str, Any] = payload.get("pull_request", {})
+        repo_data: dict[str, Any] = payload.get("repository", {})
 
         # Only review when a PR is opened or new commits are pushed to it
         if action not in ("opened", "synchronize"):

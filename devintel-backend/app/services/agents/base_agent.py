@@ -17,7 +17,7 @@ class AgentResponse(BaseModel):
 
     agent_type: str
     content: str
-    tool_calls: Optional[list[dict]] = None
+    tool_calls: Optional[list[dict[str, Any]]] = None
     confidence: Optional[float] = None
 
 
@@ -29,7 +29,7 @@ class BaseAgent:
     def __init__(self):
         self.orchestrator = get_orchestrator()
 
-    def get_toolset(self) -> list[dict]:
+    def get_toolset(self) -> list[dict[str, Any]]:
         """Return the tool definitions available to this agent."""
         return []
 
@@ -64,7 +64,7 @@ Rules:
         query: str,
         repo: Repository,
         embedding_repo: EmbeddingRepository,
-        chat_history: Optional[list[dict]] = None,
+        chat_history: Optional[list[dict[str, str]]] = None,
     ) -> AgentResponse:
         """Execute the agent on a query. Override in subclasses."""
         raise NotImplementedError("Subclasses must implement run()")

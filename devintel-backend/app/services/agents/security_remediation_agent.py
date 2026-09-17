@@ -23,7 +23,7 @@ class SecurityRemediationAgent(BaseAgent):
     def __init__(self):
         super().__init__()
 
-    def get_toolset(self) -> list[dict]:
+    def get_toolset(self) -> list[dict[str, Any]]:
         """Return security remediation tools."""
         return [
             {
@@ -72,7 +72,7 @@ Provide secure code fixes with explanations."""
         query: str,
         repo: Repository,
         embedding_repo: EmbeddingRepository,
-        chat_history: Optional[list[dict]] = None,
+        chat_history: Optional[list[dict[str, str]]] = None,
     ) -> AgentResponse:
         from app.services.retrieval.hybrid_retriever import HybridRetriever
         retriever = HybridRetriever(embedding_repo)

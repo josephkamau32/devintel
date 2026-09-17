@@ -123,7 +123,7 @@ class OpenAIClient:
 
     async def chat_completion_stream(
         self,
-        messages: list[dict],
+        messages: list[dict[str, str]],
         temperature: float = 0.7,
         max_tokens: int = settings.OPENAI_MAX_TOKENS,
     ) -> AsyncGenerator[str, None]:
@@ -165,11 +165,11 @@ class OpenAIClient:
     )
     async def chat_completion(
         self,
-        messages: list[dict],
+        messages: list[dict[str, str]],
         temperature: float = 0.7,
         max_tokens: int = settings.OPENAI_MAX_TOKENS,
         json_mode: bool = False,
-        tools: Optional[list[dict]] = None,
+        tools: Optional[list[dict[str, Any]]] = None,
         tool_choice: Optional[str] = None,
     ) -> Any:
         """

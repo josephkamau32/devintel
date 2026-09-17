@@ -21,8 +21,8 @@ def reciprocal_rank_fusion(
         Fused list sorted by combined score
     """
     # Collect all unique chunks with their fused scores
-    scores: dict = {}  # embedding_id -> combined_score
-    chunks: dict = {}  # embedding_id -> ScoredChunk (for source tracking)
+    scores: dict[str, float] = {}  # embedding_id -> combined_score
+    chunks: dict[str, ScoredChunk] = {}  # embedding_id -> ScoredChunk (for source tracking)
 
     for ranked_list in ranked_lists:
         for rank, scored_chunk in enumerate(ranked_list):

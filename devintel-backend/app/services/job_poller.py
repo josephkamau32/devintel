@@ -152,7 +152,7 @@ async def run_worker_loop(
 # Start / stop helpers
 # ---------------------------------------------------------------------------
 
-async def start_poller() -> tuple[list[asyncio.Task], asyncio.Event]:
+async def start_poller() -> tuple[list[asyncio.Task[None]], asyncio.Event]:
     """Bootstrap the poller: recover orphaned jobs, then spawn workers.
 
     Returns ``(tasks, stop_event)`` so the caller can pass them to
@@ -171,7 +171,7 @@ async def start_poller() -> tuple[list[asyncio.Task], asyncio.Event]:
     stop_event = asyncio.Event()
     concurrency = settings.JOB_POLLER_CONCURRENCY
     pid = os.getpid()
-    tasks: list[asyncio.Task] = []
+    tasks: list[asyncio.Task[None]] = []
 
     for i in range(concurrency):
         wid = f"worker-{pid}-{i}"
@@ -189,7 +189,7 @@ async def start_poller() -> tuple[list[asyncio.Task], asyncio.Event]:
 
 
 async def stop_poller(
-    tasks: list[asyncio.Task],
+    tasks: list[asyncio.Task[None]],
     stop_event: asyncio.Event,
     timeout: float = 10.0,
 ) -> None:

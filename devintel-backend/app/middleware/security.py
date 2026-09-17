@@ -1,7 +1,7 @@
 """Security middleware for the application."""
 
 import time
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from uuid import uuid4
 
 from fastapi import HTTPException, Request, Response, status
@@ -44,7 +44,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         if settings.ENVIRONMENT == "production":
             self.security_headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
         """Add security headers to response."""
         response = await call_next(request)
 
@@ -65,7 +65,7 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
     - Used for distributed tracing
     """
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
         """Add request ID to request and response."""
         from app.core.logging import log_context
 
@@ -102,7 +102,7 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.max_size = max_size
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
         """Check request size and reject if too large."""
         content_length = request.headers.get("content-length")
 
@@ -138,7 +138,7 @@ class AuditLoggingMiddleware(BaseHTTPMiddleware):
         "/api/v1/admin",
     ]
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
         """Log sensitive operations."""
         start_time = time.time()
 
@@ -193,7 +193,7 @@ class SQLInjectionDetectionMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.block_on_detection = block_on_detection
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
         """Check request for SQL injection patterns and block if detected."""
         from app.core.validators import detect_sql_injection
 

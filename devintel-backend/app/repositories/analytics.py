@@ -1,5 +1,7 @@
 """Analytics repository."""
 
+from typing import Any
+
 from datetime import UTC
 from uuid import UUID
 
@@ -66,7 +68,7 @@ class AnalyticsRepository(BaseRepository[Analytics]):
 
         return analytics
 
-    async def get_dashboard_stats(self, user_id: UUID) -> dict:
+    async def get_dashboard_stats(self, user_id: UUID) -> dict[str, Any]:
         """Get comprehensive stats for the user dashboard."""
         from datetime import datetime, timedelta
 

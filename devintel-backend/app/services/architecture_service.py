@@ -288,7 +288,7 @@ class CodeStructureAnalyzer:
 
         # Build module-level groupings
         # A "module" = the first two path segments (e.g. "app/services")
-        module_symbols: dict[str, dict] = defaultdict(
+        module_symbols: dict[str, dict[str, Any]] = defaultdict(
             lambda: {"classes": [], "functions": [], "files": set()}
         )
 
@@ -419,7 +419,7 @@ def _import_to_module(import_module: str) -> str | None:
 
 
 def _detect_external_deps(
-    imports: list, module_symbols: dict
+    imports: list[Any], module_symbols: dict[str, Any]
 ) -> list[dict[str, str]]:
     """Detect external (non-app) dependencies from imports."""
     external = set()

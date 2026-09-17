@@ -1,7 +1,7 @@
 """Policy schemas."""
 
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -13,7 +13,7 @@ class PolicyCreate(BaseModel):
     name: str = Field(..., max_length=255)
     description: Optional[str] = Field(None, max_length=500)
     rule_type: str = Field(..., description="Rule type: max_complexity, no_pattern, require_pattern, max_file_lines, require_docstrings, custom_prompt")
-    config: dict = Field(default_factory=dict)
+    config: dict[str, Any] = Field(default_factory=dict)
     severity: str = Field(default="warning", description="error or warning")
 
 

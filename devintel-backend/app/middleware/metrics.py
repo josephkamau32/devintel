@@ -1,7 +1,7 @@
 """Prometheus metrics middleware for monitoring."""
 
 import time
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 
 from fastapi import Request, Response
 from prometheus_client import Counter, Gauge, Histogram
@@ -104,7 +104,7 @@ def get_route_template(request: Request) -> str:
 class PrometheusMiddleware(BaseHTTPMiddleware):
     """Middleware to collect Prometheus metrics."""
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
         """Collect metrics for each request using parameterized route templates."""
         method = request.method
         path = request.url.path

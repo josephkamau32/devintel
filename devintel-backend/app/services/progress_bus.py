@@ -19,7 +19,7 @@ class ProgressBus:
     """Simple in-process pub/sub bus using asyncio.Queue per subscriber."""
 
     def __init__(self) -> None:
-        self._subscribers: dict[str, list[asyncio.Queue]] = defaultdict(list)
+        self._subscribers: dict[str, list[asyncio.Queue[Any]]] = defaultdict(list)
 
     async def publish(self, channel: str, data: Any) -> None:
         """Publish data to all subscribers on a channel."""
@@ -38,7 +38,7 @@ class ProgressBus:
             async for message in progress_bus.subscribe("indexing:repo-id"):
                 await websocket.send_json(message)
         """
-        queue: asyncio.Queue = asyncio.Queue(maxsize=256)
+        queue: asyncio.Queue[Any] = asyncio.Queue(maxsize=256)
         self._subscribers[channel].append(queue)
         try:
             while True:

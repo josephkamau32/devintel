@@ -111,7 +111,7 @@ class AuditLog:
         user_id: Optional[str] = None,
         ip: Optional[str] = None,
         success: bool = True,
-        details: Optional[dict] = None,
+        details: Optional[dict[str, Any]] = None,
     ) -> None:
         """Convenience method for authentication events."""
         self.log(
@@ -130,7 +130,7 @@ class AuditLog:
         user_id: Optional[str] = None,
         resource_id: Optional[str] = None,
         resource_type: str = "repository",
-        details: Optional[dict] = None,
+        details: Optional[dict[str, Any]] = None,
     ) -> None:
         """Convenience method for data access events."""
         self.log(

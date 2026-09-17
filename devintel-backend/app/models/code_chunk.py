@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from app.models.repository import Repository
 
 
-class VectorType(TypeDecorator):
+class VectorType(TypeDecorator[str]):
     impl = String
     cache_ok = True
 

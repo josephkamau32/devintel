@@ -1,7 +1,7 @@
 """CSRF protection middleware."""
 
 import secrets
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 
 from fastapi import HTTPException, Request, Response, status
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -49,7 +49,7 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.secret_key = secret_key
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
         """Process request with CSRF protection."""
 
         # Skip CSRF for safe methods

@@ -3,6 +3,8 @@
 Runs as an asyncio task in-process — no Celery or Redis required.
 """
 
+from typing import Any
+
 import asyncio
 from uuid import UUID
 
@@ -16,7 +18,7 @@ async def review_pull_request_task(
     pr_number: int,
     pr_title: str,
     access_token: str,
-) -> dict:
+) -> dict[str, Any]:
     """
     Background task: generate an AI code review for a GitHub pull request and
     post it as a comment on the PR.

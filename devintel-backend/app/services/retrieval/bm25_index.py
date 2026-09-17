@@ -4,7 +4,7 @@ Uses rank_bm25 for TF-IDF style search over code chunks.
 """
 
 import asyncio
-from typing import Optional
+from typing import Any, Optional
 from uuid import UUID
 
 try:
@@ -39,7 +39,7 @@ class BM25Index:
 
     def __init__(self, embedding_repo: EmbeddingRepository):
         self.embedding_repo = embedding_repo
-        self._indices: dict[str, tuple[BM25Okapi, list]] = {}  # repo_id -> (bm25, chunks)
+        self._indices: dict[str, tuple[BM25Okapi, list[Any]]] = {}  # repo_id -> (bm25, chunks)
         self._lock = asyncio.Lock()
 
     async def search(
@@ -86,7 +86,7 @@ class BM25Index:
 
             return results
 
-    async def _get_or_build_index(self, repo_id: UUID) -> tuple[Optional[BM25Okapi], list]:
+    async def _get_or_build_index(self, repo_id: UUID) -> tuple[Optional[BM25Okapi], list[Any]]:
         """Get cached index or build it from database."""
         cache_key = str(repo_id)
 

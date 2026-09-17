@@ -3,6 +3,8 @@
 Runs as an asyncio task in-process — no Celery or Redis required.
 """
 
+from typing import Any
+
 from uuid import UUID
 
 from app.core.logging import get_logger
@@ -10,7 +12,7 @@ from app.core.logging import get_logger
 logger = get_logger(__name__)
 
 
-async def compute_code_health_task(repo_id: str) -> dict:
+async def compute_code_health_task(repo_id: str) -> dict[str, Any]:
     """
     Background task: analyze repo code quality and persist the result.
 

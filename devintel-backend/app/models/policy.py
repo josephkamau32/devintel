@@ -1,7 +1,7 @@
 """Policy model for custom code quality rules."""
 
 import enum
-from typing import TYPE_CHECKING, Optional
+from typing import Any, TYPE_CHECKING, Optional
 from uuid import UUID
 
 from sqlalchemy import JSON, ForeignKey, String
@@ -49,7 +49,7 @@ class Policy(Base, UUIDMixin, TimestampMixin):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     rule_type: Mapped[str] = mapped_column(String(50), nullable=False)
-    config: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    config: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
     severity: Mapped[str] = mapped_column(
         String(20),
         nullable=False,

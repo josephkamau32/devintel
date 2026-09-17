@@ -3,6 +3,8 @@
 Runs as an asyncio task in-process — no Celery or Redis required.
 """
 
+from typing import Any
+
 import asyncio
 from datetime import datetime
 from uuid import UUID
@@ -32,7 +34,7 @@ async def _publish_progress(repo_id: str, progress: int, status: str) -> None:
         logger.debug(f"Progress publish failed (non-critical): {e}")
 
 
-async def index_repository_task(repo_id: str, clone_url: str, access_token: str = "") -> dict:
+async def index_repository_task(repo_id: str, clone_url: str, access_token: str = "") -> dict[str, Any]:
     """
     Background task to index a repository.
 

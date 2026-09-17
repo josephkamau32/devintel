@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -73,7 +73,7 @@ class GitHubService:
 
         return access_token
 
-    async def get_github_user(self, github_token: str) -> dict:
+    async def get_github_user(self, github_token: str) -> dict[str, Any]:
         """Fetch user profile from GitHub API."""
         try:
             async with httpx.AsyncClient() as client:

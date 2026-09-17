@@ -1,3 +1,5 @@
+from typing import Any
+
 from fastapi import Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -43,7 +45,7 @@ class ExternalServiceError(AppException):
         detail: str = "External service unavailable",
         *,
         message: str | None = None,
-        details: dict | None = None,
+        details: dict[str, Any] | None = None,
     ):
         msg = message or detail
         if details:
@@ -57,7 +59,7 @@ class EmbeddingError(AppException):
         detail: str = "Embedding generation failed",
         *,
         message: str | None = None,
-        details: dict | None = None,
+        details: dict[str, Any] | None = None,
     ):
         # Support both `detail=` (direct) and `message=`/`details=` (openai_client) call styles
         msg = message or detail

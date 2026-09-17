@@ -1,5 +1,6 @@
 """Embedding repository."""
 
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select, text
@@ -16,7 +17,7 @@ class EmbeddingRepository(BaseRepository[Embedding]):
         """Initialize repository."""
         super().__init__(Embedding, db)
 
-    async def create_bulk(self, embeddings_data: list[dict]) -> list[Embedding]:
+    async def create_bulk(self, embeddings_data: list[dict[str, Any]]) -> list[Embedding]:
         """Create multiple embeddings at once."""
         instances = [Embedding(**data) for data in embeddings_data]
         self.db.add_all(instances)

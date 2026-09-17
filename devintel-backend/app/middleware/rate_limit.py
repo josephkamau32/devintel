@@ -8,7 +8,7 @@ in-memory sliding window rate limiter rather than failing open.
 """
 
 import time
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 
 from fastapi import Request, Response, status
 from fastapi.responses import JSONResponse
@@ -129,7 +129,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 return limit
         return self.default_limit
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
         """Check rate limit before processing request."""
         # Skip rate limiting for health checks and static assets
         if request.url.path in ("/health", "/docs", "/redoc", "/openapi.json"):
