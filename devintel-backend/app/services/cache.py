@@ -64,7 +64,7 @@ class CacheService:
         self._redis: Any = None
         self._mem: Optional[_InMemoryCache] = None
 
-        if settings.REDIS_URL:
+        if settings.REDIS_URL and settings.ENVIRONMENT != "testing":
             try:
                 import redis.asyncio as aioredis
                 self._redis = aioredis.from_url(  # type: ignore[no-untyped-call]
@@ -78,7 +78,7 @@ class CacheService:
                 self._mem = _InMemoryCache()
         else:
             self._mem = _InMemoryCache()
-            logger.info("Cache backend: in-memory (REDIS_URL not configured)")
+            logger.info("Cache backend: in-memory (REDIS_URL not configured or ENVIRONMENT=testing)")
 
     # ── Public API ────────────────────────────────────────────────────
 

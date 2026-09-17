@@ -90,7 +90,7 @@ jobs:
           echo "PAT=dummy_pat" >> .env
           echo "DATABASE_POOL_SIZE=20" >> .env
           echo "DATABASE_MAX_OVERFLOW=0" >> .env
-          echo "REDIS_URL=redis://localhost:6379/0" >> .env
+          echo "REDIS_URL=" >> .env
           echo "REDIS_CACHE_TTL=3600" >> .env
           echo "REDIS_POOL_SIZE=10" >> .env
           echo "CELERY_BROKER_URL=redis://localhost:6379/1" >> .env

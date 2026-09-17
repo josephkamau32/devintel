@@ -39,6 +39,17 @@ def reset_rate_limits():
     reset_in_memory_rate_limit_store()
 
 
+@pytest.fixture(autouse=True)
+def reset_cache_store():
+    """Reset in-memory cache store before and after each test."""
+    from app.services.cache import cache
+    if hasattr(cache, "_mem") and cache._mem is not None:
+        cache._mem._store.clear()
+    yield
+    if hasattr(cache, "_mem") and cache._mem is not None:
+        cache._mem._store.clear()
+
+
 @pytest_asyncio.fixture(scope="function")
 async def db_session():
     engine = create_async_engine(TEST_DB_URL, echo=False)
