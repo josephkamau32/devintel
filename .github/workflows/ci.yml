@@ -102,6 +102,7 @@ jobs:
           echo "OPENAI_EMBEDDING_MODEL=text-embedding-3-small" >> .env
           echo "OPENAI_CHAT_MODEL=gpt-4-turbo-preview" >> .env
           echo "OPENAI_MAX_TOKENS=4096" >> .env
+          echo "GEMINI_API_KEY=test_gemini_key" >> .env
           echo "JWT_SECRET_KEY=test_jwt_secret_key" >> .env
           echo "JWT_ALGORITHM=HS256" >> .env
           echo "JWT_ACCESS_TOKEN_EXPIRE_MINUTES=15" >> .env

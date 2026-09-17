@@ -32,7 +32,8 @@ class GeminiProvider(BaseAIProvider):
     """Concrete Gemini provider using the google-genai SDK."""
 
     def __init__(self) -> None:
-        self._client = genai.Client(api_key=settings.GEMINI_API_KEY)
+        api_key = settings.GEMINI_API_KEY or "dummy_gemini_api_key"
+        self._client = genai.Client(api_key=api_key)
         self._default_chat_model = settings.GEMINI_CHAT_MODEL
         self._default_embedding_model = settings.GEMINI_EMBEDDING_MODEL
 
