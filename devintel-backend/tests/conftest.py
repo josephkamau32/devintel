@@ -23,6 +23,44 @@ def pytest_ignore_collect(collection_path, config):
     return not collection_path.name.startswith("test_") or not collection_path.name.endswith(".py")
 
 
+import os
+import sys
+import aiosqlite.core
+
+# Daemonize aiosqlite connection worker threads so they never prevent process exit
+_orig_aiosqlite_init = aiosqlite.core.Connection.__init__
+
+
+def _patched_aiosqlite_init(self, *args, **kwargs):
+    _orig_aiosqlite_init(self, *args, **kwargs)
+    self._thread.daemon = True
+
+
+aiosqlite.core.Connection.__init__ = _patched_aiosqlite_init
+
+_session_exitstatus: int = 0
+
+
+def pytest_sessionfinish(session, exitstatus):
+    global _session_exitstatus
+    try:
+        _session_exitstatus = int(exitstatus)
+    except Exception:
+        _session_exitstatus = 0
+    try:
+        from app.db.session import engine as global_engine
+        global_engine.sync_engine.dispose()
+    except Exception:
+        pass
+
+
+def pytest_unconfigure(config):
+    """Ensure pytest exits cleanly after printing reports without hanging on background threads."""
+    sys.stdout.flush()
+    sys.stderr.flush()
+    if any("pytest" in arg for arg in sys.argv):
+        os._exit(_session_exitstatus)
+
 
 @pytest.fixture(autouse=True)
 def reset_rate_limits():
