@@ -48,6 +48,7 @@ jobs:
   backend:
     name: Backend Validation
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     
     steps:
       - name: Checkout code

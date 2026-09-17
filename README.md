@@ -1,5 +1,7 @@
 # DevIntel AI
 
+[![CI](https://github.com/josephkamau32/devintel/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/josephkamau32/devintel/actions/workflows/ci.yml)
+
 An asynchronous code intelligence platform that indexes codebases into a PostgreSQL vector database, provides context-grounded retrieval-augmented generation (RAG) for codebase questions, calculates multi-dimensional code health metrics, generates AST-based architecture diagrams, and automates pull request reviews.
 
 The system is deployed as a monorepo containing a FastAPI backend, a React/TypeScript frontend, and a companion VS Code extension.

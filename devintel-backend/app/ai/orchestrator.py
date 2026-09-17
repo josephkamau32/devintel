@@ -39,8 +39,12 @@ def _create_default_provider() -> BaseAIProvider:
         from app.ai.providers.openai_provider import OpenAIProvider
         return OpenAIProvider()
     else:
-        from app.ai.providers.gemini_provider import GeminiProvider
-        return GeminiProvider()
+        try:
+            from app.ai.providers.gemini_provider import GeminiProvider
+            return GeminiProvider()
+        except Exception:
+            from app.ai.providers.openai_provider import OpenAIProvider
+            return OpenAIProvider()
 
 
 class AIOrchestrator:

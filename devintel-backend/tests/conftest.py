@@ -23,12 +23,6 @@ def pytest_ignore_collect(collection_path, config):
     return not collection_path.name.startswith("test_") or not collection_path.name.endswith(".py")
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
-
 
 @pytest.fixture(autouse=True)
 def reset_rate_limits():
