@@ -195,10 +195,15 @@ async def collaboration_ws(
             collab_service = CollaborationService(db)
 
             # Send connection confirmation
+            user_login = getattr(user, "github_username", None)
+            if not isinstance(user_login, str):
+                user_login = getattr(user, "github_login", None)
+            login_str = user_login if isinstance(user_login, str) and user_login else None
+
             await websocket.send_json({
                 "type": "connected",
                 "session_id": str(session.id),
-                "user": {"id": str(user.id), "login": user.github_login} if user.github_login else {"id": str(user.id)},
+                "user": {"id": str(user.id), "login": login_str} if login_str else {"id": str(user.id)},
             })
 
             # Handle incoming messages

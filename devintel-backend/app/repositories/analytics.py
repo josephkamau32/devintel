@@ -48,6 +48,8 @@ class AnalyticsRepository(BaseRepository[Analytics]):
             await self.db.flush()
             await self.db.refresh(analytics)
 
+        return analytics
+
     async def increment_repositories_indexed(self, user_id: UUID) -> Analytics:
         """Increment repositories indexed count for a user."""
         from datetime import datetime

@@ -43,7 +43,7 @@ class BaseAIProvider(ABC):
         ...
 
     @abstractmethod
-    async def stream(self, request: CompletionRequest) -> AsyncGenerator[str, None]:
+    def stream(self, request: CompletionRequest) -> AsyncGenerator[str, None]:
         """Stream a chat completion token-by-token.
 
         Args:

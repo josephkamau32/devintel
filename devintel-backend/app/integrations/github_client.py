@@ -46,7 +46,7 @@ class GitHubClient:
     ) -> list[dict[str, Any]]:
         """Get user repositories with true pagination."""
         try:
-            def _fetch_repos_page() -> dict[str, Any]:
+            def _fetch_repos_page() -> list[dict[str, Any]]:
                 user = self.client.get_user()
                 repos = user.get_repos(type="all", sort="updated", direction="desc")
                 # Use PyGithub's native pagination — O(1) API call per page
@@ -84,7 +84,7 @@ class GitHubClient:
     ) -> list[dict[str, Any]]:
         """Get pull requests for a specific repository with true pagination."""
         try:
-            def _fetch_pulls_page() -> dict[str, Any]:
+            def _fetch_pulls_page() -> list[dict[str, Any]]:
                 repo = self.client.get_repo(full_name)
                 pulls = repo.get_pulls(state=state, sort="created", direction="desc")
                 page_data = pulls.get_page(page - 1)
@@ -96,7 +96,7 @@ class GitHubClient:
                         "author": pr.user.login,
                         "author_avatar": pr.user.avatar_url,
                         "created_at": pr.created_at.isoformat(),
-                        "updated_at": pr.updated_at.isoformat(),
+                        "updated_at": pr.updated_at.isoformat() if pr.updated_at else pr.created_at.isoformat(),
                         "additions": pr.additions,
                         "deletions": pr.deletions,
                         "url": pr.html_url,
@@ -117,7 +117,7 @@ class GitHubClient:
         """Get the diff for a pull request."""
         try:
             # Offload sync PyGithub calls to thread
-            def _get_pr_diff_url() -> dict[str, Any]:
+            def _get_pr_diff_url() -> str:
                 repo = self.client.get_repo(full_name)
                 pr = repo.get_pull(pr_number)
                 return pr.diff_url
@@ -173,7 +173,7 @@ class GitHubClient:
     ) -> list[dict[str, Any]]:
         """Get the list of files changed in a pull request with their patches."""
         try:
-            def _do_get_files() -> dict[str, Any]:
+            def _do_get_files() -> list[dict[str, Any]]:
                 repo = self.client.get_repo(full_name)
                 pr = repo.get_pull(pr_number)
                 files = pr.get_files()
@@ -203,7 +203,7 @@ class GitHubClient:
     async def create_branch(self, full_name: str, base_branch: str, new_branch_name: str) -> str:
         """Create a new branch from a base branch."""
         try:
-            def _do_create_branch() -> dict[str, Any]:
+            def _do_create_branch() -> str:
                 repo = self.client.get_repo(full_name)
                 # Ensure refs/heads/ prefix
                 new_ref = f"refs/heads/{new_branch_name}" if not new_branch_name.startswith("refs/") else new_branch_name
@@ -233,7 +233,7 @@ class GitHubClient:
         file_changes: [{"path": "src/main.py", "content": "print('hello')"}]
         """
         try:
-            def _do_create_commit() -> dict[str, Any]:
+            def _do_create_commit() -> str:
                 repo = self.client.get_repo(full_name)
 
                 # Get the branch reference
@@ -317,9 +317,9 @@ class GitHubClient:
     ) -> list[dict[str, Any]]:
         """Get commit history for a repository."""
         try:
-            def _do_get_commits() -> dict[str, Any]:
+            def _do_get_commits() -> list[dict[str, Any]]:
                 repo = self.client.get_repo(full_name)
-                commits = repo.get_commits(per_page=per_page)
+                commits = repo.get_commits()
                 return [
                     {
                         "sha": c.sha,
@@ -355,7 +355,7 @@ class GitHubClient:
     ) -> list[dict[str, Any]]:
         """Get blame information for a file."""
         try:
-            def _do_get_blame() -> dict[str, Any]:
+            def _do_get_blame() -> list[dict[str, Any]]:
                 repo = self.client.get_repo(full_name)
                 contents = repo.get_contents(file_path, ref=ref)
 
@@ -410,4 +410,4 @@ async def exchange_code_for_token(code: str) -> str:
                 details=data,
             )
 
-        return data["access_token"]
+        return str(data["access_token"])

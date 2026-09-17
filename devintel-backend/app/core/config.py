@@ -152,4 +152,4 @@ class Settings(BaseSettings):
         return [origin.rstrip("/") for origin in v]
 
 
-settings = Settings()
+settings = Settings()  # type: ignore[call-arg]

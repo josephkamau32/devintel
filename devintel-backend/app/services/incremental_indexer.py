@@ -4,6 +4,7 @@ Only updates embeddings for changed files instead of re-indexing the entire repo
 """
 
 import asyncio
+import inspect
 import os
 import shutil
 import tempfile
@@ -70,10 +71,15 @@ async def process_push_event(
             await _publish_progress(repo_id, 0, "starting_incremental")
 
             # Clone repository at the specific commit
-            repo_path = await asyncio.wait_for(
-                incremental_service.clone_repository_at_commit(clone_url, access_token, head_commit_sha),
-                timeout=120,
+            clone_val: Any = incremental_service.clone_repository_at_commit(
+                clone_url,
+                access_token,
+                head_commit_sha,
             )
+            if inspect.isawaitable(clone_val):
+                repo_path = str(await asyncio.wait_for(clone_val, timeout=120))
+            else:
+                repo_path = str(clone_val)
 
             await _publish_progress(repo_id, 20, "cloned")
 
@@ -193,7 +199,7 @@ async def process_push_event(
         await _handle_incremental_failure(repo_id, error_msg)
         raise
     finally:
-        if repo_path and os.path.exists(repo_path):
+        if repo_path and isinstance(repo_path, str) and os.path.exists(repo_path):
             try:
                 shutil.rmtree(repo_path)
             except Exception as cleanup_error:

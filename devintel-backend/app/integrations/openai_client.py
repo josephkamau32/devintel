@@ -2,7 +2,7 @@
 
 import time
 from collections.abc import AsyncGenerator
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 import openai
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
@@ -133,9 +133,9 @@ class OpenAIClient:
             raise CircuitBreakerException("OpenAI API temporarily unavailable due to repeated failures")
 
         try:
-            stream = await self.client.chat.completions.create(
+            stream: Any = await self.client.chat.completions.create(
                 model=settings.OPENAI_CHAT_MODEL,
-                messages=messages,
+                messages=cast(Any, messages),
                 temperature=temperature,
                 max_tokens=max_tokens,
                 stream=True,
@@ -196,7 +196,7 @@ class OpenAIClient:
             if tool_choice:
                 kwargs["tool_choice"] = tool_choice
 
-            response = await self.client.chat.completions.create(**kwargs)
+            response: Any = await self.client.chat.completions.create(**cast(Any, kwargs))
             message = response.choices[0].message
 
             _circuit_breaker.record_success()

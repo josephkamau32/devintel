@@ -90,15 +90,15 @@ def get_route_template(request: Request) -> str:
                 for ctx in r.effective_route_contexts():
                     match, _ = ctx.matches(request.scope)
                     if match == Match.FULL:
-                        return ctx.path_format
+                        return str(ctx.path_format)
             elif hasattr(r, "matches"):
                 match, _ = r.matches(request.scope)
                 if match == Match.FULL and hasattr(r, "path"):
-                    return r.path
+                    return str(r.path)
 
     route = request.scope.get("route")
     if route and hasattr(route, "path"):
-        return route.path
+        return str(route.path)
 
     return request.url.path
 

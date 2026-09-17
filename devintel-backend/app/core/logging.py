@@ -153,6 +153,7 @@ def setup_logging() -> None:
     console_handler.setLevel(getattr(logging, settings.LOG_LEVEL.upper()))
 
     # Set formatter based on configuration
+    formatter: logging.Formatter
     if settings.LOG_FORMAT == "json":
         formatter = JSONFormatter()
     else:

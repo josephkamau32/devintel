@@ -41,7 +41,7 @@ async def search_repository(
     top_k: int = Query(10, ge=1, le=50),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> dict[str, Any]:
+) -> SearchResponse:
     """Semantic search across indexed code in a repository."""
     # Check access
     repo_repo = RepositoryRepository(db)
@@ -103,7 +103,7 @@ def _get_github_token(user: User) -> str:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Failed to decrypt GitHub token. Please re-authenticate with GitHub.",
         )
-    return token
+    return str(token)
 
 
 @router.get("/github")
@@ -133,7 +133,7 @@ async def list_repositories(
     limit: int = Query(50, ge=1, le=100),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> dict[str, Any]:
+) -> RepositoryListResponse:
     """List repositories (personal)."""
     repo_repo = RepositoryRepository(db)
 
@@ -156,7 +156,7 @@ async def create_repository(
     repo_data: RepositoryCreate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> dict[str, Any]:
+) -> RepositoryResponse:
     """Add a repository."""
     repo_repo = RepositoryRepository(db)
 
@@ -192,7 +192,7 @@ async def index_repository(
     request: RepositoryIndexRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> dict[str, Any]:
+) -> RepositoryIndexResponse:
     """Trigger repository indexing."""
     repo_repo = RepositoryRepository(db)
 
@@ -208,7 +208,8 @@ async def index_repository(
     await check_repo_access(repository, current_user, db)
 
     # Indexing mutex: prevent concurrent indexing of the same repo
-    if 0 < repository.indexing_progress < 100:
+    progress = repository.indexing_progress or 0
+    if 0 < progress < 100:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Repository is already being indexed. Please wait for the current indexing to complete.",
@@ -266,7 +267,7 @@ async def list_repository_pulls(
     per_page: int = Query(30, ge=1, le=100),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> dict[str, Any]:
+) -> PullRequestListResponse:
     """List pull requests for a repository."""
     repo_repo = RepositoryRepository(db)
     repository = await repo_repo.get_by_id(repository_id)
@@ -361,7 +362,7 @@ async def get_repository_status(
     repository_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> dict[str, Any]:
+) -> IndexingStatusResponse:
     """Get repository indexing status (lightweight polling endpoint)."""
     repo_repo = RepositoryRepository(db)
 
@@ -376,11 +377,11 @@ async def get_repository_status(
     await check_repo_access(repository, current_user, db)
 
     status_str = repository.indexing_status.value if hasattr(repository.indexing_status, "value") else str(repository.indexing_status or "pending")
-    last_indexed_str = repository.last_indexed_at.isoformat() if hasattr(repository.last_indexed_at, "isoformat") else (str(repository.last_indexed_at) if repository.last_indexed_at else None)
+    last_indexed_str = repository.last_indexed_at.isoformat() if repository.last_indexed_at is not None else None
     return IndexingStatusResponse(
         id=repository.id,
         indexing_status=status_str,
-        indexing_progress=repository.indexing_progress,
+        indexing_progress=repository.indexing_progress or 0,
         indexing_error=repository.indexing_error,
         last_indexed_at=last_indexed_str,
         last_indexed_commit_sha=repository.last_indexed_commit_sha,
@@ -393,7 +394,7 @@ async def get_repository(
     repository_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> dict[str, Any]:
+) -> RepositoryResponse:
     """Get a repository by ID."""
     repo_repo = RepositoryRepository(db)
 

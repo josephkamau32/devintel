@@ -10,7 +10,7 @@ files using Tree-Sitter.  Provides the data model that powers:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from app.core.logging import get_logger
 from app.utils.call_graph import get_language_for_extension
@@ -93,7 +93,7 @@ def extract_symbols(code: str, file_path: str) -> tuple[list[Symbol], list[Impor
         import tree_sitter_language_pack as tslp
         from tree_sitter import Language, Parser
 
-        language = Language(tslp.get_binding(lang_name))
+        language = Language(tslp.get_binding(cast(Any, lang_name)))
         parser = Parser(language)
         tree = parser.parse(bytes(code, "utf8"))
     except Exception as e:
@@ -103,7 +103,7 @@ def extract_symbols(code: str, file_path: str) -> tuple[list[Symbol], list[Impor
     symbols: list[Symbol] = []
     imports: list[ImportRef] = []
 
-    def _walk(node: Any, parent_name: Optional[str] = None) -> list[Any]:
+    def _walk(node: Any, parent_name: Optional[str] = None) -> None:
         # Classes
         if node.type in ("class_definition", "class_declaration"):
             name_node = node.child_by_field_name("name")

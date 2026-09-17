@@ -14,7 +14,7 @@ of instantiating provider clients directly.  The orchestrator handles:
 from __future__ import annotations
 
 import time
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Sequence
 from typing import Any, Optional
 
 from app.ai.metrics import record_ai_request
@@ -285,7 +285,7 @@ def get_orchestrator() -> AIOrchestrator:
 # ---------------------------------------------------------------------------
 
 
-def _normalize_messages(messages: list[AIMessage | dict[str, str]]) -> list[AIMessage]:
+def _normalize_messages(messages: Sequence[AIMessage | dict[str, str]] | list[AIMessage] | list[dict[str, str]]) -> list[AIMessage]:
     """Accept either AIMessage objects or plain dicts.
 
     Also sanitizes message content to redact secrets before sending

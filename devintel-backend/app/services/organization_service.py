@@ -24,7 +24,7 @@ class OrganizationService:
     @staticmethod
     async def create_organization(
         db: AsyncSession, org_create: OrganizationCreate, user_id: UUID
-    ) -> Organization:
+    ) -> Optional[Organization]:
         """Create a new organization and set the creator as the OWNER."""
         # Generate slug
         base_slug = org_create.name.lower().replace(" ", "-")
@@ -88,7 +88,7 @@ class OrganizationService:
             org = await OrganizationService.get_organization(db, member.org_id)
             if org:
                 # Add a custom attribute that will be matched by `OrganizationWithRole` schema
-                org.my_role = member.role
+                setattr(org, "my_role", member.role)
                 orgs.append(org)
 
         return orgs
@@ -118,7 +118,7 @@ class OrganizationService:
     @staticmethod
     async def update_organization(
         db: AsyncSession, org_id: UUID, user_id: UUID, org_update: OrganizationUpdate
-    ) -> Organization:
+    ) -> Optional[Organization]:
         """Update organization details (requires OWNER or ADMIN)."""
         await OrganizationService.check_user_role(
             db, org_id, user_id, [OrganizationRole.OWNER, OrganizationRole.ADMIN]
@@ -264,4 +264,4 @@ class OrganizationService:
 
         await db.delete(member)
         await db.commit()
-        return {"success": True}
+        return

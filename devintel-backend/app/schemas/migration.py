@@ -27,8 +27,8 @@ class MigrationProjectResponse(BaseModel):
     migration_plan: Optional[str]
     migrated_files: int
     total_files: int
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

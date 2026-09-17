@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import time
 from collections.abc import AsyncGenerator
+from typing import Any, cast
 
 from google import genai
 from google.genai import types
@@ -73,7 +74,7 @@ class GeminiProvider(BaseAIProvider):
 
             response = await self._client.aio.models.generate_content(
                 model=model,
-                contents=contents,
+                contents=cast(Any, contents),
                 config=config,
             )
 
@@ -133,7 +134,7 @@ class GeminiProvider(BaseAIProvider):
 
             stream_response = await self._client.aio.models.generate_content_stream(
                 model=model,
-                contents=contents,
+                contents=cast(Any, contents),
                 config=config,
             )
             async for chunk in stream_response:
@@ -190,12 +191,14 @@ class GeminiProvider(BaseAIProvider):
             try:
                 response = await self._client.aio.models.embed_content(
                     model=model,
-                    contents=texts,
+                    contents=cast(Any, texts),
                     config=types.EmbedContentConfig(
                         output_dimensionality=settings.EMBEDDING_DIMENSIONS,
                     ),
                 )
-                return [emb.values for emb in response.embeddings]
+                if response.embeddings:
+                    return [list(emb.values) for emb in response.embeddings if emb.values is not None]
+                return []
             except ClientError as e:
                 # google-genai ClientError uses e.code (int), not e.status.
                 # e.status is always None in this SDK version.
@@ -210,6 +213,7 @@ class GeminiProvider(BaseAIProvider):
                     await asyncio.sleep(wait)
                 else:
                     raise
+        return []
 
     # -- Health check ------------------------------------------------------
 

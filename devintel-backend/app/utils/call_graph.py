@@ -1,7 +1,7 @@
 """Call graph extraction using Tree-Sitter."""
 
 import os
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 import tree_sitter_language_pack as tslp
 from tree_sitter import Language, Parser
@@ -39,7 +39,7 @@ def extract_call_graph(code: str, file_path: str) -> list[tuple[str, str, str]]:
         return []
 
     try:
-        language = Language(tslp.get_binding(lang_name))
+        language = Language(tslp.get_binding(cast(Any, lang_name)))
         parser = Parser(language)
         tree = parser.parse(bytes(code, "utf8"))
     except Exception:
@@ -88,7 +88,7 @@ def extract_call_graph(code: str, file_path: str) -> list[tuple[str, str, str]]:
     return calls
 
 
-def extract_calls_from_directory(repo_path: str) -> list[tuple[str, str, str]]:
+def extract_calls_from_directory(repo_path: str) -> list[tuple[str, str, str, str]]:
     """
     Extract call graph from all supported files in a repository.
 

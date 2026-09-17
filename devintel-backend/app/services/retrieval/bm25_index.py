@@ -10,7 +10,7 @@ from uuid import UUID
 try:
     from rank_bm25 import BM25Okapi
 except ImportError:
-    BM25Okapi = None  # type: ignore
+    BM25Okapi = None
 
 from app.core.logging import get_logger
 from app.repositories.embedding import EmbeddingRepository
@@ -26,8 +26,20 @@ class ScoredChunk:
         self.score = score
         self.source = source
 
+    @property
+    def file_path(self) -> str:
+        return getattr(self.embedding, "file_path", "")
+
+    @property
+    def chunk_text(self) -> str:
+        return getattr(self.embedding, "chunk_text", "")
+
+    @property
+    def repo_id(self) -> Any:
+        return getattr(self.embedding, "repo_id", None)
+
     def __repr__(self) -> str:
-        return f"ScoredChunk(file={self.embedding.file_path}, score={self.score:.4f}, source={self.source})"
+        return f"ScoredChunk(file={self.file_path}, score={self.score:.4f}, source={self.source})"
 
 
 class BM25Index:

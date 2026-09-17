@@ -148,17 +148,3 @@ Provide the fully migrated code for {project.target_tech}."""
         emb_repo = EmbeddingRepository(self.db)
         files = await emb_repo.get_distinct_file_paths(repository.id)
         return len(files) if files else 0
-
-
-# Add get_distinct_file_paths method to EmbeddingRepository
-def get_distinct_file_paths(self: Any, repo_id: UUID) -> list[str]:
-    """Get distinct file paths for a repository."""
-    from sqlalchemy import distinct, select
-    result = self.db.execute(
-        select(distinct(self.model.file_path)).where(self.model.repo_id == repo_id)
-    )
-    return [r[0] for r in result.fetchall()]
-
-
-# Monkey-patch the method
-MigrationProjectRepository._count_files_orig = MigrationProjectRepository._count_files if hasattr(MigrationProjectRepository, '_count_files') else None

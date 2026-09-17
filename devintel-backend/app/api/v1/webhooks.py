@@ -133,7 +133,8 @@ async def github_webhook(
             return {"status": "ignored", "reason": "Repository not connected to DevIntel."}
 
         # Skip if already indexing to prevent double-queueing
-        if 0 < repository.indexing_progress < 100:
+        progress = repository.indexing_progress or 0
+        if 0 < progress < 100:
             logger.info(
                 f"Repository {repo_full_name} is currently indexing — skipping duplicate trigger."
             )
@@ -274,7 +275,7 @@ async def _get_repo_access_token(repository: Any, db: Any) -> str:
         if user and user.github_token_encrypted:
             token = encryption_service.decrypt(user.github_token_encrypted)
             if token:
-                return token
+                return str(token)
 
     # Org repository — find any org member with a token
     org_id = getattr(repository, "organization_id", None)
@@ -287,7 +288,7 @@ async def _get_repo_access_token(repository: Any, db: Any) -> str:
             select(User)
             .join(OrganizationMember, OrganizationMember.user_id == User.id)
             .where(
-                OrganizationMember.organization_id == org_id,
+                OrganizationMember.org_id == org_id,
                 User.github_token_encrypted.isnot(None),
             )
             .limit(1)
@@ -297,6 +298,6 @@ async def _get_repo_access_token(repository: Any, db: Any) -> str:
         if user and user.github_token_encrypted:
             token = encryption_service.decrypt(user.github_token_encrypted)
             if token:
-                return token
+                return str(token)
 
     return ""

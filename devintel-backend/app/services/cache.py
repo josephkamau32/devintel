@@ -67,7 +67,7 @@ class CacheService:
         if settings.REDIS_URL:
             try:
                 import redis.asyncio as aioredis
-                self._redis = aioredis.from_url(
+                self._redis = aioredis.from_url(  # type: ignore[no-untyped-call]
                     settings.REDIS_URL,
                     encoding="utf-8",
                     decode_responses=True,
@@ -168,7 +168,7 @@ class CacheService:
             logger.error(f"Cache delete_pattern error: {e}")
             return False
 
-    async def get_or_set(  # type: ignore[override]
+    async def get_or_set(
         self,
         key: str,
         factory: Any,

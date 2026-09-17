@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.db.session import get_db
+from app.models.organization import OrganizationRole
 from app.models.user import User
 from app.schemas.organization import (
     OrganizationCreate,
@@ -29,7 +30,7 @@ async def create_organization(
     org_in: OrganizationCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> dict[str, Any]:
+) -> Any:
     """Create a new organization."""
     return await OrganizationService.create_organization(db, org_in, current_user.id)
 
@@ -38,7 +39,7 @@ async def create_organization(
 async def list_user_organizations(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> dict[str, Any]:
+) -> Any:
     """List all organizations the user is a member of."""
     return await OrganizationService.get_user_organizations(db, current_user.id)
 
@@ -48,11 +49,11 @@ async def get_organization(
     org_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> dict[str, Any]:
+) -> Any:
     """Get organization details (requires membership)."""
     # Simply checking the role ensures they are a member
     await OrganizationService.check_user_role(
-        db, org_id, current_user.id, ["owner", "admin", "member"]
+        db, org_id, current_user.id, [OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.MEMBER]
     )
 
     org = await OrganizationService.get_organization(db, org_id)
@@ -67,7 +68,7 @@ async def update_organization(
     org_update: OrganizationUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> dict[str, Any]:
+) -> Any:
     """Update organization details (requires OWNER or ADMIN)."""
     return await OrganizationService.update_organization(db, org_id, current_user.id, org_update)
 
@@ -77,17 +78,17 @@ async def list_organization_members(
     org_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> dict[str, Any]:
+) -> Any:
     """List all members of an organization."""
     members = await OrganizationService.get_organization_members(db, org_id, current_user.id)
     # Populate extra fields for response manually since joinedload doesn't auto-flatten
     result = []
     for m in members:
         # Pydantic will serialize this directly if we assign it
-        m.username = m.user.github_username if m.user else None
-        m.email = m.user.email if m.user else None
-        m.name = m.user.full_name if m.user else None
-        m.avatar_url = m.user.avatar_url if m.user else None
+        setattr(m, "username", m.user.github_username if m.user else None)
+        setattr(m, "email", m.user.email if m.user else None)
+        setattr(m, "name", m.user.full_name if m.user else None)
+        setattr(m, "avatar_url", m.user.avatar_url if m.user else None)
         result.append(m)
 
     return result
@@ -99,7 +100,7 @@ async def add_organization_member(
     member_in: OrganizationMemberCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> dict[str, Any]:
+) -> Any:
     """Invite/Add a user to the organization by user_id."""
     if not member_in.user_id:
         raise HTTPException(status_code=400, detail="Must provide user_id to invite")
@@ -111,10 +112,10 @@ async def add_organization_member(
     members = await OrganizationService.get_organization_members(db, org_id, current_user.id)
     for m in members:
         if m.user_id == member_in.user_id:
-            m.username = m.user.github_username if m.user else None
-            m.email = m.user.email if m.user else None
-            m.name = m.user.full_name if m.user else None
-            m.avatar_url = m.user.avatar_url if m.user else None
+            setattr(m, "username", m.user.github_username if m.user else None)
+            setattr(m, "email", m.user.email if m.user else None)
+            setattr(m, "name", m.user.full_name if m.user else None)
+            setattr(m, "avatar_url", m.user.avatar_url if m.user else None)
             return m
     return member
 
@@ -126,7 +127,7 @@ async def update_member_role(
     role_update: OrganizationMemberUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> dict[str, Any]:
+) -> Any:
     """Update a user's role in the organization."""
     member = await OrganizationService.update_member_role(
         db, org_id, current_user.id, user_id, role_update.role

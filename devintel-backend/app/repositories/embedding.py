@@ -105,7 +105,7 @@ class EmbeddingRepository(BaseRepository[Embedding]):
             delete(Embedding).where(Embedding.repo_id == repo_id)
         )
         await self.db.flush()
-        return result.rowcount
+        return int(getattr(result, 'rowcount', 0) or 0)
 
     async def get_neighbors(self, repo_id: UUID, file_path: str, chunk_index: int, radius: int = 1) -> list[Embedding]:
         """Fetch adjacent chunks for a given file and chunk index."""
@@ -176,7 +176,7 @@ class EmbeddingRepository(BaseRepository[Embedding]):
             )
         )
         await self.db.flush()
-        return result.rowcount
+        return int(getattr(result, 'rowcount', 0) or 0)
 
     async def get_all_by_repo(self, repo_id: UUID) -> list[Embedding]:
         """Get all embeddings for a repository (for BM25 indexing)."""
@@ -186,3 +186,11 @@ class EmbeddingRepository(BaseRepository[Embedding]):
             .order_by(Embedding.file_path, Embedding.chunk_index)
         )
         return list(result.scalars().all())
+
+    async def get_distinct_file_paths(self, repo_id: UUID) -> list[str]:
+        """Get distinct file paths for a repository."""
+        from sqlalchemy import distinct
+        result = await self.db.execute(
+            select(distinct(Embedding.file_path)).where(Embedding.repo_id == repo_id)
+        )
+        return [r for r in result.scalars().all() if r]

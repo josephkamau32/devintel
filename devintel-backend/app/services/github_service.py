@@ -71,7 +71,7 @@ class GitHubService:
         if not access_token:
             raise AuthenticationError("GitHub did not return an access token")
 
-        return access_token
+        return str(access_token)
 
     async def get_github_user(self, github_token: str) -> dict[str, Any]:
         """Fetch user profile from GitHub API."""
@@ -86,7 +86,8 @@ class GitHubService:
                     timeout=10.0,
                 )
                 response.raise_for_status()
-                return response.json()
+                res = response.json()
+                return res if isinstance(res, dict) else {}
         except httpx.HTTPStatusError as exc:
             logger.error("GitHub user fetch HTTP error: %s", exc)
             raise AuthenticationError(
@@ -115,7 +116,7 @@ class GitHubService:
 
         for entry in emails:
             if entry.get("primary") and entry.get("verified"):
-                return entry["email"]
+                return str(entry["email"])
         return None
 
     async def authenticate(

@@ -75,7 +75,7 @@ class AutoFixService:
         # For safety, let's just use the PyGithub client directly to get the default branch.
 
 
-        def _get_repo_details() -> str:
+        def _get_repo_details() -> dict[str, str]:
             repo = github_client.client.get_repo(repository.full_name)
             return {"default_branch": repo.default_branch}
 
@@ -91,6 +91,8 @@ class AutoFixService:
                 def _get_file_content(path: str = file_path) -> str:
                     repo = github_client.client.get_repo(repository.full_name)
                     contents = repo.get_contents(path, ref=base_branch)
+                    if isinstance(contents, list):
+                        return ""
                     return contents.decoded_content.decode("utf-8")
 
                 content = await asyncio.to_thread(_get_file_content, path=file_path)
@@ -216,7 +218,10 @@ CRITICAL REQUIREMENTS FOR SEARCH BLOCKS:
                 if content.startswith("json"):
                     content = content[4:].strip()
 
-                fix_plan = json.loads(content)
+                parsed = json.loads(content)
+                if not isinstance(parsed, dict):
+                    raise json.JSONDecodeError("Expected JSON object", content, 0)
+                fix_plan: dict[str, Any] = parsed
 
                 # Verify and apply the diff locally
                 has_errors = False

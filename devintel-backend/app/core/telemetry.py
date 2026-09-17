@@ -120,7 +120,7 @@ def init_telemetry(app: Any = None) -> None:
         _initialized = True
 
 
-def get_tracer(name: str) -> None:
+def get_tracer(name: str) -> Any:
     """Get an OpenTelemetry tracer.
 
     Returns a no-op tracer if OTel is not enabled, so callers

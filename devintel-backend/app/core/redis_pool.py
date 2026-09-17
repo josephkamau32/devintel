@@ -6,6 +6,8 @@ the module safely no-ops.
 """
 
 
+from typing import Any
+
 from app.core.config import settings
 from app.core.logging import get_logger
 
@@ -26,7 +28,7 @@ class RedisPool:
     _client = None
 
     @classmethod
-    async def get_pool(cls) -> None:
+    async def get_pool(cls) -> Any:
         """Get or create Redis connection pool."""
         if not _REDIS_AVAILABLE or not settings.REDIS_URL:
             return None
@@ -48,7 +50,7 @@ class RedisPool:
         return cls._pool
 
     @classmethod
-    async def get_client(cls) -> None:
+    async def get_client(cls) -> Any:
         """Get Redis client from pool."""
         if not _REDIS_AVAILABLE or not settings.REDIS_URL:
             return None

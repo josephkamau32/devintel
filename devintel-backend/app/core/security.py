@@ -45,8 +45,10 @@ def _create_token(data: dict[str, Any], expires_delta: timedelta) -> str:
     to_encode = data.copy()
     expire = datetime.now(UTC) + expires_delta
     to_encode.update({"exp": expire, "iat": datetime.now(UTC)})
-    return jwt.encode(
-        to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM
+    return str(
+        jwt.encode(
+            to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM
+        )
     )
 
 

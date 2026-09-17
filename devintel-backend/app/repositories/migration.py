@@ -1,6 +1,6 @@
 """Code migration repository."""
 
-from typing import Optional
+from typing import Any, Optional
 from uuid import UUID
 
 from sqlalchemy import select, update
@@ -40,7 +40,7 @@ class MigrationProjectRepository(BaseRepository[MigrationProject]):
 
     async def update_progress(self, project_id: UUID, progress: int, status: Optional[str] = None) -> None:
         """Update migration progress."""
-        values = {"progress_percent": progress}
+        values: dict[str, Any] = {"progress_percent": progress}
         if status:
             values["status"] = status
         await self.db.execute(

@@ -2,6 +2,7 @@
 
 import json
 import uuid
+from collections.abc import AsyncGenerator
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -39,7 +40,7 @@ async def stream_chat(
     http_request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> dict[str, Any]:
+) -> StreamingResponse:
     """
     Stream an AI chat response for a repository using RAG.
 
@@ -90,7 +91,7 @@ async def stream_chat(
     history = [msg.model_dump() for msg in request.chat_history] if request.chat_history else []
     request_id = getattr(http_request.state, "request_id", None) or "unknown"
 
-    async def event_stream() -> dict[str, Any]:
+    async def event_stream() -> AsyncGenerator[str, None]:
         try:
             async for chunk in chat_service.stream_chat(
                 repo_name=repository.full_name,
@@ -137,6 +138,7 @@ from app.schemas.chat import (
     AgentExecuteRequest,
     AgentExecuteResponse,
     AgentExecuteWithTestsResponse,
+    DraftPayload,
 )
 from app.services.agent import AgentService
 
@@ -146,7 +148,7 @@ async def agent_draft(
     request: AgentDraftRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> dict[str, Any]:
+) -> AgentDraftResponse:
     """Generate a draft PR proposal for user review."""
     repo_repo = RepositoryRepository(db)
     repository = await repo_repo.get_by_id(request.repository_id)
@@ -172,7 +174,7 @@ async def agent_draft(
             instruction=request.instruction,
             embedding_repo=embedding_repo,
         )
-        return AgentDraftResponse(draft=draft_payload)
+        return AgentDraftResponse(draft=DraftPayload.model_validate(draft_payload))
     except ValueError as ve:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ve))
     except Exception as e:
@@ -185,7 +187,7 @@ async def agent_execute(
     request: AgentExecuteRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> dict[str, Any]:
+) -> AgentExecuteResponse | AgentExecuteWithTestsResponse:
     """Execute an approved draft PR on GitHub. Optionally generates tests first."""
     repo_repo = RepositoryRepository(db)
     repository = await repo_repo.get_by_id(request.repository_id)
@@ -206,7 +208,7 @@ async def agent_execute(
         result = await agent_service.execute_pr(
             repository=repository,
             draft_payload=draft_dict,
-            default_branch=repository.default_branch
+            default_branch=repository.default_branch or "main"
         )
 
         if result.get("status") == "tests_failed":

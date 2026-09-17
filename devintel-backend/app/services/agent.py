@@ -136,7 +136,7 @@ When using the tool, you must provide the ENTIRE updated content for each file y
             logger.error(f"Failed to parse LLM tool call arguments: {e}")
             raise ValueError("The AI generated an invalid code payload. Please try again.")
 
-        if not args.get("file_changes"):
+        if not isinstance(args, dict) or not args.get("file_changes"):
             raise ValueError("The AI did not suggest any file changes for this request.")
 
         return args

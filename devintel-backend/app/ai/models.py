@@ -109,6 +109,7 @@ class CompletionResponse(BaseModel):
     latency_ms: float = 0.0
     cost_estimate_usd: float = 0.0
     cached: bool = False
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class EmbeddingResponse(BaseModel):

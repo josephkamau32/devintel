@@ -31,4 +31,4 @@ class PolicyRepository(BaseRepository[Policy]):
         from sqlalchemy import delete
         result = await self.db.execute(delete(Policy).where(Policy.repo_id == repo_id))
         await self.db.flush()
-        return result.rowcount
+        return int(getattr(result, 'rowcount', 0) or 0)

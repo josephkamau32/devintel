@@ -30,4 +30,4 @@ class GeneratedTestRepository(BaseRepository[GeneratedTest]):
         """Delete all generated tests for a repository."""
         result = await self.db.execute(delete(GeneratedTest).where(GeneratedTest.repo_id == repo_id))
         await self.db.flush()
-        return result.rowcount
+        return int(getattr(result, 'rowcount', 0) or 0)

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import time
 from collections.abc import AsyncGenerator
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 import openai
 from tenacity import (
@@ -204,9 +204,9 @@ class OpenAIProvider(BaseAIProvider):
         model = request.model or self._default_chat_model
 
         try:
-            stream_resp = await self._client.chat.completions.create(
+            stream_resp: Any = await self._client.chat.completions.create(
                 model=model,
-                messages=[m.model_dump(exclude_none=True) for m in request.messages],
+                messages=cast(Any, [m.model_dump(exclude_none=True) for m in request.messages]),
                 temperature=request.temperature,
                 max_tokens=request.max_tokens,
                 stream=True,

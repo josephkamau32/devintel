@@ -29,7 +29,7 @@ class BaseRepository(Generic[ModelType]):
 
     async def get_by_id(self, id: UUID) -> Optional[ModelType]:
         """Get record by ID."""
-        result = await self.db.execute(select(self.model).where(self.model.id == id))
+        result = await self.db.execute(select(self.model).where(getattr(self.model, 'id') == id))
         return result.scalar_one_or_none()
 
     async def get_all(self, skip: int = 0, limit: int = 100) -> list[ModelType]:
@@ -40,16 +40,16 @@ class BaseRepository(Generic[ModelType]):
     async def update(self, id: UUID, **kwargs: Any) -> Optional[ModelType]:
         """Update a record by ID."""
         await self.db.execute(
-            update(self.model).where(self.model.id == id).values(**kwargs)
+            update(self.model).where(getattr(self.model, 'id') == id).values(**kwargs)
         )
         await self.db.flush()
         return await self.get_by_id(id)
 
     async def delete(self, id: UUID) -> bool:
         """Delete a record by ID."""
-        result = await self.db.execute(delete(self.model).where(self.model.id == id))
+        result = await self.db.execute(delete(self.model).where(getattr(self.model, 'id') == id))
         await self.db.flush()
-        return result.rowcount > 0
+        return bool(getattr(result, 'rowcount', 0) > 0)
 
     async def exists(self, **filters: Any) -> bool:
         """Check if a record exists."""

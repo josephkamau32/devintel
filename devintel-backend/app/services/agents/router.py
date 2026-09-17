@@ -46,7 +46,7 @@ class AgentRouter:
             for name, agent in self.agents.items()
         }
 
-        best_agent = max(scores, key=scores.get)
+        best_agent = max(scores, key=lambda k: scores[k])
         best_score = scores[best_agent]
 
         # Threshold for fallback to generalist

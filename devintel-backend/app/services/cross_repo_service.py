@@ -4,6 +4,7 @@ from typing import Any
 
 from app.core.logging import get_logger
 from app.models.repository import Repository
+from app.repositories.embedding import EmbeddingRepository
 from app.services.retrieval.hybrid_retriever import HybridRetriever
 
 logger = get_logger(__name__)
@@ -14,7 +15,7 @@ class CrossRepoKnowledgeService:
 
     def __init__(self, db_session: Any) -> None:
         self.db = db_session
-        self.hybrid_retriever = HybridRetriever()
+        self.hybrid_retriever = HybridRetriever(EmbeddingRepository(self.db))
 
     async def find_similar_patterns(
         self,

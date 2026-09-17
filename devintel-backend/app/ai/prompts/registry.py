@@ -112,7 +112,7 @@ class PromptRegistry:
             )
         return self._templates[name]
 
-    def list_templates(self) -> list[dict[str, str]]:
+    def list_templates(self) -> list[dict[str, Any]]:
         """Return metadata for all loaded templates."""
         return [
             {

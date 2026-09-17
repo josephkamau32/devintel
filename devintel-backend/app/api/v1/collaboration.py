@@ -31,7 +31,7 @@ async def create_collaboration_session(
     request: CollaborationSessionCreate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> dict[str, Any]:
+) -> CollaborationSessionResponse:
     """Create a new collaboration session."""
     repo_repo = RepositoryRepository(db)
     repository = await repo_repo.get_by_id(request.repository_id)
@@ -56,7 +56,7 @@ async def get_active_session(
     repository_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> dict[str, Any]:
+) -> CollaborationSessionResponse:
     """Get active collaboration session for a repository."""
     repo_repo = RepositoryRepository(db)
     repository = await repo_repo.get_by_id(repository_id)
@@ -80,7 +80,7 @@ async def get_session_history(
     session_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> dict[str, Any]:
+) -> CollaborationHistoryResponse:
     """Get message history for a collaboration session."""
     session_repo = CollaborationSessionRepository(db)
     session = await session_repo.get_by_id(session_id)

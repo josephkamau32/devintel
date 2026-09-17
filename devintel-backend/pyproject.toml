@@ -111,10 +111,14 @@ module = [
     "tree_sitter_language_pack.*",
     "tiktoken.*",
     "github.*",
-    "structlog.*",
     "tenacity.*",
     "git.*",
     "prometheus_client.*",
+    "jsbeautifier",
+    "rank_bm25",
+    "yaml",
+    "jose",
+    "opentelemetry.*",
 ]
 ignore_missing_imports = true
 

@@ -1,5 +1,7 @@
+from collections.abc import AsyncGenerator
 import logging
 from contextlib import asynccontextmanager
+from typing import Any, cast
 
 from fastapi import FastAPI, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
@@ -33,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> None:
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Verify database connectivity on startup.
 
     Schema management is handled entirely by Alembic (run in start.sh
@@ -117,15 +119,15 @@ def create_app() -> FastAPI:
     )
 
     # ── Exception handlers ────────────────────────────────────────────────
-    app.add_exception_handler(AppException, app_exception_handler)
-    app.add_exception_handler(RequestValidationError, validation_exception_handler)
+    app.add_exception_handler(AppException, cast(Any, app_exception_handler))
+    app.add_exception_handler(RequestValidationError, cast(Any, validation_exception_handler))
     app.add_exception_handler(Exception, unhandled_exception_handler)
 
     # ── Routes ────────────────────────────────────────────────────────────
     app.include_router(api_router)
 
     @app.get("/health")
-    async def health() -> None:
+    async def health() -> dict[str, Any]:
         import time
         return {
             "status": "ok",
@@ -136,7 +138,7 @@ def create_app() -> FastAPI:
         }
 
     @app.get("/metrics")
-    async def metrics(request: Request) -> JSONResponse:
+    async def metrics(request: Request) -> Response:
         """Prometheus metrics endpoint protected by API key (F-18).
 
         Fails closed with 404 Not Found if METRICS_API_KEY is not configured

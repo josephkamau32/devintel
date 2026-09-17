@@ -1,4 +1,5 @@
 import ast
+from typing import Optional
 
 try:
     import jsbeautifier
@@ -7,7 +8,7 @@ except ImportError:
     _JS_LINT_AVAILABLE = False
 
 
-def check_syntax(file_path: str, content: str, language: str = None) -> list[str]:
+def check_syntax(file_path: str, content: str, language: Optional[str] = None) -> list[str]:
     """
     Checks the syntax of the given content for Python or JavaScript/TypeScript files.
     Returns a list of error strings, or an empty list if no errors are found.

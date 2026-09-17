@@ -10,20 +10,9 @@ from app.ai.orchestrator import get_orchestrator
 from app.core.logging import get_logger
 from app.models.policy import Policy, PolicyRuleType
 from app.repositories.policy import PolicyRepository
+from app.schemas.policy import PolicyViolation
 
 logger = get_logger(__name__)
-
-
-class PolicyViolation(BaseModel):
-    """A policy violation found in code."""
-
-    rule_name: str
-    rule_type: str
-    severity: str
-    file_path: str
-    line_number: Optional[int]
-    description: str
-    suggestion: Optional[str]
 
 
 class PolicyChecker:
@@ -52,16 +41,17 @@ class PolicyChecker:
 
         return violations
 
-    def _get_checker(self, rule_type: str) -> Any:
+    def _get_checker(self, rule_type: Any) -> Any:
         """Get the appropriate checker function for a rule type."""
-        checkers = {
-            PolicyRuleType.NO_PATTERN: self._check_no_pattern,
-            PolicyRuleType.REQUIRE_PATTERN: self._check_require_pattern,
-            PolicyRuleType.MAX_COMPLEXITY: self._check_complexity,
-            PolicyRuleType.REQUIRE_DOCSTRINGS: self._check_docstrings,
-            PolicyRuleType.CUSTOM_PROMPT: self._check_custom_prompt,
+        key = getattr(rule_type, "value", rule_type)
+        checkers: dict[str, Any] = {
+            PolicyRuleType.NO_PATTERN.value: self._check_no_pattern,
+            PolicyRuleType.REQUIRE_PATTERN.value: self._check_require_pattern,
+            PolicyRuleType.MAX_COMPLEXITY.value: self._check_complexity,
+            PolicyRuleType.REQUIRE_DOCSTRINGS.value: self._check_docstrings,
+            PolicyRuleType.CUSTOM_PROMPT.value: self._check_custom_prompt,
         }
-        return checkers.get(rule_type)
+        return checkers.get(key)
 
     async def _check_no_pattern(self, diff: str, policy: Policy) -> list[PolicyViolation]:
         """Check that a regex pattern is not present in added lines."""

@@ -199,14 +199,18 @@ Be specific, cite file names. Keep each issue description under 100 words."""
                 content = content.rsplit("```", 1)[0]
 
         try:
-            return json.loads(content)
+            parsed = json.loads(content)
+            if isinstance(parsed, dict):
+                return parsed
         except json.JSONDecodeError:
             # Find JSON object boundaries
             start = content.find("{")
             end = content.rfind("}") + 1
             if start != -1 and end > start:
                 try:
-                    return json.loads(content[start:end])
+                    parsed = json.loads(content[start:end])
+                    if isinstance(parsed, dict):
+                        return parsed
                 except json.JSONDecodeError:
                     pass
 

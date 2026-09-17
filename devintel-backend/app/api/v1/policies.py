@@ -28,7 +28,7 @@ async def list_policies(
     repository_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> dict[str, Any]:
+) -> PolicyListResponse:
     """List policies for a repository."""
     repo_repo = RepositoryRepository(db)
     repository = await repo_repo.get_by_id(repository_id)
@@ -41,7 +41,10 @@ async def list_policies(
     policy_repo = PolicyRepository(db)
     policies = await policy_repo.get_by_repo(repository_id)
 
-    return PolicyListResponse(policies=policies, repository_id=repository_id)
+    return PolicyListResponse(
+        policies=[PolicyResponse.model_validate(p) for p in policies],
+        repository_id=repository_id,
+    )
 
 
 @router.post("/{repository_id}/policies", response_model=PolicyResponse)
@@ -50,7 +53,7 @@ async def create_policy(
     policy_data: PolicyCreate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> dict[str, Any]:
+) -> PolicyResponse:
     """Create a policy rule."""
     repo_repo = RepositoryRepository(db)
     repository = await repo_repo.get_by_id(repository_id)
@@ -81,7 +84,7 @@ async def update_policy(
     policy_data: PolicyCreate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> dict[str, Any]:
+) -> PolicyResponse:
     """Update a policy rule."""
     repo_repo = RepositoryRepository(db)
     repository = await repo_repo.get_by_id(repository_id)
@@ -137,7 +140,7 @@ async def check_policies(
     request: PolicyCheckRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> dict[str, Any]:
+) -> PolicyCheckResponse:
     """Check a diff against repository policies."""
     repo_repo = RepositoryRepository(db)
     repository = await repo_repo.get_by_id(repository_id)

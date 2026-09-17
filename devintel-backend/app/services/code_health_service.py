@@ -208,12 +208,16 @@ Be objective, use the sampled code as evidence. Score 0=very poor, 50=average, 1
             if content.endswith("```"):
                 content = content.rsplit("```", 1)[0]
         try:
-            return json.loads(content)
+            parsed = json.loads(content)
+            if isinstance(parsed, dict):
+                return parsed
         except json.JSONDecodeError:
             start, end = content.find("{"), content.rfind("}") + 1
             if start != -1 and end > start:
                 try:
-                    return json.loads(content[start:end])
+                    parsed = json.loads(content[start:end])
+                    if isinstance(parsed, dict):
+                        return parsed
                 except json.JSONDecodeError:
                     pass
         return self._default_result()

@@ -16,7 +16,12 @@ from app.models.repository import IndexingStatus
 from app.models.user import User
 from app.repositories.embedding import EmbeddingRepository
 from app.repositories.repository import RepositoryRepository
-from app.schemas.pr_review import PRReviewRequest, PRReviewResponse
+from app.schemas.pr_review import (
+    PRReviewRequest,
+    PRReviewResponse,
+    PullRequestListResponse,
+    PullRequestResponse,
+)
 from app.services.chat import ChatService
 from app.services.encryption import encryption_service
 
@@ -37,7 +42,7 @@ async def review_pull_request(
     http_request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> dict[str, Any]:
+) -> PRReviewResponse:
     """Review a pull request using AI."""
     # Get repository
     repo_repo = RepositoryRepository(db)
@@ -192,7 +197,7 @@ async def list_pull_requests(
     per_page: int = 30,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> dict[str, Any]:
+) -> PullRequestListResponse:
     """List pull requests for a repository from GitHub."""
     repo_repo = RepositoryRepository(db)
     repository = await repo_repo.get_by_id(repository_id)
@@ -236,6 +241,6 @@ async def list_pull_requests(
         )
 
     return PullRequestListResponse(
-        pulls=pulls_data,
+        pulls=[PullRequestResponse.model_validate(p) for p in pulls_data],
         repository_id=repository_id,
     )

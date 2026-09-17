@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional, cast
 
 import tiktoken
 import tree_sitter_language_pack as tslp
@@ -44,7 +44,7 @@ def chunk_code_with_tree_sitter(code: str, file_path: str, max_tokens: int = 700
         return [code] if code.strip() else []
 
     try:
-        language = Language(tslp.get_binding(lang_name))
+        language = Language(tslp.get_binding(cast(Any, lang_name)))
         parser = Parser(language)
         tree = parser.parse(bytes(code, "utf8"))
     except Exception:
@@ -65,7 +65,7 @@ def chunk_code_with_tree_sitter(code: str, file_path: str, max_tokens: int = 700
 
     current_lang_targets = target_types.get(lang_name, [])
 
-    def find_split_points(node: Node) -> list[str]:
+    def find_split_points(node: Node) -> None:
         if node.type in current_lang_targets:
             split_offsets.add(node.start_byte)
             split_offsets.add(node.end_byte)

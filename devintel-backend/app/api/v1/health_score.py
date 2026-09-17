@@ -133,7 +133,7 @@ async def auto_fix_code_health_issue(
     http_request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> dict[str, Any]:
+) -> AutoFixResponse:
     """Automatically generate and propose a fix for a specific code health issue."""
     repo_repo = RepositoryRepository(db)
     repository = await repo_repo.get_by_id(repository_id)

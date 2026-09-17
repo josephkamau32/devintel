@@ -14,7 +14,7 @@ class BaseRepository(Generic[ModelType]):
         self.db = db
 
     async def get_by_id(self, id: Any) -> Optional[ModelType]:
-        result = await self.db.execute(select(self.model).where(self.model.id == id))
+        result = await self.db.execute(select(self.model).where(getattr(self.model, 'id') == id))
         return result.scalar_one_or_none()
 
     async def save(self, obj: ModelType) -> ModelType:

@@ -48,4 +48,4 @@ class ArchitectureDiagramRepository(BaseRepository[ArchitectureDiagram]):
             delete(ArchitectureDiagram).where(ArchitectureDiagram.repo_id == repo_id)
         )
         await self.db.flush()
-        return result.rowcount
+        return int(getattr(result, 'rowcount', 0) or 0)

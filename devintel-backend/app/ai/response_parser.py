@@ -47,7 +47,9 @@ def parse_json_response(
 
     # Attempt 1: Direct parse
     try:
-        return json.loads(content)
+        parsed = json.loads(content)
+        if isinstance(parsed, dict):
+            return parsed
     except json.JSONDecodeError:
         pass
 
@@ -56,7 +58,9 @@ def parse_json_response(
     end = content.rfind("}") + 1
     if start != -1 and end > start:
         try:
-            return json.loads(content[start:end])
+            parsed = json.loads(content[start:end])
+            if isinstance(parsed, dict):
+                return parsed
         except json.JSONDecodeError:
             pass
 

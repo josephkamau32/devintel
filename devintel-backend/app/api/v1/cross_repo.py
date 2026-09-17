@@ -13,6 +13,7 @@ from app.repositories.repository import RepositoryRepository
 from app.schemas.cross_repo import (
     CrossRepoPatternRequest,
     CrossRepoPatternResponse,
+    PatternMatch,
 )
 from app.services.cross_repo_service import CrossRepoKnowledgeService
 
@@ -24,7 +25,7 @@ async def find_cross_repo_patterns(
     request: CrossRepoPatternRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> dict[str, Any]:
+) -> CrossRepoPatternResponse:
     """Find similar code patterns across repositories."""
     repo_repo = RepositoryRepository(db)
     repository = await repo_repo.get_by_id(request.repository_id)
@@ -42,4 +43,4 @@ async def find_cross_repo_patterns(
         top_k=request.top_k,
     )
 
-    return CrossRepoPatternResponse(patterns=patterns)
+    return CrossRepoPatternResponse(patterns=[PatternMatch.model_validate(p) for p in patterns])
