@@ -1,11 +1,10 @@
 """Sandbox service for executing generated tests."""
 
-from typing import Any
-
 import asyncio
 import json
 import os
 import tempfile
+from typing import Any
 
 from app.core.logging import get_logger
 

@@ -3,7 +3,7 @@
 import json
 import uuid
 from collections.abc import AsyncGenerator
-from typing import Any, Optional
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse

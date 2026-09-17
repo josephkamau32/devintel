@@ -1,10 +1,9 @@
-from collections.abc import AsyncGenerator
 import logging
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any, cast
 
 from fastapi import FastAPI, HTTPException, Request, Response, status
-from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text

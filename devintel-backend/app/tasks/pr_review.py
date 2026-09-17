@@ -3,9 +3,8 @@
 Runs as an asyncio task in-process — no Celery or Redis required.
 """
 
-from typing import Any
-
 import asyncio
+from typing import Any
 from uuid import UUID
 
 from app.core.logging import get_logger

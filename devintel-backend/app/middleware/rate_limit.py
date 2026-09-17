@@ -1,4 +1,3 @@
-from typing import Any
 
 """Rate limiting middleware using Redis sliding window counter with in-memory fallback.
 

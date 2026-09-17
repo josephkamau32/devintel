@@ -1,4 +1,3 @@
-from typing import Any
 
 """Cross-repository knowledge API routes."""
 

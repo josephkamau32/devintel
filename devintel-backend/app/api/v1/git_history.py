@@ -1,4 +1,3 @@
-from typing import Any
 
 """Git history API routes."""
 

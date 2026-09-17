@@ -1,7 +1,7 @@
 """Policy model for custom code quality rules."""
 
 import enum
-from typing import Any, TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Optional
 from uuid import UUID
 
 from sqlalchemy import JSON, ForeignKey, String

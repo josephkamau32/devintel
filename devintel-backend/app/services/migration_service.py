@@ -2,7 +2,6 @@ from typing import Any
 
 """Code migration service for AI-powered migration."""
 
-from uuid import UUID
 
 from app.ai.orchestrator import get_orchestrator
 from app.core.logging import get_logger

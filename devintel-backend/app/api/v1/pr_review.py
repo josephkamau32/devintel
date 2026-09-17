@@ -1,4 +1,3 @@
-from typing import Any
 
 """PR review routes."""
 
@@ -184,8 +183,6 @@ Provide a review as a JSON object with these exact keys:
 
 
 from uuid import UUID
-
-from app.schemas.pr_review import PullRequestListResponse
 
 
 @pulls_router.get("/{repository_id}/pulls", response_model=PullRequestListResponse)

@@ -1,8 +1,7 @@
 """Analytics repository."""
 
-from typing import Any
-
 from datetime import UTC
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import Date, cast, desc, func, select

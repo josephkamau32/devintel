@@ -3,10 +3,9 @@
 Runs as an asyncio task in-process — no Celery or Redis required.
 """
 
-from typing import Any
-
 import asyncio
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
 from git import Repo

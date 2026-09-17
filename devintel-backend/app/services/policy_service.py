@@ -1,10 +1,8 @@
 """Policy checker service for validating code against custom rules."""
 
 import re
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
-
-from pydantic import BaseModel
 
 from app.ai.orchestrator import get_orchestrator
 from app.core.logging import get_logger

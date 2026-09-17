@@ -149,7 +149,7 @@ class _NoOpSpan:
     def record_exception(self, exception: BaseException) -> None:
         pass
 
-    def __enter__(self) -> "_NoOpSpan":
+    def __enter__(self) -> _NoOpSpan:
         return self
 
     def __exit__(self, *args: Any) -> None:

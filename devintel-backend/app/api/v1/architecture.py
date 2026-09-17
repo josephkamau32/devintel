@@ -1,4 +1,3 @@
-from typing import Any
 
 """Architecture visualization API routes."""
 

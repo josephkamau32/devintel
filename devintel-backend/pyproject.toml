@@ -77,6 +77,8 @@ ignore = [
     "UP015",  # Unnecessary open mode — style preference
     "B007",   # Unused loop variable — common in unpacking patterns
     "B008",   # Depends() in defaults — FastAPI pattern (false positive)
+    "B009",   # getattr with constant — needed for generic ModelType column access
+    "B010",   # setattr with constant — needed for dynamic attribute attachment
     "B023",   # Function does not bind loop var — false positive in async batching
     "B904",   # raise from — existing exception re-raise pattern
     "N818",   # Exception naming — AppException is an established name
