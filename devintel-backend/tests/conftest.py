@@ -33,7 +33,15 @@ _orig_aiosqlite_init = aiosqlite.core.Connection.__init__
 
 def _patched_aiosqlite_init(self, *args, **kwargs):
     _orig_aiosqlite_init(self, *args, **kwargs)
-    self._thread.daemon = True
+    try:
+        self.daemon = True
+    except Exception:
+        pass
+    if hasattr(self, "_thread"):
+        try:
+            self._thread.daemon = True
+        except Exception:
+            pass
 
 
 aiosqlite.core.Connection.__init__ = _patched_aiosqlite_init
