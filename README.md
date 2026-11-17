@@ -12,7 +12,7 @@ A public deployment is accessible at [devintel.vercel.app](https://devintel.verc
 
 * **Frontend:** Hosted on Vercel.
 * **Backend API:** Hosted on Render as a containerized service.
-* **Database:** Managed PostgreSQL 16 with the `pgvector` extension on Render.
+* **Database:** Managed PostgreSQL 16 with the `pgvector` extension on Neon.
 * **Demo Access:** The application includes a demo mode (`DEMO_MODE=true`) that enables evaluation via a pre-seeded repository (`devintel/devintel-core`) without requiring GitHub OAuth setup.
 
 ---
@@ -168,7 +168,7 @@ Repository ingestion and heavy analysis tasks are handled asynchronously without
 
 ### Infrastructure
 * **Backend Hosting:** Render Web Service (Docker container deployment)
-* **Database Hosting:** Render Managed PostgreSQL 16 with `pgvector`
+* **Database Hosting:** Neon Postgres with `pgvector`
 * **Frontend Hosting:** Vercel (static single-page application)
 * **Containerization:** Multi-stage Docker build (`devintel-backend/Dockerfile`)
 
@@ -325,6 +325,7 @@ npm run lint
 3. **Architecture Diagram Granularity:** Diagrams are synthesized from top-level module directories and Python import statements present in indexed chunks. Runtime call graphs, third-party service dependencies, and dynamic reflections are not inferred.
 4. **Code Health Sampling Approach:** Code health metrics are derived from multi-probe representative sampling (10 chunks per repository) passed to an LLM evaluator, rather than exhaustive full-codebase static analysis linters (e.g. SonarQube or Bandit).
 5. **Ingestion File Constraints:** Ingestion is restricted to text files under 5 MB with supported source extensions. Binary files, compiled assets, minified bundles, and non-UTF-8 encodings are discarded.
+6. **Idle Cold Starts:** The first request after idle can take up to about a minute because the free Render service and the free Neon compute both sleep when idle.
 
 ---
 
