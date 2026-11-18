@@ -3,13 +3,15 @@ import { useOutletContext } from 'react-router-dom';
 import { api } from '../../lib/axios';
 import type { Repository } from '../../types/repository';
 import type { ChatMessage } from '../../types/api';
-import { Send, Loader2, Bot, User, Sparkles } from 'lucide-react';
+import { Send, Loader2, Bot, User, Sparkles, RefreshCw, AlertCircle } from 'lucide-react';
 import { clsx } from 'clsx';
 
 interface DisplayMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  isError?: boolean;
+  failedQuestion?: string;
 }
 
 export function ChatTab() {
@@ -27,10 +29,12 @@ export function ChatTab() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSend = async () => {
-    if (!input.trim() || isStreaming) return;
-    const question = input.trim();
-    setInput('');
+  const handleSend = async (questionOverride?: string) => {
+    const question = (questionOverride || input).trim();
+    if (!question || isStreaming) return;
+    if (!questionOverride) {
+      setInput('');
+    }
 
     const userMsg: DisplayMessage = { role: 'user', content: question, timestamp: new Date() };
     setMessages((prev) => [...prev, userMsg]);
@@ -44,6 +48,9 @@ export function ChatTab() {
     const assistantMsg: DisplayMessage = { role: 'assistant', content: '', timestamp: new Date() };
     setMessages((prev) => [...prev, assistantMsg]);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 45000);
+
     try {
       const response = await fetch(
         `${api.defaults.baseURL}/chat/${repository.id}/stream`,
@@ -54,6 +61,7 @@ export function ChatTab() {
             Authorization: `Bearer ${(await import('../../store/authStore')).useAuthStore.getState().accessToken}`,
           },
           credentials: 'include',
+          signal: controller.signal,
           body: JSON.stringify({
             repository_id: repository.id,
             question,
@@ -64,13 +72,13 @@ export function ChatTab() {
       );
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+        throw new Error(`Server returned HTTP ${response.status}`);
       }
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
 
-      if (!reader) throw new Error('No reader');
+      if (!reader) throw new Error('No readable stream from server');
 
       let fullContent = '';
       while (true) {
@@ -84,6 +92,10 @@ export function ChatTab() {
           if (line.startsWith('data: ')) {
             try {
               const data = JSON.parse(line.slice(6));
+              if (data.type === 'error' || data.error) {
+                const errorMsg = data.message || data.error || 'An error occurred while processing your request.';
+                throw new Error(errorMsg);
+              }
               if (data.content) {
                 fullContent += data.content;
                 setMessages((prev) => {
@@ -92,22 +104,36 @@ export function ChatTab() {
                   return updated;
                 });
               }
-            } catch {
-              // Ignore parse errors
+            } catch (err: unknown) {
+              const errMessage = err instanceof Error ? err.message : String(err);
+              if (errMessage.includes('error') || errMessage.includes('Error') || errMessage.includes('failed') || errMessage.includes('processing')) {
+                throw err;
+              }
             }
           }
         }
       }
-    } catch (error) {
+    } catch (error: unknown) {
+      const isAbort = error instanceof Error && error.name === 'AbortError';
+      const errorMessage = isAbort
+        ? 'Response timed out. The AI model may be overloaded. Click Retry to try again.'
+        : (error instanceof Error ? error.message : 'Sorry, I encountered an error processing your request. Please try again.');
+
       setMessages((prev) => {
         const updated = [...prev];
-        updated[updated.length - 1] = {
-          ...updated[updated.length - 1],
-          content: 'Sorry, I encountered an error processing your request. Please try again.',
-        };
+        const lastIdx = updated.length - 1;
+        if (lastIdx >= 0) {
+          updated[lastIdx] = {
+            ...updated[lastIdx],
+            content: errorMessage,
+            isError: true,
+            failedQuestion: question,
+          };
+        }
         return updated;
       });
     } finally {
+      clearTimeout(timeoutId);
       setIsStreaming(false);
     }
   };
@@ -166,12 +192,33 @@ export function ChatTab() {
                 </div>
               </div>
             )}
-            <div className={clsx('max-w-[75%]', msg.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-assistant')}>
-              <div className="text-sm text-text-primary whitespace-pre-wrap leading-relaxed">
-                {msg.content || (isStreaming && i === messages.length - 1 && (
-                  <Loader2 className="h-4 w-4 animate-spin-slow text-text-quaternary" />
-                ))}
-              </div>
+            <div className={clsx('max-w-[75%]', msg.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-assistant', msg.isError && 'border border-danger-500/30 bg-danger-500/5')}>
+              {msg.content ? (
+                <div className={clsx('text-sm whitespace-pre-wrap leading-relaxed', msg.isError ? 'text-danger-300' : 'text-text-primary')}>
+                  {msg.content}
+                </div>
+              ) : isStreaming && i === messages.length - 1 ? (
+                <div className="flex items-center gap-2 text-xs text-text-quaternary py-0.5">
+                  <Loader2 className="h-4 w-4 animate-spin-slow text-brand-400" />
+                  <span>Thinking...</span>
+                </div>
+              ) : null}
+
+              {msg.isError && msg.failedQuestion && !isStreaming && (
+                <div className="mt-2.5 pt-2 border-t border-border/40 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-1.5 text-xs text-danger-400">
+                    <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                    <span>Generation failed</span>
+                  </div>
+                  <button
+                    onClick={() => handleSend(msg.failedQuestion)}
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-brand-400 hover:text-brand-300 bg-brand-500/10 hover:bg-brand-500/20 px-2.5 py-1 rounded-md transition-colors"
+                  >
+                    <RefreshCw className="h-3 w-3" />
+                    Retry
+                  </button>
+                </div>
+              )}
             </div>
             {msg.role === 'user' && (
               <div className="flex-shrink-0 flex items-start">
@@ -203,7 +250,7 @@ export function ChatTab() {
             rows={1}
           />
           <button
-            onClick={handleSend}
+            onClick={() => handleSend()}
             disabled={!input.trim() || isStreaming}
             className="flex items-center justify-center w-8 h-8 rounded-lg bg-brand-600 hover:bg-brand-500 disabled:opacity-30 text-white transition-colors flex-shrink-0"
           >

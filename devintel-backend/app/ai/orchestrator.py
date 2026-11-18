@@ -13,6 +13,7 @@ of instantiating provider clients directly.  The orchestrator handles:
 
 from __future__ import annotations
 
+import asyncio
 import time
 from collections.abc import AsyncGenerator, Sequence
 from typing import Any, Optional
@@ -192,10 +193,14 @@ class AIOrchestrator:
         )
 
         start = time.perf_counter()
+        status = "cancelled"
         try:
             async for token in self._provider.stream(request):
                 yield token
             status = "success"
+        except (asyncio.CancelledError, GeneratorExit):
+            status = "cancelled"
+            raise
         except Exception:
             status = "error"
             raise
