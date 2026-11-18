@@ -1,6 +1,7 @@
 """
-Tests for CodeHealthService — covers context building, JSON parsing, default
-scoring, and the full analyze() orchestration with mocked dependencies.
+Tests for CodeHealthService — covers context building, the full analyze()
+orchestration with mocked dependencies, and verifying that failed analyses
+never produce fake 50.0 scores.
 """
 
 import json
@@ -10,7 +11,11 @@ from uuid import uuid4
 import pytest
 
 from app.models.repository import Repository
-from app.services.code_health_service import PROBE_QUERIES, CodeHealthService
+from app.services.code_health_service import (
+    PROBE_QUERIES,
+    AnalysisUnavailableError,
+    CodeHealthService,
+)
 
 # ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -91,66 +96,6 @@ class TestBuildContext:
         result = service._build_context([chunk], max_chars=99999)
         # Should contain at most 400 x's from this chunk
         assert result.count("x") <= 400
-
-
-# ─── _parse_json ─────────────────────────────────────────────────────────────
-
-class TestParseJson:
-    def test_valid_json(self, service, valid_health_json):
-        raw = json.dumps(valid_health_json)
-        result = service._parse_json(raw)
-        assert result["overall_score"] == 78.5
-        assert result["security_score"] == 90.0
-
-    def test_strips_json_markdown_fence(self, service, valid_health_json):
-        raw = f"```json\n{json.dumps(valid_health_json)}\n```"
-        result = service._parse_json(raw)
-        assert result["overall_score"] == 78.5
-
-    def test_strips_plain_markdown_fence(self, service, valid_health_json):
-        raw = f"```\n{json.dumps(valid_health_json)}\n```"
-        result = service._parse_json(raw)
-        assert "overall_score" in result
-
-    def test_invalid_returns_defaults(self, service):
-        result = service._parse_json("Not valid JSON whatsoever.")
-        # Should return the default 50.0 scores dict
-        assert result["overall_score"] == 50.0
-        assert result["complexity_score"] == 50.0
-
-    def test_partial_json_extracted(self, service, valid_health_json):
-        """JSON surrounded by extra text should still be extracted."""
-        raw = f"Analysis complete: {json.dumps(valid_health_json)} Thank you."
-        result = service._parse_json(raw)
-        assert result["overall_score"] == 78.5
-
-
-# ─── _default_result ─────────────────────────────────────────────────────────
-
-class TestDefaultResult:
-    def test_has_all_six_dimension_keys(self, service):
-        result = service._default_result()
-        required_keys = {
-            "overall_score",
-            "complexity_score",
-            "documentation_score",
-            "maintainability_score",
-            "test_coverage_score",
-            "security_score",
-        }
-        assert required_keys.issubset(result.keys())
-
-    def test_all_scores_are_50(self, service):
-        result = service._default_result()
-        for key in ["overall_score", "complexity_score", "documentation_score",
-                    "maintainability_score", "test_coverage_score", "security_score"]:
-            assert result[key] == 50.0
-
-    def test_has_summary_and_lists(self, service):
-        result = service._default_result()
-        assert isinstance(result["top_issues"], list)
-        assert isinstance(result["recommendations"], list)
-        assert isinstance(result["summary"], str)
 
 
 # ─── _record_to_dict ─────────────────────────────────────────────────────────
@@ -263,40 +208,29 @@ class TestAnalyze:
         assert isinstance(result["top_issues"], list)
 
     @pytest.mark.asyncio
-    async def test_analyze_empty_repo_uses_defaults(self, service, sample_repo):
-        """When no chunks are found, defaults are persisted without calling LLM."""
+    async def test_analyze_empty_repo_raises_unavailable(self, service, sample_repo):
+        """When no chunks are found, AnalysisUnavailableError is raised — no scores stored."""
         mock_embedding_repo = MagicMock()
         mock_embedding_repo.vector_search = AsyncMock(return_value=[])
 
         mock_health_repo = MagicMock()
-        upserted = MagicMock()
-        upserted.id = uuid4()
-        upserted.repo_id = sample_repo.id
-        upserted.overall_score = 50.0
-        upserted.complexity_score = upserted.documentation_score = 50.0
-        upserted.maintainability_score = upserted.test_coverage_score = upserted.security_score = 50.0
-        upserted.summary = "Analysis could not be completed."
-        upserted.top_issues = "[]"
-        upserted.recommendations = "[]"
-        upserted.language_detected = None
-        upserted.files_analyzed = 0
-        upserted.computed_at = None
-        mock_health_repo.upsert = AsyncMock(return_value=upserted)
+        mock_health_repo.upsert = AsyncMock()
 
         service.embedding_service = MagicMock()
         service.embedding_service.generate_embedding = AsyncMock(return_value=[0.0] * 1536)
 
-        # LLM should NOT be called when no chunks available
         service.orchestrator = MagicMock()
         service.orchestrator.complete = AsyncMock()
 
-        await service.analyze(
-            repository=sample_repo,
-            embedding_repo=mock_embedding_repo,
-            health_repo=mock_health_repo,
-        )
+        with pytest.raises(AnalysisUnavailableError):
+            await service.analyze(
+                repository=sample_repo,
+                embedding_repo=mock_embedding_repo,
+                health_repo=mock_health_repo,
+            )
 
-        mock_health_repo.upsert.assert_called_once()
+        # Verify NOTHING was persisted
+        mock_health_repo.upsert.assert_not_called()
         service.orchestrator.complete.assert_not_called()
 
     @pytest.mark.asyncio
@@ -344,3 +278,141 @@ class TestAnalyze:
         call_kwargs = mock_health_repo.upsert.call_args[1]
         # Even though all 10 probes return the same chunk, files_analyzed should be 1
         assert call_kwargs["data"]["files_analyzed"] == 1
+
+
+# ─── Task 2: Failed analyses must NOT produce 50.0 scores ────────────────────
+
+class TestNoFakeScores:
+    """Verify that a failed LLM call or unparseable response does NOT
+    silently store default 50.0 scores in the database."""
+
+    @pytest.mark.asyncio
+    async def test_failed_llm_call_does_not_produce_50_scores(
+        self, service, sample_repo, mock_chunk
+    ):
+        """When the LLM call raises an exception, no scores are stored at all."""
+        mock_embedding_repo = MagicMock()
+        mock_embedding_repo.vector_search = AsyncMock(return_value=[(mock_chunk, 0.9)])
+
+        mock_health_repo = MagicMock()
+        mock_health_repo.upsert = AsyncMock()
+
+        service.embedding_service = MagicMock()
+        service.embedding_service.generate_embedding = AsyncMock(return_value=[0.0] * 768)
+
+        # Simulate LLM call failure (e.g., Gemini 503, quota exhausted)
+        service.orchestrator = MagicMock()
+        service.orchestrator.complete = AsyncMock(
+            side_effect=RuntimeError("503 Service Unavailable: high demand")
+        )
+
+        with pytest.raises(AnalysisUnavailableError):
+            await service.analyze(
+                repository=sample_repo,
+                embedding_repo=mock_embedding_repo,
+                health_repo=mock_health_repo,
+            )
+
+        # Critical assertion: health_repo.upsert must NOT be called with fake scores
+        mock_health_repo.upsert.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_unparseable_llm_response_does_not_produce_50_scores(
+        self, service, sample_repo, mock_chunk
+    ):
+        """When the LLM returns garbage (not valid JSON), no scores are stored."""
+        mock_embedding_repo = MagicMock()
+        mock_embedding_repo.vector_search = AsyncMock(return_value=[(mock_chunk, 0.9)])
+
+        mock_health_repo = MagicMock()
+        mock_health_repo.upsert = AsyncMock()
+
+        service.embedding_service = MagicMock()
+        service.embedding_service.generate_embedding = AsyncMock(return_value=[0.0] * 768)
+
+        # Simulate LLM returning garbage text instead of JSON
+        mock_llm_response = MagicMock()
+        mock_llm_response.content = "I'm sorry, I cannot analyze code right now."
+        service.orchestrator = MagicMock()
+        service.orchestrator.complete = AsyncMock(return_value=mock_llm_response)
+
+        with pytest.raises(AnalysisUnavailableError):
+            await service.analyze(
+                repository=sample_repo,
+                embedding_repo=mock_embedding_repo,
+                health_repo=mock_health_repo,
+            )
+
+        # Critical assertion: health_repo.upsert must NOT be called
+        mock_health_repo.upsert.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_missing_score_keys_raises_unavailable(
+        self, service, sample_repo, mock_chunk
+    ):
+        """LLM response with missing required score keys raises AnalysisUnavailableError."""
+        mock_embedding_repo = MagicMock()
+        mock_embedding_repo.vector_search = AsyncMock(return_value=[(mock_chunk, 0.9)])
+
+        mock_health_repo = MagicMock()
+        mock_health_repo.upsert = AsyncMock()
+
+        service.embedding_service = MagicMock()
+        service.embedding_service.generate_embedding = AsyncMock(return_value=[0.0] * 768)
+
+        # Partial JSON — missing several score keys
+        incomplete_json = {
+            "overall_score": 75.0,
+            "summary": "Looks good",
+        }
+        mock_llm_response = MagicMock()
+        mock_llm_response.content = json.dumps(incomplete_json)
+        service.orchestrator = MagicMock()
+        service.orchestrator.complete = AsyncMock(return_value=mock_llm_response)
+
+        with pytest.raises(AnalysisUnavailableError, match="missing required score keys"):
+            await service.analyze(
+                repository=sample_repo,
+                embedding_repo=mock_embedding_repo,
+                health_repo=mock_health_repo,
+            )
+
+        mock_health_repo.upsert.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_non_numeric_scores_raises_unavailable(
+        self, service, sample_repo, mock_chunk
+    ):
+        """LLM response with non-numeric score values raises AnalysisUnavailableError."""
+        mock_embedding_repo = MagicMock()
+        mock_embedding_repo.vector_search = AsyncMock(return_value=[(mock_chunk, 0.9)])
+
+        mock_health_repo = MagicMock()
+        mock_health_repo.upsert = AsyncMock()
+
+        service.embedding_service = MagicMock()
+        service.embedding_service.generate_embedding = AsyncMock(return_value=[0.0] * 768)
+
+        # Scores as strings instead of numbers
+        bad_json = {
+            "overall_score": "high",
+            "complexity_score": "medium",
+            "documentation_score": "low",
+            "maintainability_score": "good",
+            "test_coverage_score": "poor",
+            "security_score": "excellent",
+            "summary": "Qualitative assessment",
+        }
+        mock_llm_response = MagicMock()
+        mock_llm_response.content = json.dumps(bad_json)
+        service.orchestrator = MagicMock()
+        service.orchestrator.complete = AsyncMock(return_value=mock_llm_response)
+
+        with pytest.raises(AnalysisUnavailableError, match="non-numeric"):
+            await service.analyze(
+                repository=sample_repo,
+                embedding_repo=mock_embedding_repo,
+                health_repo=mock_health_repo,
+            )
+
+        mock_health_repo.upsert.assert_not_called()

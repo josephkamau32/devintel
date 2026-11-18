@@ -30,6 +30,12 @@ PROBE_QUERIES = [
 ]
 
 
+class AnalysisUnavailableError(Exception):
+    """Raised when code health analysis cannot produce valid scores."""
+
+    pass
+
+
 class CodeHealthService:
     """Analyzes a repository's code quality using RAG sampling + GPT-4."""
 
@@ -49,11 +55,15 @@ class CodeHealthService:
         Steps:
         1. Sample representative code chunks via probe queries
         2. Deduplicate and build a compact context snapshot
-        3. Call OpenAI for structured JSON scoring
-        4. Upsert result into the code_health table
+        3. Call LLM for structured JSON scoring
+        4. Upsert result into the code_health table ONLY if analysis succeeded
 
         Returns:
             The upserted health record as a dict.
+
+        Raises:
+            AnalysisUnavailableError: if the LLM call fails or returns
+            unparseable output — no fake scores are stored.
         """
         repo_name = repository.full_name
         logger.info(f"Starting code health analysis for {repo_name}")
@@ -67,7 +77,9 @@ class CodeHealthService:
 
         if not sampled_chunks:
             logger.warning(f"No chunks found for health analysis of {repo_name}")
-            return await self._persist_empty_result(repository.id, health_repo)
+            raise AnalysisUnavailableError(
+                f"No code chunks available for health analysis of {repo_name}"
+            )
 
         # 2. Build context text (compact)
         context_text = self._build_context(sampled_chunks, max_chars=12000)
@@ -75,19 +87,19 @@ class CodeHealthService:
         # 3. Determine dominant language
         language = repository.language or "Unknown"
 
-        # 4. Call OpenAI
+        # 4. Call LLM — raises AnalysisUnavailableError on failure
         analysis = await self._call_llm(repo_name, language, context_text, len(sampled_chunks))
 
-        # 5. Persist
+        # 5. Persist ONLY valid analysis results
         record = await health_repo.upsert(
             repo_id=repository.id,
             data={
-                "overall_score": analysis.get("overall_score", 0.0),
-                "complexity_score": analysis.get("complexity_score", 0.0),
-                "documentation_score": analysis.get("documentation_score", 0.0),
-                "maintainability_score": analysis.get("maintainability_score", 0.0),
-                "test_coverage_score": analysis.get("test_coverage_score", 0.0),
-                "security_score": analysis.get("security_score", 0.0),
+                "overall_score": analysis["overall_score"],
+                "complexity_score": analysis["complexity_score"],
+                "documentation_score": analysis["documentation_score"],
+                "maintainability_score": analysis["maintainability_score"],
+                "test_coverage_score": analysis["test_coverage_score"],
+                "security_score": analysis["security_score"],
                 "summary": analysis.get("summary", ""),
                 "top_issues": json.dumps(analysis.get("top_issues", [])),
                 "recommendations": json.dumps(analysis.get("recommendations", [])),
@@ -151,6 +163,15 @@ class CodeHealthService:
             total_chars += len(snippet)
         return "\n".join(parts)
 
+    _REQUIRED_SCORE_KEYS = frozenset({
+        "overall_score",
+        "complexity_score",
+        "documentation_score",
+        "maintainability_score",
+        "test_coverage_score",
+        "security_score",
+    })
+
     async def _call_llm(
         self,
         repo_name: str,
@@ -158,7 +179,11 @@ class CodeHealthService:
         context_text: str,
         files_analyzed: int,
     ) -> dict[str, Any]:
-        """Call the OpenAI API for a structured code quality assessment."""
+        """Call the LLM for a structured code quality assessment.
+
+        Raises:
+            AnalysisUnavailableError: if the LLM call fails or JSON is unparseable.
+        """
         system_prompt = f"""You are an expert software quality engineer analyzing repository: {repo_name}.
 Primary language: {language}
 Files sampled: {files_analyzed}
@@ -195,59 +220,27 @@ Be objective, use the sampled code as evidence. Score 0=very poor, 50=average, 1
                 agent="code_health",
             )
             raw = response.content
-            return parse_json_response(raw, fallback=self._default_result())
+            # strict=True: refuse to silently fall back to fake scores
+            result = parse_json_response(raw, strict=True)
         except Exception as e:
-            logger.error(f"LLM call failed for code health analysis: {e}")
-            return self._default_result()
+            logger.error(f"LLM call or JSON parse failed for code health analysis: {e}")
+            raise AnalysisUnavailableError(
+                f"Code health analysis failed for {repo_name}: {e}"
+            ) from e
 
-    def _parse_json(self, raw: str) -> dict[str, Any]:
-        """Parse JSON from LLM response with fallback."""
-        content = raw.strip()
-        if content.startswith("```"):
-            content = content.split("\n", 1)[-1]
-            if content.endswith("```"):
-                content = content.rsplit("```", 1)[0]
-        try:
-            parsed = json.loads(content)
-            if isinstance(parsed, dict):
-                return parsed
-        except json.JSONDecodeError:
-            start, end = content.find("{"), content.rfind("}") + 1
-            if start != -1 and end > start:
-                try:
-                    parsed = json.loads(content[start:end])
-                    if isinstance(parsed, dict):
-                        return parsed
-                except json.JSONDecodeError:
-                    pass
-        return self._default_result()
+        # Validate that all required score keys are present and numeric
+        missing = self._REQUIRED_SCORE_KEYS - set(result.keys())
+        if missing:
+            raise AnalysisUnavailableError(
+                f"LLM response missing required score keys: {missing}"
+            )
+        for key in self._REQUIRED_SCORE_KEYS:
+            if not isinstance(result[key], (int, float)):
+                raise AnalysisUnavailableError(
+                    f"Score key '{key}' has non-numeric value: {result[key]!r}"
+                )
 
-    def _default_result(self) -> dict[str, Any]:
-        return {
-            "overall_score": 50.0,
-            "complexity_score": 50.0,
-            "documentation_score": 50.0,
-            "maintainability_score": 50.0,
-            "test_coverage_score": 50.0,
-            "security_score": 50.0,
-            "summary": "Analysis could not be completed. Scores are indicative defaults.",
-            "top_issues": [],
-            "recommendations": [],
-        }
-
-    async def _persist_empty_result(
-        self,
-        repo_id: UUID,
-        health_repo: CodeHealthRepository,
-    ) -> dict[str, Any]:
-        """Persist a default result when no chunks are available."""
-        result = self._default_result()
-        record = await health_repo.upsert(
-            repo_id=repo_id,
-            data={**result, "files_analyzed": 0, "language_detected": None,
-                  "top_issues": json.dumps([]), "recommendations": json.dumps([])},
-        )
-        return self._record_to_dict(record)
+        return result
 
     @staticmethod
     def _record_to_dict(record: Any) -> dict[str, Any]:

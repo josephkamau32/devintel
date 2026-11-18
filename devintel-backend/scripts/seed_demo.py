@@ -240,14 +240,20 @@ async def seed_demo():
 
         # 7. Run REAL Code Health Analysis via CodeHealthService pipeline
         print("\n6. Running Real Code Health Analysis (CodeHealthService.analyze)...")
-        from app.services.code_health_service import CodeHealthService
+        from app.services.code_health_service import CodeHealthService, AnalysisUnavailableError
         health_service = CodeHealthService()
         health_start = time.time()
-        health_result = await health_service.analyze(
-            repository=repo,
-            embedding_repo=embedding_repo,
-            health_repo=health_repo,
-        )
+        try:
+            health_result = await health_service.analyze(
+                repository=repo,
+                embedding_repo=embedding_repo,
+                health_repo=health_repo,
+            )
+        except AnalysisUnavailableError as e:
+            raise RuntimeError(
+                f"FATAL: Code health analysis failed and must NOT store fake scores. "
+                f"Error: {e}"
+            ) from e
         health_duration = time.time() - health_start
         print(f"  Code health analysis completed in {health_duration:.2f}s.")
         print(f"  Overall Score:        {health_result.get('overall_score', 'N/A')}")

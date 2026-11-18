@@ -86,9 +86,11 @@ export function HealthTab() {
   if (isError || !health) {
     return (
       <div className="card p-10 text-center animate-fade-in">
-        <Activity className="h-8 w-8 text-text-quaternary mx-auto mb-4" />
-        <h2 className="text-h3 text-text-primary mb-2">No health data yet</h2>
-        <p className="text-body text-text-tertiary mb-6">Run a health analysis to see detailed scores.</p>
+        <AlertTriangle className="h-8 w-8 text-status-warning mx-auto mb-4" />
+        <h2 className="text-h3 text-text-primary mb-2">Analysis unavailable</h2>
+        <p className="text-body text-text-tertiary mb-6">
+          Health analysis could not be completed. This may happen if the AI service is temporarily unavailable. Try running a fresh analysis.
+        </p>
         <button onClick={handleRefresh} disabled={refreshHealth.isPending} className="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50">
           {refreshHealth.isPending ? <Loader2 className="h-4 w-4 animate-spin-slow" /> : <RefreshCw className="h-4 w-4" />}
           Run Analysis
