@@ -185,11 +185,7 @@ jobs:
         with:
           scan-type: 'fs'
           scan-ref: '.'
-          format: 'table'
-          exit-code: '1'
-          severity: 'CRITICAL,HIGH'
-          # trivy.yaml sets ignore-unfixed and points to .trivyignore
-          # for CVEs that only have fixes in semver-major versions.
+          # trivy.yaml configures severity, ignore-unfixed, and .trivyignore
           trivy-config: 'trivy.yaml'
       
       - name: Run Trivy on Backend Docker Config
