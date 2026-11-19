@@ -27,9 +27,11 @@ services:
       - key: GEMINI_API_KEY
         sync: false
       - key: GEMINI_CHAT_MODEL
-        value: gemini-3.6-flash
-      - key: GEMINI_FALLBACK_MODEL
         value: gemini-3-flash-preview
+      - key: GEMINI_FALLBACK_MODEL
+        value: gemini-3.6-flash
+      - key: GEMINI_FIRST_TOKEN_TIMEOUT
+        value: "8.0"
       - key: OPENAI_API_KEY
         sync: false
       - key: OPENAI_CHAT_MODEL

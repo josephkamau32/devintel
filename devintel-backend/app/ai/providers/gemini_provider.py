@@ -36,9 +36,9 @@ class GeminiProvider(BaseAIProvider):
         api_key = settings.GEMINI_API_KEY or "dummy_gemini_api_key"
         self._client = genai.Client(api_key=api_key)
         self._default_chat_model = settings.GEMINI_CHAT_MODEL
-        self._fallback_chat_model = getattr(settings, "GEMINI_FALLBACK_MODEL", "gemini-3-flash-preview")
+        self._fallback_chat_model = getattr(settings, "GEMINI_FALLBACK_MODEL", "gemini-3.6-flash")
         self._default_embedding_model = settings.GEMINI_EMBEDDING_MODEL
-        self._first_token_timeout = getattr(settings, "GEMINI_FIRST_TOKEN_TIMEOUT", 25.0)
+        self._first_token_timeout = getattr(settings, "GEMINI_FIRST_TOKEN_TIMEOUT", 8.0)
 
     @property
     def provider_name(self) -> str:
@@ -96,16 +96,19 @@ class GeminiProvider(BaseAIProvider):
         return contents
 
     def _is_transient_error(self, e: Exception) -> bool:
-        """Check if an error is transient or a timeout eligible for retry/fallback."""
+        """Check if an error is transient, 404 (model retired), or a timeout eligible for retry/fallback."""
         if isinstance(e, (asyncio.TimeoutError, TimeoutError)):
             return True
         err_code = getattr(e, "code", None) or getattr(e, "status_code", None)
-        if err_code in (408, 429, 500, 502, 503, 504):
+        if err_code in (404, 408, 429, 500, 502, 503, 504):
             return True
         err_str = str(e).lower()
         return any(
             k in err_str
             for k in (
+                "404",
+                "not found",
+                "not_found",
                 "503",
                 "429",
                 "high demand",

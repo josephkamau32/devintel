@@ -62,7 +62,7 @@ graph TD
     end
 
     subgraph AIProviders["External AI Services"]
-        GEMINI["Google Gemini API<br/>gemini-3.6-flash · gemini-embedding-001 (Default)"]
+        GEMINI["Google Gemini API<br/>gemini-3-flash-preview · gemini-embedding-001 (Default)"]
         OPENAI["OpenAI API<br/>gpt-4o · text-embedding-3-small (Optional)"]
     end
 
@@ -153,7 +153,7 @@ Repository ingestion and heavy analysis tasks are handled asynchronously without
 * **Language:** Python 3.11
 * **Web Framework:** FastAPI 0.109.2, Uvicorn 0.27.1
 * **Database Layer:** PostgreSQL 16, SQLAlchemy 2.0.27 (asyncpg 0.29.0), Alembic 1.13.1, pgvector 0.2.4
-* **AI Providers:** Google GenAI SDK 2.22.0 (`gemini-3.6-flash`, `gemini-embedding-001`), OpenAI Python SDK 1.12.0 (`gpt-4o`, `text-embedding-3-small`)
+* **AI Providers:** Google GenAI SDK 2.22.0 (`gemini-3-flash-preview` primary, `gemini-3.6-flash` fallback, `gemini-embedding-001`), OpenAI Python SDK 1.12.0 (`gpt-4o`, `text-embedding-3-small`)
 * **Code Analysis:** Tree-sitter 0.25.2, tree-sitter-language-pack 0.13.0
 * **Resilience:** Tenacity 8.2.3, custom three-state circuit breaker
 * **Observability:** Prometheus client 0.20.0, Structlog 24.1.0
@@ -256,7 +256,9 @@ python scripts/seed_demo.py
 | `TOKEN_ENCRYPTION_KEY` | Yes | - | 32-byte URL-safe base64-encoded Fernet key for encrypting GitHub tokens at rest |
 | `AI_PROVIDER` | No | `gemini` | Primary AI provider: `gemini` or `openai` |
 | `GEMINI_API_KEY` | Conditional | - | Required when `AI_PROVIDER=gemini` |
-| `GEMINI_CHAT_MODEL` | No | `gemini-3.6-flash` | Gemini model for conversational reasoning |
+| `GEMINI_CHAT_MODEL` | No | `gemini-3-flash-preview` | Gemini primary chat model (~1.35s TTFT) |
+| `GEMINI_FALLBACK_MODEL` | No | `gemini-3.6-flash` | Gemini fallback model for outages/retirement |
+| `GEMINI_FIRST_TOKEN_TIMEOUT` | No | `8.0` | Seconds to wait for first token before fallback (2x median) |
 | `GEMINI_EMBEDDING_MODEL` | No | `gemini-embedding-001` | Gemini model for vector embeddings |
 | `OPENAI_API_KEY` | Conditional | - | Required when `AI_PROVIDER=openai` |
 | `OPENAI_CHAT_MODEL` | No | `gpt-4o` | OpenAI model for chat completion |
@@ -326,6 +328,7 @@ npm run lint
 4. **Code Health Sampling Approach:** Code health metrics are derived from multi-probe representative sampling (10 chunks per repository) passed to an LLM evaluator, rather than exhaustive full-codebase static analysis linters (e.g. SonarQube or Bandit).
 5. **Ingestion File Constraints:** Ingestion is restricted to text files under 5 MB with supported source extensions. Binary files, compiled assets, minified bundles, and non-UTF-8 encodings are discarded.
 6. **Idle Cold Starts:** The first request after idle can take up to about a minute because the free Render service and the free Neon compute both sleep when idle.
+7. **Reliance on Preview Chat Model:** The default primary chat model (`gemini-3-flash-preview`) is an experimental preview model chosen based on live empirical latency benchmarks (~1.35 s median TTFT vs persistent timeouts/503s on `gemini-3.6-flash`). Because preview models can be deprecated or retired by Google without notice, the provider implements automatic fallback to `gemini-3.6-flash` upon HTTP 404 (model not found), first-token timeouts (>8.0 s), HTTP 429/503, or other transient errors.
 
 ---
 

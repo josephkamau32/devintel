@@ -97,9 +97,9 @@ class Settings(BaseSettings):
 
     # Gemini
     GEMINI_API_KEY: str = ""
-    GEMINI_CHAT_MODEL: str = "gemini-3.6-flash"
-    GEMINI_FALLBACK_MODEL: str = "gemini-3-flash-preview"
-    GEMINI_FIRST_TOKEN_TIMEOUT: float = 25.0
+    GEMINI_CHAT_MODEL: str = "gemini-3-flash-preview"
+    GEMINI_FALLBACK_MODEL: str = "gemini-3.6-flash"
+    GEMINI_FIRST_TOKEN_TIMEOUT: float = 8.0
     GEMINI_EMBEDDING_MODEL: str = "gemini-embedding-001"
 
     # Logging
