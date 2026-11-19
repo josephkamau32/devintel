@@ -50,6 +50,6 @@ aiosqlite>=0.20.0
 httpx[http2]>=0.26.0
 
 # Linting & Type Checking
-ruff==0.16.4
+ruff==0.17.5
 mypy>=1.9.0
 
