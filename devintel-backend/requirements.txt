@@ -38,7 +38,7 @@ tenacity==8.2.3
 tiktoken==0.6.0
 GitPython>=3.2.1,<4.0.0
 tree-sitter==0.25.2
-tree-sitter-language-pack==0.13.0
+tree-sitter-language-pack==1.25.2
 prometheus-client==0.20.0
 
 # Testing
