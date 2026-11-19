@@ -188,6 +188,10 @@ jobs:
           format: 'table'
           exit-code: '1'
           severity: 'CRITICAL,HIGH'
+          # ignore-unfixed: advisories without a released patch (e.g. python-jose,
+          # ecdsa, transitive npm deps behind semver-major bumps) should not block
+          # the build — Dependabot will alert when fixes become available.
+          ignore-unfixed: true
       
       - name: Run Trivy on Backend Docker Config
         uses: aquasecurity/trivy-action@master
