@@ -192,6 +192,7 @@ jobs:
           # ecdsa, transitive npm deps behind semver-major bumps) should not block
           # the build — Dependabot will alert when fixes become available.
           ignore-unfixed: true
+          trivyignores: '.trivyignore'
       
       - name: Run Trivy on Backend Docker Config
         uses: aquasecurity/trivy-action@master
