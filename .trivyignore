@@ -1,55 +1,14 @@
-# .trivyignore — CVEs that require semver-major dependency bumps
-# and cannot be fixed without risking build/test breakage.
-# Dependabot tracks these; revisit when major upgrades are feasible.
+# .trivyignore — dev-only tool CVEs that cannot be fixed without breaking changes.
+# Runtime dependencies are fixed via npm overrides in package.json.
+# Review date: 2027-02-19 (quarterly)
 
-# vite 5.x → 6.x/8.x (semver-major; would break vite.config.ts)
-GHSA-587h-7wmj-h5pm
-GHSA-4w7w-66w2-5vf9
-GHSA-v6wh-96g9-6wx3
-GHSA-698v-4r3x-3vcv
-GHSA-r825-w8mm-5pxw
-GHSA-9jrq-w75r-8gcw
-GHSA-rq7h-c2jc-7f22
-GHSA-fx2h-pf6j-xcff
-
-# vitest 1.x → 3.x/5.x (semver-major; would break test config)
-GHSA-5xrq-8626-4rwp
-
-# tinypool — transitive dep of vitest 1.x, fix requires vitest 3.x+
+# tinypool <=2.1.0 — transitive devDependency of vitest; fix needs tinypool >=2.1.2
 GHSA-5gmw-xhrv-c9v3
 GHSA-85c8-ppgw-ccpr
 
-# esbuild — transitive dep of vite 5.x
-GHSA-67mh-4wv8-2f99
-
-# dompurify — transitive dep of mermaid, no direct control
-GHSA-p98j-92pf-mc4p
-GHSA-6688-9rhm-gjv2
-GHSA-c6gr-qvv4-5v3f
-GHSA-cg2g-xh64-v4q7
-GHSA-mrv2-3pqr-j5jr
-
-# follow-redirects — transitive dep, fix requires axios major bump
-GHSA-q3jh-wrc6-jgq8
-GHSA-8r9p-f939-6h3c
-GHSA-mrwp-f3q8-3g9p
-
-# source-map-js — transitive dep of postcss
+# source-map-js <1.2.2 — transitive devDependency of postcss (build-time CSS); fix needs postcss 9.x
 GHSA-68fv-2mgg-jv7q
 
-# react-router 6.x → 7.x (semver-major)
+# react-router-dom 6.x — no 6.x patch; fix requires 7.x migration (semver-major)
 GHSA-wrjc-x8rr-h8h6
 GHSA-337j-9hxr-rhxg
-
-# postcss-selector-parser — transitive dep of tailwindcss
-GHSA-rj75-hqrm-r3gf
-
-# katex — transitive dep of mermaid
-GHSA-238p-pmpm-9mq7
-
-# python-jose — no fix available (abandoned package)
-CVE-2024-33663
-CVE-2026-85394
-
-# ecdsa — timing attack, maintainer says out of scope; transitive via python-jose
-CVE-2024-23342
