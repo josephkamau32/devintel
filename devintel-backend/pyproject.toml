@@ -41,7 +41,7 @@ dependencies = [
     "tenacity==8.2.3",
     "tiktoken==0.6.0",
     "GitPython==3.1.62",
-    "tree-sitter==0.25.2",
+    "tree-sitter==0.26.1",
     "tree-sitter-language-pack==0.13.0",
     "prometheus-client==0.20.0",
 ]
