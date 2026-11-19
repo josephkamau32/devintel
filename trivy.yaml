@@ -1,0 +1,12 @@
+# Trivy configuration
+# https://aquasecurity.github.io/trivy/latest/docs/references/configuration/config-file/
+severity:
+  - CRITICAL
+  - HIGH
+
+vulnerability:
+  ignore-unfixed: true
+
+# Point to our .trivyignore for CVEs that have fixes only in
+# semver-major versions we cannot safely upgrade to.
+ignorefile: .trivyignore
