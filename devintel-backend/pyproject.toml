@@ -19,7 +19,7 @@ dependencies = [
     "alembic==1.13.1",
     "pgvector==0.2.4",
     # Auth & Security
-    "python-jose[cryptography]==3.5.0",
+    "pyjwt==2.13.0",
     "bcrypt==4.0.1",
     "cryptography==50.0.1",
     "python-multipart==0.0.32",
@@ -119,7 +119,7 @@ module = [
     "jsbeautifier",
     "rank_bm25",
     "yaml",
-    "jose",
+    "jwt.*",
     "opentelemetry.*",
 ]
 ignore_missing_imports = true

@@ -6,8 +6,9 @@ Uses the in-process ProgressBus instead of Redis pub/sub.
 from datetime import datetime
 from uuid import UUID
 
+import jwt
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect, status
-from jose import JWTError, jwt
+from jwt.exceptions import PyJWTError as JWTError
 
 from app.api.deps import check_repo_access
 from app.core.config import settings

@@ -4,8 +4,9 @@ from typing import Any, Optional
 from uuid import UUID
 
 import bcrypt
+import jwt
 from cryptography.fernet import Fernet, InvalidToken
-from jose import JWTError, jwt
+from jwt.exceptions import PyJWTError as JWTError
 
 from app.core.config import settings
 
