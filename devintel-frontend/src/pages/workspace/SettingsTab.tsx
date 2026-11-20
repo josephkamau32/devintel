@@ -13,6 +13,7 @@ export function SettingsTab() {
   const navigate = useNavigate();
   const [isIndexing, setIsIndexing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const isSampleRepo = repository.full_name === 'josephkamau32/devintel' || repository.full_name === 'devintel/devintel-core';
 
   const handleReindex = async () => {
     setIsIndexing(true);
@@ -100,14 +101,21 @@ export function SettingsTab() {
             </div>
           )}
 
-          <button
-            onClick={handleReindex}
-            disabled={isIndexing}
-            className="flex items-center gap-2 bg-surface-3 hover:bg-surface-4 border border-border text-text-primary px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-          >
-            {isIndexing ? <Loader2 className="h-4 w-4 animate-spin-slow" /> : <RotateCw className="h-4 w-4" />}
-            Re-index Repository
-          </button>
+          {isSampleRepo ? (
+            <div className="flex items-center gap-2 p-3 bg-surface-3 border border-border rounded-lg text-xs text-text-tertiary">
+              <Database className="h-4 w-4 text-brand-400 flex-shrink-0" />
+              <span>Pre-indexed sample repository (re-indexing disabled)</span>
+            </div>
+          ) : (
+            <button
+              onClick={handleReindex}
+              disabled={isIndexing}
+              className="flex items-center gap-2 bg-surface-3 hover:bg-surface-4 border border-border text-text-primary px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+            >
+              {isIndexing ? <Loader2 className="h-4 w-4 animate-spin-slow" /> : <RotateCw className="h-4 w-4" />}
+              Re-index Repository
+            </button>
+          )}
         </div>
       </div>
 

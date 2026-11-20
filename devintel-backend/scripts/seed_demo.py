@@ -40,8 +40,8 @@ from app.core.config import settings
 DEMO_EMAIL = "demo@devintel.dev"
 DEMO_PASSWORD = "DemoUser1!"
 DEMO_FULL_NAME = "Demo User"
-DEMO_REPO_NAME = "devintel-core"
-DEMO_REPO_FULL_NAME = "devintel/devintel-core"
+DEMO_REPO_NAME = "devintel"
+DEMO_REPO_FULL_NAME = "josephkamau32/devintel"
 
 
 def collect_code_chunks() -> list[tuple[str, int, str]]:
@@ -119,6 +119,18 @@ async def seed_demo():
         # 2. Check if demo repository already exists
         print("\n2. Checking Demo Repository...")
         repo = await repo_repo.get_by_full_name(DEMO_REPO_FULL_NAME, user_id=user.id)
+        if not repo:
+            legacy_repo = await repo_repo.get_by_full_name("devintel/devintel-core", user_id=user.id)
+            if legacy_repo:
+                print(f"  Found legacy demo repo '{legacy_repo.full_name}' ({legacy_repo.id}). Updating to '{DEMO_REPO_FULL_NAME}'...")
+                await repo_repo.update(
+                    legacy_repo.id,
+                    full_name=DEMO_REPO_FULL_NAME,
+                    repo_name=DEMO_REPO_NAME,
+                    url=f"https://github.com/{DEMO_REPO_FULL_NAME}",
+                )
+                await session.commit()
+                repo = await repo_repo.get_by_id(legacy_repo.id)
 
         if repo and repo.indexing_status == IndexingStatus.COMPLETE:
             # Check embedding count — only skip if fully seeded

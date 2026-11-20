@@ -207,6 +207,14 @@ async def index_repository(
 
     await check_repo_access(repository, current_user, db)
 
+    # Sample repository protection: pre-indexed sample cannot be re-indexed
+    sample_repos = {"josephkamau32/devintel", "devintel/devintel-core"}
+    if repository.full_name in sample_repos:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Pre-indexed sample repository cannot be re-indexed.",
+        )
+
     # Indexing mutex: prevent concurrent indexing of the same repo
     progress = repository.indexing_progress or 0
     if 0 < progress < 100:

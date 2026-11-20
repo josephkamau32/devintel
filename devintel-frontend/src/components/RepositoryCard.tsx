@@ -37,6 +37,7 @@ export const RepositoryCard: React.FC<RepositoryCardProps> = ({ repository, onIn
   const navigate = useNavigate();
   const isIndexing = ['pending', 'indexing', 'cloning', 'chunking', 'embedding'].includes(repository.indexing_status);
   const isCompleted = repository.indexing_status === 'completed' || repository.indexing_status === 'complete';
+  const isSampleRepo = repository.full_name === 'josephkamau32/devintel' || repository.full_name === 'devintel/devintel-core';
 
   const getStatusConfig = (status: string) => {
     switch (status) {
@@ -202,27 +203,36 @@ export const RepositoryCard: React.FC<RepositoryCardProps> = ({ repository, onIn
             <ArrowRight className="h-3 w-3" />
           </button>
         )}
-        <button
-          onClick={() => onIndex(repository.id)}
-          disabled={isIndexing || isTriggering}
-          className={clsx(
-            'flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-150',
-            isCompleted ? 'bg-surface-3 text-text-secondary hover:bg-surface-4 border border-border' : 'flex-1 bg-brand-600 hover:bg-brand-500 text-white shadow-subtle',
-            (isIndexing || isTriggering) && 'opacity-50 cursor-not-allowed',
-          )}
-        >
-          {isIndexing || isTriggering ? (
-            <>
-              <Loader2 className="w-3 h-3 animate-spin-slow" />
-              <span>Indexing…</span>
-            </>
-          ) : (
-            <>
-              {isCompleted ? <RotateCw className="w-3 h-3" /> : <Activity className="w-3 h-3" />}
-              <span>{isCompleted ? 'Re-index' : 'Index'}</span>
-            </>
-          )}
-        </button>
+        {isSampleRepo ? (
+          <span
+            className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-surface-3 text-text-quaternary border border-border cursor-default"
+            title="Pre-indexed sample repository"
+          >
+            Pre-indexed sample repository
+          </span>
+        ) : (
+          <button
+            onClick={() => onIndex(repository.id)}
+            disabled={isIndexing || isTriggering}
+            className={clsx(
+              'flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-150',
+              isCompleted ? 'bg-surface-3 text-text-secondary hover:bg-surface-4 border border-border' : 'flex-1 bg-brand-600 hover:bg-brand-500 text-white shadow-subtle',
+              (isIndexing || isTriggering) && 'opacity-50 cursor-not-allowed',
+            )}
+          >
+            {isIndexing || isTriggering ? (
+              <>
+                <Loader2 className="w-3 h-3 animate-spin-slow" />
+                <span>Indexing…</span>
+              </>
+            ) : (
+              <>
+                {isCompleted ? <RotateCw className="w-3 h-3" /> : <Activity className="w-3 h-3" />}
+                <span>{isCompleted ? 'Re-index' : 'Index'}</span>
+              </>
+            )}
+          </button>
+        )}
       </div>
     </div>
   );

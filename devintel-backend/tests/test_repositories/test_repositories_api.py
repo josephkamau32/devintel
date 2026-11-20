@@ -113,3 +113,47 @@ async def test_index_repository(client: AsyncClient, auth_token: str):
     assert status_res.status_code == 200
     assert status_res.json()["indexing_status"] == "indexing"
 
+
+@pytest.mark.asyncio
+async def test_index_sample_repository_blocked(client: AsyncClient, auth_token: str):
+    # Connect sample repo
+    repo_data = {
+        "repo_name": "devintel",
+        "full_name": "josephkamau32/devintel",
+        "url": "https://github.com/josephkamau32/devintel",
+        "default_branch": "main",
+    }
+    repo_res = await client.post("/api/v1/repos", json=repo_data, headers={"Authorization": f"Bearer {auth_token}"})
+    repo_id = repo_res.json()["id"]
+
+    response = await client.post(
+        "/api/v1/repos/index",
+        json={"repository_id": repo_id},
+        headers={"Authorization": f"Bearer {auth_token}"},
+    )
+
+    assert response.status_code == 400
+    assert "Pre-indexed sample repository cannot be re-indexed" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_index_legacy_sample_repository_blocked(client: AsyncClient, auth_token: str):
+    # Connect legacy sample repo
+    repo_data = {
+        "repo_name": "devintel-core",
+        "full_name": "devintel/devintel-core",
+        "url": "https://github.com/devintel/devintel-core",
+        "default_branch": "main",
+    }
+    repo_res = await client.post("/api/v1/repos", json=repo_data, headers={"Authorization": f"Bearer {auth_token}"})
+    repo_id = repo_res.json()["id"]
+
+    response = await client.post(
+        "/api/v1/repos/index",
+        json={"repository_id": repo_id},
+        headers={"Authorization": f"Bearer {auth_token}"},
+    )
+
+    assert response.status_code == 400
+    assert "Pre-indexed sample repository cannot be re-indexed" in response.json()["detail"]
+
