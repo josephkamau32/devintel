@@ -36,7 +36,7 @@ class GeminiProvider(BaseAIProvider):
         api_key = settings.GEMINI_API_KEY or "dummy_gemini_api_key"
         self._client = genai.Client(api_key=api_key)
         self._default_chat_model = settings.GEMINI_CHAT_MODEL
-        self._fallback_chat_model = getattr(settings, "GEMINI_FALLBACK_MODEL", "gemini-3.6-flash")
+        self._fallback_chat_model = getattr(settings, "GEMINI_FALLBACK_MODEL", "gemini-3.1-flash-lite")
         self._default_embedding_model = settings.GEMINI_EMBEDDING_MODEL
         self._first_token_timeout = getattr(settings, "GEMINI_FIRST_TOKEN_TIMEOUT", 8.0)
 

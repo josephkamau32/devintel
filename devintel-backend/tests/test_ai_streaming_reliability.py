@@ -10,6 +10,7 @@ from app.ai.models import AIMessage, CompletionRequest
 from app.ai.orchestrator import AIOrchestrator
 from app.ai.providers.base import BaseAIProvider
 from app.ai.providers.gemini_provider import GeminiProvider
+from app.core.config import settings
 
 
 class MockChunk:
@@ -210,3 +211,38 @@ async def test_gemini_stream_no_fallback_after_tokens_yielded():
     assert tokens == ["Partial content..."]
     # Fallback model was NOT called because tokens were already yielded
     assert models_called == ["gemini-3.6-flash"]
+
+
+@pytest.mark.asyncio
+async def test_gemini_fallback_model_configured_to_gemini_3_1_flash_lite():
+    """Verify GeminiProvider default fallback matches settings.GEMINI_FALLBACK_MODEL (gemini-3.1-flash-lite)."""
+    provider = GeminiProvider()
+    assert provider._fallback_chat_model == "gemini-3.1-flash-lite"
+    assert settings.GEMINI_FALLBACK_MODEL == "gemini-3.1-flash-lite"
+
+    models_called = []
+
+    async def fake_stream(*args, **kwargs):
+        model = kwargs.get("model")
+        models_called.append(model)
+        if model == provider._default_chat_model:
+            raise ClientError(503, {"error": {"code": 503, "message": "High demand, unavailable"}})
+        elif model == "gemini-3.1-flash-lite":
+            async def resp():
+                yield MockChunk("Response from gemini-3.1-flash-lite")
+            return resp()
+        raise ValueError(f"Unexpected model {model}")
+
+    provider._client = MagicMock()
+    provider._client.aio.models.generate_content_stream = AsyncMock(side_effect=fake_stream)
+
+    request = CompletionRequest(
+        messages=[AIMessage(role="user", content="Explain RAG pipeline")],
+    )
+
+    tokens = []
+    async for token in provider.stream(request):
+        tokens.append(token)
+
+    assert "".join(tokens) == "Response from gemini-3.1-flash-lite"
+    assert models_called == [provider._default_chat_model, "gemini-3.1-flash-lite"]
