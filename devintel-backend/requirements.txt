@@ -1,45 +1,45 @@
 # Web framework
 fastapi>=0.115.0,<0.116.0
 starlette>=0.40.0,<0.42.0
-uvicorn[standard]>=0.32.0,<0.35.0
+uvicorn[standard]>=0.32.0,<0.55.0
 
 # Database
-sqlalchemy>=2.0.36,<2.1.0
-asyncpg==0.29.0
-alembic==1.13.1
-pgvector==0.2.4
+sqlalchemy>=2.0.36,<2.2.0
+asyncpg==0.32.0
+alembic==1.20.1
+pgvector==0.5.1
 
 # Auth & Security
-pyjwt==2.13.0
-bcrypt==4.0.1
-cryptography==50.0.1
-python-multipart==0.0.32
-email-validator==2.1.1
+pyjwt==2.15.1
+bcrypt==4.3.0
+cryptography==50.0.2
+python-multipart==0.0.34
+email-validator==2.4.0
 
 # HTTP client (for GitHub API calls)
 httpx==0.28.1
-PyGithub==2.2.0
+PyGithub==2.10.0
 
 # AI
 openai>=1.70.0,<2.0.0
-google-genai==2.22.0
+google-genai==2.34.0
 
 # Config
-pydantic==2.13.5
-pydantic-settings==2.1.0
-python-dotenv==1.0.1
+pydantic==2.14.3
+pydantic-settings==2.16.3
+python-dotenv==1.2.4
 
 # Caching
-redis==5.0.1
+redis==5.3.1
 
 # Utilities
-structlog==24.1.0
-tenacity==8.2.3
-tiktoken==0.6.0
+structlog==24.4.0
+tenacity==8.5.0
+tiktoken==0.14.0
 GitPython>=3.2.1,<4.0.0
-tree-sitter==0.25.2
+tree-sitter==0.26.1
 tree-sitter-language-pack==0.13.0
-prometheus-client==0.20.0
+prometheus-client==0.26.0
 
 # Testing
 pytest>=8.0,<9.0
@@ -50,6 +50,6 @@ aiosqlite>=0.20.0
 httpx[http2]>=0.26.0
 
 # Linting & Type Checking
-ruff==0.16.4
+ruff==0.17.5
 mypy>=1.9.0
 
