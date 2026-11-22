@@ -27,6 +27,7 @@ from app.schemas.repository import (
     SearchResponse,
     SearchResult,
 )
+from app.services.auth_service import DEMO_EMAIL
 from app.services.embedding import EmbeddingService
 from app.services.encryption import encryption_service
 
@@ -207,9 +208,9 @@ async def index_repository(
 
     await check_repo_access(repository, current_user, db)
 
-    # Sample repository protection: pre-indexed sample cannot be re-indexed
+    # Sample repository protection: the demo user's pre-indexed sample cannot be re-indexed
     sample_repos = {"josephkamau32/devintel", "devintel/devintel-core"}
-    if repository.full_name in sample_repos:
+    if current_user.email == DEMO_EMAIL and repository.full_name in sample_repos:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Pre-indexed sample repository cannot be re-indexed.",

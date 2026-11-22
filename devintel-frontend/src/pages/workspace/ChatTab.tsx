@@ -24,6 +24,7 @@ export function ChatTab() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const isIndexed = repository.indexing_status === 'completed' || repository.indexing_status === 'complete';
+  const isSampleRepo = repository.full_name === 'josephkamau32/devintel' || repository.full_name === 'devintel/devintel-core';
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -171,12 +172,33 @@ export function ChatTab() {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto space-y-4 pb-4">
         {messages.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full text-center py-16">
+          <div className="flex flex-col items-center justify-center h-full text-center py-12">
             <Bot className="h-10 w-10 text-text-quaternary mb-4" />
             <h3 className="text-sm font-semibold text-text-primary mb-1">Chat with your code</h3>
-            <p className="text-xs text-text-quaternary max-w-sm">
+            <p className="text-xs text-text-quaternary max-w-sm mb-6">
               Ask questions about {repository.repo_name} — architecture, patterns, bugs, or anything else. Powered by RAG semantic search.
             </p>
+            {isSampleRepo && (
+              <div className="w-full max-w-md space-y-2 text-left animate-fade-in">
+                <p className="text-[11px] font-medium text-text-quaternary uppercase tracking-wider text-center mb-2">
+                  Suggested questions for indexed modules
+                </p>
+                {[
+                  'How does the AI orchestrator handle model timeouts and fallback routing?',
+                  'How does the CodeHealthService analyze complexity and maintainability?',
+                  'What database models are defined for repositories and embeddings?',
+                ].map((q, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleSend(q)}
+                    className="w-full text-left p-3 rounded-lg text-xs bg-surface-2 hover:bg-surface-3 border border-border hover:border-brand-500/50 text-text-secondary hover:text-text-primary transition-all flex items-center justify-between group"
+                  >
+                    <span>{q}</span>
+                    <Sparkles className="h-3.5 w-3.5 text-text-quaternary group-hover:text-brand-400 transition-colors flex-shrink-0 ml-2" />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

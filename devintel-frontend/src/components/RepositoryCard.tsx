@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Loader2, CheckCircle2, XCircle, RotateCw, ArrowRight, Activity } from 'lucide-react';
 import { Repository } from '../types/repository';
 import type { HealthReport } from '../types/api';
+import { useAuthStore } from '../store/authStore';
 import { clsx } from 'clsx';
 
 interface RepositoryCardProps {
@@ -35,9 +36,10 @@ function getScoreLabel(score: number): string {
 
 export const RepositoryCard: React.FC<RepositoryCardProps> = ({ repository, onIndex, isTriggering, healthReport }) => {
   const navigate = useNavigate();
+  const user = useAuthStore((state) => state.user);
   const isIndexing = ['pending', 'indexing', 'cloning', 'chunking', 'embedding'].includes(repository.indexing_status);
   const isCompleted = repository.indexing_status === 'completed' || repository.indexing_status === 'complete';
-  const isSampleRepo = repository.full_name === 'josephkamau32/devintel' || repository.full_name === 'devintel/devintel-core';
+  const isSampleRepo = user?.email === 'demo@devintel.dev' && (repository.full_name === 'josephkamau32/devintel' || repository.full_name === 'devintel/devintel-core');
 
   const getStatusConfig = (status: string) => {
     switch (status) {

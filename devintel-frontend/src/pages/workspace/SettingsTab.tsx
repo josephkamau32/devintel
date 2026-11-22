@@ -2,6 +2,7 @@ import { useOutletContext, useNavigate } from 'react-router-dom';
 import { useIndexingStatus, useDeleteRepository } from '../../hooks/useAPI';
 import { indexRepository } from '../../hooks/useRepositories';
 import type { Repository } from '../../types/repository';
+import { useAuthStore } from '../../store/authStore';
 import { RotateCw, Trash2, Loader2, CheckCircle2, AlertTriangle, Database } from 'lucide-react';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
@@ -11,9 +12,10 @@ export function SettingsTab() {
   const { data: status } = useIndexingStatus(repository.id);
   const deleteRepo = useDeleteRepository();
   const navigate = useNavigate();
+  const user = useAuthStore((state) => state.user);
   const [isIndexing, setIsIndexing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const isSampleRepo = repository.full_name === 'josephkamau32/devintel' || repository.full_name === 'devintel/devintel-core';
+  const isSampleRepo = user?.email === 'demo@devintel.dev' && (repository.full_name === 'josephkamau32/devintel' || repository.full_name === 'devintel/devintel-core');
 
   const handleReindex = async () => {
     setIsIndexing(true);

@@ -11,37 +11,37 @@ Idempotent: check-then-insert/skip. Re-running is a clean no-op.
 """
 
 import asyncio
-import json
 import os
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 # Add backend root to sys.path
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BACKEND_DIR))
 
-from sqlalchemy import select, func
-from app.db.session import AsyncSessionLocal
+from sqlalchemy import func, select
+
+from app.core.config import settings
 from app.core.security import hash_password
-from app.models.repository import Repository, IndexingStatus
+from app.db.session import AsyncSessionLocal
 from app.models.embedding import Embedding
-from app.models.architecture import ArchitectureDiagram
-from app.repositories.user_repo import UserRepository
-from app.repositories.repository import RepositoryRepository
-from app.repositories.embedding import EmbeddingRepository
-from app.repositories.code_health import CodeHealthRepository
+from app.models.repository import IndexingStatus
 from app.repositories.architecture import ArchitectureDiagramRepository
+from app.repositories.code_health import CodeHealthRepository
+from app.repositories.embedding import EmbeddingRepository
+from app.repositories.repository import RepositoryRepository
+from app.repositories.user_repo import UserRepository
 from app.services.embedding import EmbeddingService
 from app.utils.chunking import smart_chunk_code
-from app.core.config import settings
 
 DEMO_EMAIL = "demo@devintel.dev"
 DEMO_PASSWORD = "DemoUser1!"
 DEMO_FULL_NAME = "Demo User"
 DEMO_REPO_NAME = "devintel"
 DEMO_REPO_FULL_NAME = "josephkamau32/devintel"
+DEMO_REPO_DESC = "Pre-indexed sample repository: snapshot of backend modules app/ai, app/services and app/models."
 
 
 def collect_code_chunks() -> list[tuple[str, int, str]]:
@@ -119,6 +119,7 @@ async def seed_demo():
         # 2. Check if demo repository already exists
         print("\n2. Checking Demo Repository...")
         repo = await repo_repo.get_by_full_name(DEMO_REPO_FULL_NAME, user_id=user.id)
+
         if not repo:
             legacy_repo = await repo_repo.get_by_full_name("devintel/devintel-core", user_id=user.id)
             if legacy_repo:
@@ -127,12 +128,18 @@ async def seed_demo():
                     legacy_repo.id,
                     full_name=DEMO_REPO_FULL_NAME,
                     repo_name=DEMO_REPO_NAME,
+                    description=DEMO_REPO_DESC,
                     url=f"https://github.com/{DEMO_REPO_FULL_NAME}",
                 )
                 await session.commit()
                 repo = await repo_repo.get_by_id(legacy_repo.id)
 
         if repo and repo.indexing_status == IndexingStatus.COMPLETE:
+            # Ensure description is up-to-date
+            if repo.description != DEMO_REPO_DESC:
+                await repo_repo.update(repo.id, description=DEMO_REPO_DESC)
+                await session.commit()
+
             # Check embedding count — only skip if fully seeded
             emb_count_res = await session.execute(
                 select(func.count()).select_from(Embedding).where(Embedding.repo_id == repo.id)
@@ -158,7 +165,7 @@ async def seed_demo():
                 user_id=user.id,
                 full_name=DEMO_REPO_FULL_NAME,
                 repo_name=DEMO_REPO_NAME,
-                description="DevIntel AI Core - Intelligent Repository Intelligence & AI Assistant Platform",
+                description=DEMO_REPO_DESC,
                 url=f"https://github.com/{DEMO_REPO_FULL_NAME}",
                 stars=142,
                 language="Python",
@@ -240,7 +247,7 @@ async def seed_demo():
                     await session.commit()  # Save progress so far
                     print(f"\n  [RATE LIMITED] Saved {total_inserted}/{len(chunks)} embeddings so far.")
                     print(f"  Error: {e}")
-                    print(f"  Re-run this script to resume from where it left off.\n")
+                    print("  Re-run this script to resume from where it left off.\n")
                     return
 
         # Verify final count
@@ -252,7 +259,7 @@ async def seed_demo():
 
         # 7. Run REAL Code Health Analysis via CodeHealthService pipeline
         print("\n6. Running Real Code Health Analysis (CodeHealthService.analyze)...")
-        from app.services.code_health_service import CodeHealthService, AnalysisUnavailableError
+        from app.services.code_health_service import AnalysisUnavailableError, CodeHealthService
         health_service = CodeHealthService()
         health_start = time.time()
         try:
@@ -278,7 +285,10 @@ async def seed_demo():
 
         # 8. Generate REAL Architecture Diagram from stored embeddings
         print("\n7. Generating Real Architecture Diagram (from stored embeddings)...")
-        from app.services.architecture_service import CodeStructureAnalyzer, ArchitectureVisualizationService
+        from app.services.architecture_service import (
+            ArchitectureVisualizationService,
+            CodeStructureAnalyzer,
+        )
 
         arch_analyzer = CodeStructureAnalyzer()
         arch_structure = await arch_analyzer.from_embeddings(
@@ -316,7 +326,7 @@ async def seed_demo():
             indexing_status=IndexingStatus.COMPLETE,
             indexing_progress=100,
             indexing_error=None,
-            last_indexed_at=datetime.now(timezone.utc),
+            last_indexed_at=datetime.now(UTC),
         )
         await session.commit()
         print(f"  Repository '{DEMO_REPO_FULL_NAME}' marked as COMPLETE (progress: 100%).")

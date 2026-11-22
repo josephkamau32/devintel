@@ -97,9 +97,6 @@ target-version = ["py311"]
 
 [tool.mypy]
 python_version = "3.11"
-plugins = [
-    "sqlalchemy.ext.mypy.plugin",
-]
 strict = true
 warn_return_any = true
 warn_unused_configs = true
