@@ -23,7 +23,7 @@ dependencies = [
     "bcrypt==4.0.1",
     "cryptography==50.0.1",
     "python-multipart==0.0.32",
-    "email-validator==2.1.1",
+    "email-validator==2.4.0",
     # HTTP client (for GitHub API calls)
     "httpx==0.28.1",
     "PyGithub==2.2.0",
