@@ -151,14 +151,14 @@ Rules:
             expand=expand_context,
         )
 
-    async def stream_chat(
+    def build_prompt_messages(
         self,
         repo_name: str,
         question: str,
         context_chunks: list[tuple[Embedding, float]],
         chat_history: list[dict[str, str]] | None = None,
-    ) -> AsyncGenerator[str, None]:
-        """Stream chat response with multi-turn memory and safety checks."""
+    ) -> list[dict[str, str]]:
+        """Build messages list with system prompt, history, and question."""
         # Prompt injection defense
         question = self.sanitize_user_input(question)
 
@@ -172,15 +172,30 @@ Rules:
         if chat_history:
             for msg in chat_history:
                 messages.append({
-                    "role": msg.role if hasattr(msg, 'role') else msg.get("role", "user"),
-                    "content": msg.content if hasattr(msg, 'content') else msg.get("content", ""),
+                    "role": msg.role if hasattr(msg, "role") else msg.get("role", "user"),
+                    "content": msg.content if hasattr(msg, "content") else msg.get("content", ""),
                 })
 
         # Add current question
         messages.append({"role": "user", "content": question})
 
         # Validate context window and trim if needed
-        messages = self.validate_context_window(messages)
+        return self.validate_context_window(messages)
+
+    async def stream_chat(
+        self,
+        repo_name: str,
+        question: str,
+        context_chunks: list[tuple[Embedding, float]],
+        chat_history: list[dict[str, str]] | None = None,
+    ) -> AsyncGenerator[str, None]:
+        """Stream chat response with multi-turn memory and safety checks."""
+        messages = self.build_prompt_messages(
+            repo_name=repo_name,
+            question=question,
+            context_chunks=context_chunks,
+            chat_history=chat_history,
+        )
 
         async for chunk in self.orchestrator.stream(
             messages=messages, agent="chat"

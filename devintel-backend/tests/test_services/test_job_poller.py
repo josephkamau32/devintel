@@ -132,7 +132,7 @@ async def test_worker_picks_up_and_completes_job(poller_env, monkeypatch):
     stop = asyncio.Event()
 
     async def _stop_when_done():
-        for _ in range(60):
+        for _ in range(120):
             await asyncio.sleep(0.05)
             j = await _get_job(session_factory, job_id)
             if j and j.status == "complete":

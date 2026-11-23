@@ -1,6 +1,7 @@
 """RAG-powered chat routes — SSE streaming."""
 
 import json
+import time
 import uuid
 from collections.abc import AsyncGenerator
 from typing import Optional
@@ -13,8 +14,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import check_repo_access, get_current_user
 from app.core.logging import get_logger
 from app.db.session import get_db
+from app.models.chat import Chat
 from app.models.repository import IndexingStatus
 from app.models.user import User
+from app.repositories.analytics import AnalyticsRepository
 from app.repositories.embedding import EmbeddingRepository
 from app.repositories.repository import RepositoryRepository
 from app.services.chat import ChatService
@@ -31,6 +34,7 @@ class ChatHistoryMessage(BaseModel):
 class ChatRequest(BaseModel):
     question: str
     chat_history: Optional[list[ChatHistoryMessage]] = None
+    agent_type: Optional[str] = "chat"
 
 
 @router.post("/{repository_id}/stream")
@@ -90,6 +94,8 @@ async def stream_chat(
 
     history = [msg.model_dump() for msg in request.chat_history] if request.chat_history else []
     request_id = getattr(http_request.state, "request_id", None) or "unknown"
+    start_time = time.monotonic()
+    collected_chunks: list[str] = []
 
     async def event_stream() -> AsyncGenerator[str, None]:
         try:
@@ -99,10 +105,93 @@ async def stream_chat(
                 context_chunks=context_chunks,
                 chat_history=history,
             ):
+                collected_chunks.append(chunk)
                 payload = json.dumps({"type": "chunk", "content": chunk})
                 yield f"data: {payload}\n\n"
 
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
+
+            # Persist chat record after successful streaming completion
+            full_response = "".join(collected_chunks)
+            elapsed_ms = int((time.monotonic() - start_time) * 1000)
+
+            # Estimate token usage using tiktoken
+            input_tokens = 0
+            output_tokens = 0
+            try:
+                if hasattr(chat_service, "build_prompt_messages") and hasattr(chat_service, "count_messages_tokens"):
+                    prompt_messages = chat_service.build_prompt_messages(
+                        repo_name=repository.full_name,
+                        question=request.question,
+                        context_chunks=context_chunks,
+                        chat_history=history,
+                    )
+                    input_tokens = chat_service.count_messages_tokens(prompt_messages)
+                elif hasattr(chat_service, "count_tokens"):
+                    input_tokens = chat_service.count_tokens(request.question)
+            except Exception as token_err:
+                logger.warning("Error estimating input tokens: %s", token_err)
+                input_tokens = 0
+
+            try:
+                if hasattr(chat_service, "count_tokens"):
+                    output_tokens = chat_service.count_tokens(full_response)
+            except Exception as token_err:
+                logger.warning("Error estimating output tokens: %s", token_err)
+                output_tokens = 0
+
+            if not isinstance(input_tokens, int):
+                input_tokens = 0
+            if not isinstance(output_tokens, int):
+                output_tokens = 0
+
+            total_tokens = input_tokens + output_tokens
+
+            # Save chat record and increment analytics counter
+            try:
+                chat_record = Chat(
+                    user_id=current_user.id,
+                    repo_id=repository.id,
+                    org_id=getattr(repository, "organization_id", None),
+                    question=request.question,
+                    response=full_response,
+                    agent_type=request.agent_type or "chat",
+                    token_usage=total_tokens,
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                    response_time_ms=elapsed_ms,
+                )
+                db.add(chat_record)
+                analytics_repo = AnalyticsRepository(db)
+                await analytics_repo.increment_query_count(current_user.id, tokens=total_tokens)
+                await db.commit()
+            except Exception as persist_err:
+                logger.warning(
+                    "Failed to persist chat record with request session: %s. Trying AsyncSessionLocal...",
+                    persist_err,
+                )
+                try:
+                    from app.db.session import AsyncSessionLocal
+
+                    async with AsyncSessionLocal() as fallback_db:
+                        fallback_chat = Chat(
+                            user_id=current_user.id,
+                            repo_id=repository.id,
+                            org_id=getattr(repository, "organization_id", None),
+                            question=request.question,
+                            response=full_response,
+                            agent_type=request.agent_type or "chat",
+                            token_usage=total_tokens,
+                            input_tokens=input_tokens,
+                            output_tokens=output_tokens,
+                            response_time_ms=elapsed_ms,
+                        )
+                        fallback_db.add(fallback_chat)
+                        fallback_analytics = AnalyticsRepository(fallback_db)
+                        await fallback_analytics.increment_query_count(current_user.id, tokens=total_tokens)
+                        await fallback_db.commit()
+                except Exception as fallback_err:
+                    logger.error("Failed to persist chat record to DB via fallback: %s", fallback_err)
 
         except Exception as e:
             logger.error(

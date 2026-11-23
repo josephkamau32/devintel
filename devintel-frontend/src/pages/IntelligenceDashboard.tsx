@@ -105,7 +105,7 @@ export function IntelligenceDashboard() {
           icon={<MessageSquareText className="h-4 w-4" />}
         />
         <StatCard
-          label="Token Usage"
+          label="Token Usage (est.)"
           value={analyticsData?.total_tokens ?? 0}
           icon={<Coins className="h-4 w-4" />}
           format="compact"
