@@ -58,7 +58,7 @@ async def scrub_demo_chat_retention(
     )
     result = await db.execute(stmt)
     await db.commit()
-    count = result.rowcount or 0
+    count = int(getattr(result, "rowcount", 0) or 0)
     if count > 0:
         logger.info("Scrubbed %d expired demo chat record(s) older than %d days", count, retention_days)
     return count
