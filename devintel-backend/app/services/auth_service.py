@@ -73,6 +73,14 @@ class AuthService:
         if not user.is_active:
             raise AuthenticationError("Account is disabled")
 
+        if user.email == DEMO_EMAIL:
+            try:
+                from app.services.chat import scrub_demo_chat_retention
+
+                await scrub_demo_chat_retention(self.db, demo_email=DEMO_EMAIL)
+            except Exception as e:
+                logger.warning("Failed to run demo chat retention cleanup on login: %s", e)
+
         logger.info("User logged in: id=%s", user.id)
 
         access_token = create_access_token(user.id)
@@ -95,6 +103,13 @@ class AuthService:
         )
 
         logger.info("Demo user login: id=%s", user.id)
+
+        try:
+            from app.services.chat import scrub_demo_chat_retention
+
+            await scrub_demo_chat_retention(self.db, demo_email=DEMO_EMAIL)
+        except Exception as e:
+            logger.warning("Failed to run demo chat retention cleanup on demo login: %s", e)
 
         # Cheap existence check: verify demo user has a completed indexed repository
         from app.models.repository import IndexingStatus

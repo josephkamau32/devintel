@@ -1,6 +1,6 @@
 # DevIntel AI
 
-[![CI](https://github.com/josephkamau32/devintel/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/josephkamau32/devintel/actions/workflows/ci.yml)
+[![CI](https://github.com/josephkamau32/devintel/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/josephkamau32/devintel/actions/runs/45144684492)
 
 An asynchronous code intelligence platform that indexes codebases into a PostgreSQL vector database, provides context-grounded retrieval-augmented generation (RAG) for codebase questions, calculates multi-dimensional code health metrics, generates AST-based architecture diagrams, and automates pull request reviews.
 
@@ -13,7 +13,7 @@ A public deployment is accessible at [devintel.vercel.app](https://devintel.verc
 * **Frontend:** Hosted on Vercel.
 * **Backend API:** Hosted on Render as a containerized service.
 * **Database:** Managed PostgreSQL 16 with the `pgvector` extension on Neon.
-* **Demo Access:** The application includes a demo mode (`DEMO_MODE=true`) that enables evaluation via a pre-seeded repository (`devintel/devintel-core`) without requiring GitHub OAuth setup.
+* **Demo Access:** The application includes a demo mode (`DEMO_MODE=true`) that enables evaluation via a pre-indexed sample repository (`josephkamau32/devintel`, covering backend modules `app/ai`, `app/services`, and `app/models`) without requiring GitHub OAuth setup.
 
 ---
 
@@ -62,7 +62,7 @@ graph TD
     end
 
     subgraph AIProviders["External AI Services"]
-        GEMINI["Google Gemini API<br/>gemini-3-flash-preview · gemini-embedding-001 (Default)"]
+        GEMINI["Google Gemini API<br/>gemini-3-flash-preview · gemini-3.1-flash-lite · gemini-embedding-001 (Default)"]
         OPENAI["OpenAI API<br/>gpt-4o · text-embedding-3-small (Optional)"]
     end
 
@@ -99,7 +99,7 @@ Code files are processed using Tree-sitter parsers (`tree-sitter` and `tree-sitt
 
 The retrieval engine generates vector representations and performs similarity matching directly in PostgreSQL:
 
-* **Default AI Provider:** Google Gemini API using `gemini-embedding-001` with Matryoshka dimension reduction to 768 dimensions (`app/core/config.py`).
+* **Default AI Provider:** Google Gemini API using `gemini-embedding-001` with Matryoshka dimension reduction to 768 dimensions (`app/core/config.py`). Fallback chat completions use `gemini-3.1-flash-lite`.
 * **Alternative Provider:** OpenAI API using `text-embedding-3-small` (1,536 dimensions) when `AI_PROVIDER=openai` is selected.
 * **Vector Index:** PostgreSQL `vector` columns indexed using the `pgvector` extension with cosine distance operator (`<=>`).
 * **Context Expansion:** When a relevant chunk is retrieved, adjacent chunks (window of plus/minus 1 chunk index from the same file) are pulled to maintain function signature and caller context continuity.
@@ -137,13 +137,22 @@ Repository ingestion and heavy analysis tasks are handled asynchronously without
 
 ### 7. Security Architecture
 
-* **Authentication:** Access tokens via short-lived JWTs (30-minute expiration) and refresh tokens (7-day expiration) stored as SHA-256 hashes in the database and delivered via HttpOnly cookies.
+* **Authentication:** Access tokens via short-lived JWTs (30-minute expiration) and refresh tokens (7-day expiration) signed with PyJWT and delivered via HttpOnly cookies. Refresh token hashes are stored in the database.
 * **Password Hashing:** Implemented using direct `bcrypt` hashing with salt rounds.
 * **Credential Encryption:** GitHub OAuth access tokens are encrypted at rest using Fernet symmetric AES-256 encryption (`cryptography` library).
 * **HTTP Hardening:** Security middleware applies Content Security Policy (CSP), HTTP Strict Transport Security (HSTS in production), X-Content-Type-Options (`nosniff`), X-Frame-Options (`DENY`), Referrer-Policy, and Permissions-Policy.
 * **Input Defense:** SQL injection detection middleware scans query parameters and body payloads for common exploitation patterns. Prompt injection patterns are filtered using regex scanners in `ChatService`.
 * **Rate Limiting:** Sliding-window rate limiter per user IP/ID (`RATE_LIMIT_PER_MINUTE=100`) backed by Redis, with a memory-backed fallback when Redis is unconfigured.
 * **Metrics Protection:** The Prometheus metrics endpoint (`/metrics`) requires an `X-Metrics-Key` header or Bearer token matching `METRICS_API_KEY`, returning 404 if unauthorized.
+
+### 8. Dynamic Dashboard Analytics
+
+User dashboard metrics are calculated dynamically from persisted records in the `repositories` and `chats` tables (`app/repositories/analytics.py`):
+
+* **Indexed Repositories:** Exact count of user repositories with `complete` indexing status (`total_repos_indexed`).
+* **Total Queries:** Exact count of persisted chat interactions associated with the user account (`total_queries`).
+* **Token Usage:** Aggregated token count from provider metadata and token estimations recorded during completions (`total_tokens`).
+* **Usage Trends & Top Repositories:** Daily query volume, token consumption, and per-repository activity breakdowns computed from stored `Chat` records.
 
 ---
 
@@ -152,8 +161,9 @@ Repository ingestion and heavy analysis tasks are handled asynchronously without
 ### Backend
 * **Language:** Python 3.11
 * **Web Framework:** FastAPI 0.109.2, Uvicorn 0.27.1
-* **Database Layer:** PostgreSQL 16, SQLAlchemy 2.0.27 (asyncpg 0.29.0), Alembic 1.13.1, pgvector 0.2.4
-* **AI Providers:** Google GenAI SDK 2.22.0 (`gemini-3-flash-preview` primary, `gemini-3.6-flash` fallback, `gemini-embedding-001`), OpenAI Python SDK 1.12.0 (`gpt-4o`, `text-embedding-3-small`)
+* **Database Layer:** Managed PostgreSQL 16 on Neon, SQLAlchemy 2.0.27 (asyncpg 0.29.0), Alembic 1.13.1, pgvector 0.2.4
+* **AI Providers:** Google GenAI SDK 2.22.0 (`gemini-3-flash-preview` primary, `gemini-3.1-flash-lite` fallback, `gemini-embedding-001`), OpenAI Python SDK 1.12.0 (`gpt-4o`, `text-embedding-3-small`)
+* **Auth & Security:** PyJWT 2.15.1, bcrypt 4.0.1, cryptography 50.0.1 (Fernet AES-256)
 * **Code Analysis:** Tree-sitter 0.25.2, tree-sitter-language-pack 0.13.0
 * **Resilience:** Tenacity 8.2.3, custom three-state circuit breaker
 * **Observability:** Prometheus client 0.20.0, Structlog 24.1.0
@@ -235,11 +245,16 @@ The frontend application will be available at `http://localhost:5173`.
 
 ### 4. Seeding Demo Data (Optional)
 
-To seed the local database with the bounded `devintel-core` repository scope without performing full external GitHub cloning:
+To seed the local database with the bounded sample repository scope (`josephkamau32/devintel`, covering `app/ai`, `app/services`, and `app/models`) without performing external GitHub cloning:
 
 ```bash
 cd devintel-backend
 python scripts/seed_demo.py
+```
+
+To purge existing stored embeddings, health analyses, and diagrams and re-index the sample against current code:
+```bash
+python scripts/seed_demo.py --refresh
 ```
 
 ---
@@ -257,7 +272,7 @@ python scripts/seed_demo.py
 | `AI_PROVIDER` | No | `gemini` | Primary AI provider: `gemini` or `openai` |
 | `GEMINI_API_KEY` | Conditional | - | Required when `AI_PROVIDER=gemini` |
 | `GEMINI_CHAT_MODEL` | No | `gemini-3-flash-preview` | Gemini primary chat model (~1.35s TTFT) |
-| `GEMINI_FALLBACK_MODEL` | No | `gemini-3.6-flash` | Gemini fallback model for outages/retirement |
+| `GEMINI_FALLBACK_MODEL` | No | `gemini-3.1-flash-lite` | Gemini fallback model for outages/retirement |
 | `GEMINI_FIRST_TOKEN_TIMEOUT` | No | `8.0` | Seconds to wait for first token before fallback (2x median) |
 | `GEMINI_EMBEDDING_MODEL` | No | `gemini-embedding-001` | Gemini model for vector embeddings |
 | `OPENAI_API_KEY` | Conditional | - | Required when `AI_PROVIDER=openai` |
@@ -306,8 +321,8 @@ To run with coverage reporting:
 pytest tests/ --cov=app --cov-report=term-missing
 ```
 
-* **Test Suite Size:** 55 test modules in `devintel-backend/tests/`.
-* **Passing Tests:** 471 unit and mocked integration tests.
+* **Test Suite Size:** 56 test modules in `devintel-backend/tests/`.
+* **Passing Tests:** 508 unit and mocked integration tests.
 * **Statement Coverage:** 61% across the `app/` codebase.
 
 ### Frontend Tests
@@ -320,6 +335,14 @@ npm run lint
 
 ---
 
+## Privacy
+
+* **User Chat Records:** Chat questions, responses, and token usages are persisted per user account to support conversation continuity and dashboard usage analytics.
+* **Repository Deletion Cascade:** Deleting a repository permanently cascades and removes all associated chat records, code embeddings, architecture diagrams, and health reports.
+* **Demo Account Retention:** For the public demo account (`demo@devintel.dev`), conversation question and response text is scrubbed after 7 days (`[removed after 7 days]`) on application startup and demo login. Timestamps and token usages are preserved to maintain accurate aggregate dashboard metrics.
+
+---
+
 ## Known Limitations
 
 1. **In-Process Background Task Execution:** Background repository indexing and code health analysis run via an asynchronous job poller (`app/services/job_poller.py`) inside the main FastAPI process. While effective for single-instance deployments, scaling to high ingestion volumes requires migrating this worker to a decoupled task runner.
@@ -328,7 +351,7 @@ npm run lint
 4. **Code Health Sampling Approach:** Code health metrics are derived from multi-probe representative sampling (10 chunks per repository) passed to an LLM evaluator, rather than exhaustive full-codebase static analysis linters (e.g. SonarQube or Bandit).
 5. **Ingestion File Constraints:** Ingestion is restricted to text files under 5 MB with supported source extensions. Binary files, compiled assets, minified bundles, and non-UTF-8 encodings are discarded.
 6. **Idle Cold Starts:** The first request after idle can take up to about a minute because the free Render service and the free Neon compute both sleep when idle.
-7. **Reliance on Preview Chat Model:** The default primary chat model (`gemini-3-flash-preview`) is an experimental preview model chosen based on live empirical latency benchmarks (~1.35 s median TTFT vs persistent timeouts/503s on `gemini-3.6-flash`). Because preview models can be deprecated or retired by Google without notice, the provider implements automatic fallback to `gemini-3.6-flash` upon HTTP 404 (model not found), first-token timeouts (>8.0 s), HTTP 429/503, or other transient errors.
+7. **Reliance on Preview Chat Model:** The default primary chat model (`gemini-3-flash-preview`) is an experimental preview model chosen based on live empirical latency benchmarks (~1.35 s median TTFT vs persistent timeouts/503s on `gemini-3.6-flash`). Because preview models can be deprecated or retired by Google without notice, the provider implements automatic fallback to `gemini-3.1-flash-lite` upon HTTP 404 (model not found), first-token timeouts (>8.0 s), HTTP 429/503, or other transient errors.
 
 ---
 

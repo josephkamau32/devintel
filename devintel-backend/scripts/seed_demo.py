@@ -10,8 +10,10 @@ pipeline used during real indexing — NOT hardcoded values.
 Idempotent: check-then-insert/skip. Re-running is a clean no-op.
 """
 
+import argparse
 import asyncio
 import os
+import subprocess
 import sys
 import time
 from datetime import UTC, datetime
@@ -21,11 +23,12 @@ from pathlib import Path
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BACKEND_DIR))
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 
 from app.core.config import settings
 from app.core.security import hash_password
 from app.db.session import AsyncSessionLocal
+from app.models.code_health import CodeHealth
 from app.models.embedding import Embedding
 from app.models.repository import IndexingStatus
 from app.repositories.architecture import ArchitectureDiagramRepository
@@ -42,6 +45,18 @@ DEMO_FULL_NAME = "Demo User"
 DEMO_REPO_NAME = "devintel"
 DEMO_REPO_FULL_NAME = "josephkamau32/devintel"
 DEMO_REPO_DESC = "Pre-indexed sample repository: snapshot of backend modules app/ai, app/services and app/models."
+
+
+def get_git_short_sha() -> str:
+    """Retrieve current short git commit hash."""
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=str(BACKEND_DIR.parent),
+            text=True,
+        ).strip()
+    except Exception:
+        return "latest"
 
 
 def collect_code_chunks() -> list[tuple[str, int, str]]:
@@ -87,11 +102,16 @@ def collect_code_chunks() -> list[tuple[str, int, str]]:
     return all_chunks
 
 
-async def seed_demo():
+async def seed_demo(refresh: bool = False):
     """Main seed function."""
     start_time = time.time()
+    sha = get_git_short_sha()
+    demo_repo_desc = f"Snapshot of backend modules app/ai, app/services and app/models at commit {sha}"
+
     print("=" * 70)
     print("DevIntel AI — Demo Repository Offline Seeder")
+    if refresh:
+        print(f"Mode: REFRESH (targeting commit {sha})")
     print("=" * 70)
 
     async with AsyncSessionLocal() as session:
@@ -128,16 +148,29 @@ async def seed_demo():
                     legacy_repo.id,
                     full_name=DEMO_REPO_FULL_NAME,
                     repo_name=DEMO_REPO_NAME,
-                    description=DEMO_REPO_DESC,
+                    description=demo_repo_desc,
                     url=f"https://github.com/{DEMO_REPO_FULL_NAME}",
                 )
                 await session.commit()
                 repo = await repo_repo.get_by_id(legacy_repo.id)
 
-        if repo and repo.indexing_status == IndexingStatus.COMPLETE:
+        if refresh and repo:
+            print(f"\n[REFRESH] Purging embeddings, health, and architecture records for repo {repo.id}...")
+            await session.execute(delete(Embedding).where(Embedding.repo_id == repo.id))
+            await session.execute(delete(CodeHealth).where(CodeHealth.repo_id == repo.id))
+            await arch_repo.delete_by_repo(repo.id)
+            await repo_repo.update(
+                repo.id,
+                description=demo_repo_desc,
+                indexing_status=IndexingStatus.INDEXING,
+                indexing_progress=10,
+            )
+            await session.commit()
+            print("  Old data purged. Proceeding to fresh extraction and embedding.")
+        elif repo and repo.indexing_status == IndexingStatus.COMPLETE:
             # Ensure description is up-to-date
-            if repo.description != DEMO_REPO_DESC:
-                await repo_repo.update(repo.id, description=DEMO_REPO_DESC)
+            if repo.description != demo_repo_desc:
+                await repo_repo.update(repo.id, description=demo_repo_desc)
                 await session.commit()
 
             # Check embedding count — only skip if fully seeded
@@ -165,7 +198,7 @@ async def seed_demo():
                 user_id=user.id,
                 full_name=DEMO_REPO_FULL_NAME,
                 repo_name=DEMO_REPO_NAME,
-                description=DEMO_REPO_DESC,
+                description=demo_repo_desc,
                 url=f"https://github.com/{DEMO_REPO_FULL_NAME}",
                 stars=142,
                 language="Python",
@@ -180,6 +213,7 @@ async def seed_demo():
             print(f"  Found incomplete repository: ID={repo.id}, updating...")
             await repo_repo.update(
                 repo.id,
+                description=demo_repo_desc,
                 indexing_status=IndexingStatus.INDEXING,
                 indexing_progress=10,
             )
@@ -224,7 +258,7 @@ async def seed_demo():
 
                     # Insert this batch immediately
                     batch_data = []
-                    for (fp, ci, ct), emb in zip(batch, batch_embeddings):
+                    for (fp, ci, ct), emb in zip(batch, batch_embeddings, strict=False):
                         batch_data.append({
                             "repo_id": repo.id,
                             "file_path": fp,
@@ -323,6 +357,7 @@ async def seed_demo():
         print("\n8. Finalizing Repository Status...")
         await repo_repo.update(
             repo.id,
+            description=demo_repo_desc,
             indexing_status=IndexingStatus.COMPLETE,
             indexing_progress=100,
             indexing_error=None,
@@ -344,4 +379,12 @@ async def seed_demo():
 
 
 if __name__ == "__main__":
-    asyncio.run(seed_demo())
+    parser = argparse.ArgumentParser(description="Seed or refresh demo repository data.")
+    parser.add_argument(
+        "--refresh",
+        action="store_true",
+        help="Clear existing demo embeddings, health, and diagram, and re-run analysis against current code.",
+    )
+    args = parser.parse_args()
+    asyncio.run(seed_demo(refresh=args.refresh))
+

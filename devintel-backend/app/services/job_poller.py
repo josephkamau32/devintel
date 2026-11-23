@@ -168,6 +168,15 @@ async def start_poller() -> tuple[list[asyncio.Task[None]], asyncio.Event]:
     except Exception as exc:
         logger.error("Job poller: orphan recovery failed: %s", exc, exc_info=True)
 
+    # Enforce demo chat retention cleanup
+    try:
+        from app.services.chat import scrub_demo_chat_retention
+
+        async with AsyncSessionLocal() as session:
+            await scrub_demo_chat_retention(session)
+    except Exception as exc:
+        logger.warning("Job poller: demo chat retention cleanup failed: %s", exc)
+
     stop_event = asyncio.Event()
     concurrency = settings.JOB_POLLER_CONCURRENCY
     pid = os.getpid()

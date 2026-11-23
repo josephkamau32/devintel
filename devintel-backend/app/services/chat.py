@@ -5,6 +5,7 @@ from collections.abc import AsyncGenerator
 from uuid import UUID
 
 import tiktoken
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.orchestrator import get_orchestrator
 from app.core.config import settings
@@ -14,6 +15,53 @@ from app.repositories.embedding import EmbeddingRepository
 from app.services.embedding import EmbeddingService
 
 logger = get_logger(__name__)
+
+DEMO_CHAT_RETENTION_MARKER = "[removed after 7 days]"
+
+
+async def scrub_demo_chat_retention(
+    db: AsyncSession,
+    demo_email: str = "demo@devintel.dev",
+    retention_days: int = 7,
+) -> int:
+    """Scrub question and response content for demo user chats older than retention_days.
+
+    Preserves token counts, timestamps, user_id, and repo_id so that analytics and
+    dashboard metrics remain accurate while scrubbing conversation text after 7 days.
+    """
+    from datetime import UTC, datetime, timedelta
+
+    from sqlalchemy import select, update
+
+    from app.models.chat import Chat
+    from app.models.user import User
+
+    user_stmt = select(User.id).where(User.email == demo_email)
+    user_res = await db.execute(user_stmt)
+    demo_user_id = user_res.scalar_one_or_none()
+    if not demo_user_id:
+        return 0
+
+    cutoff = datetime.now(UTC) - timedelta(days=retention_days)
+    stmt = (
+        update(Chat)
+        .where(
+            Chat.user_id == demo_user_id,
+            Chat.created_at < cutoff,
+            (Chat.question != DEMO_CHAT_RETENTION_MARKER) | (Chat.response != DEMO_CHAT_RETENTION_MARKER),
+        )
+        .values(
+            question=DEMO_CHAT_RETENTION_MARKER,
+            response=DEMO_CHAT_RETENTION_MARKER,
+        )
+        .execution_options(synchronize_session=False)
+    )
+    result = await db.execute(stmt)
+    await db.commit()
+    count = result.rowcount or 0
+    if count > 0:
+        logger.info("Scrubbed %d expired demo chat record(s) older than %d days", count, retention_days)
+    return count
 
 
 class ChatService:

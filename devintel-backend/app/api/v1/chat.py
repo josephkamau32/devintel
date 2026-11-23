@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import check_repo_access, get_current_user
 from app.core.logging import get_logger
-from app.db.session import get_db
+from app.db.session import AsyncSessionLocal, get_db
 from app.models.chat import Chat
 from app.models.repository import IndexingStatus
 from app.models.user import User
@@ -147,51 +147,27 @@ async def stream_chat(
 
             total_tokens = input_tokens + output_tokens
 
-            # Save chat record and increment analytics counter
+            # Save chat record and increment analytics counter with dedicated session
             try:
-                chat_record = Chat(
-                    user_id=current_user.id,
-                    repo_id=repository.id,
-                    org_id=getattr(repository, "organization_id", None),
-                    question=request.question,
-                    response=full_response,
-                    agent_type=request.agent_type or "chat",
-                    token_usage=total_tokens,
-                    input_tokens=input_tokens,
-                    output_tokens=output_tokens,
-                    response_time_ms=elapsed_ms,
-                )
-                db.add(chat_record)
-                analytics_repo = AnalyticsRepository(db)
-                await analytics_repo.increment_query_count(current_user.id, tokens=total_tokens)
-                await db.commit()
+                async with AsyncSessionLocal() as session:
+                    chat_record = Chat(
+                        user_id=current_user.id,
+                        repo_id=repository.id,
+                        org_id=getattr(repository, "organization_id", None),
+                        question=request.question,
+                        response=full_response,
+                        agent_type=request.agent_type or "chat",
+                        token_usage=total_tokens,
+                        input_tokens=input_tokens,
+                        output_tokens=output_tokens,
+                        response_time_ms=elapsed_ms,
+                    )
+                    session.add(chat_record)
+                    analytics_repo = AnalyticsRepository(session)
+                    await analytics_repo.increment_query_count(current_user.id, tokens=total_tokens)
+                    await session.commit()
             except Exception as persist_err:
-                logger.warning(
-                    "Failed to persist chat record with request session: %s. Trying AsyncSessionLocal...",
-                    persist_err,
-                )
-                try:
-                    from app.db.session import AsyncSessionLocal
-
-                    async with AsyncSessionLocal() as fallback_db:
-                        fallback_chat = Chat(
-                            user_id=current_user.id,
-                            repo_id=repository.id,
-                            org_id=getattr(repository, "organization_id", None),
-                            question=request.question,
-                            response=full_response,
-                            agent_type=request.agent_type or "chat",
-                            token_usage=total_tokens,
-                            input_tokens=input_tokens,
-                            output_tokens=output_tokens,
-                            response_time_ms=elapsed_ms,
-                        )
-                        fallback_db.add(fallback_chat)
-                        fallback_analytics = AnalyticsRepository(fallback_db)
-                        await fallback_analytics.increment_query_count(current_user.id, tokens=total_tokens)
-                        await fallback_db.commit()
-                except Exception as fallback_err:
-                    logger.error("Failed to persist chat record to DB via fallback: %s", fallback_err)
+                logger.error("Failed to persist chat record to DB: %s", persist_err)
 
         except Exception as e:
             logger.error(

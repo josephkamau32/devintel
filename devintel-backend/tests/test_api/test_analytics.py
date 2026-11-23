@@ -141,8 +141,18 @@ class TestAnalyticsEndpoints:
         indexed_repository: Repository,
         db_session: AsyncSession,
         test_user: User,
+        monkeypatch,
     ):
         """Test streaming chat persists the answer and token counts and increments dashboard numbers."""
+        class SessionCtx:
+            async def __aenter__(self):
+                return db_session
+
+            async def __aexit__(self, *args):
+                pass
+
+        monkeypatch.setattr("app.api.v1.chat.AsyncSessionLocal", lambda: SessionCtx())
+
         with patch("app.api.v1.chat.ChatService") as mock_chat_service_cls:
             mock_service = mock_chat_service_cls.return_value
             mock_service.retrieve_relevant_chunks = AsyncMock(return_value=[])

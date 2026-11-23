@@ -61,6 +61,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.error("Database startup check failed: %s", exc)
         raise
 
+    # Enforce 7-day retention policy for demo chat records on startup
+    try:
+        from app.db.session import AsyncSessionLocal
+        from app.services.chat import scrub_demo_chat_retention
+
+        async with AsyncSessionLocal() as session:
+            await scrub_demo_chat_retention(session)
+    except Exception as exc:
+        logger.warning("Failed to run demo chat retention cleanup at startup: %s", exc)
+
     # Start the durable job poller
     from app.services.job_poller import start_poller, stop_poller
     poller_tasks, poller_stop_event = await start_poller()
