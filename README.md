@@ -1,6 +1,6 @@
 # DevIntel AI
 
-[![CI](https://github.com/josephkamau32/devintel/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/josephkamau32/devintel/actions/runs/45216945972)
+[![CI](https://github.com/josephkamau32/devintel/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/josephkamau32/devintel/actions/runs/45380307556)
 
 An asynchronous code intelligence platform that indexes codebases into a PostgreSQL vector database, provides context-grounded retrieval-augmented generation (RAG) for codebase questions, calculates multi-dimensional code health metrics, generates AST-based architecture diagrams, and automates pull request reviews.
 
@@ -14,6 +14,8 @@ A public deployment is accessible at [devintel.vercel.app](https://devintel.verc
 * **Backend API:** Hosted on Render as a containerized service.
 * **Database:** Managed PostgreSQL 16 with the `pgvector` extension on Neon.
 * **Demo Access:** The application includes a demo mode (`DEMO_MODE=true`) that enables evaluation via a pre-indexed sample repository (`josephkamau32/devintel`, covering backend modules `app/ai`, `app/services`, and `app/models`) without requiring GitHub OAuth setup.
+
+![DevIntel AI Platform Dashboard](docs/images/dashboard.png)
 
 ---
 
@@ -105,6 +107,8 @@ The retrieval engine generates vector representations and performs similarity ma
 * **Context Expansion:** When a relevant chunk is retrieved, adjacent chunks (window of plus/minus 1 chunk index from the same file) are pulled to maintain function signature and caller context continuity.
 * **Hybrid Retrieval (Optional):** Supports combining vector similarity search with in-memory BM25 lexical search using Reciprocal Rank Fusion (RRF in `app/services/retrieval/rrf.py`).
 
+![Context-Grounded Codebase Chat](docs/images/codebase-chat.png)
+
 ### 3. Asynchronous Task Processing
 
 Repository ingestion and heavy analysis tasks are handled asynchronously without blocking HTTP request threads:
@@ -122,6 +126,8 @@ Repository ingestion and heavy analysis tasks are handled asynchronously without
 * **Dimensions:** Computes an overall score (0 to 100) and sub-scores for Complexity, Documentation, Maintainability, Test Coverage, and Security.
 * **Output:** Generates a high-level summary, top identified issues, and actionable technical recommendations.
 
+![Multi-Dimensional Code Health Scoring & AI Recommendations](docs/images/code-health.png)
+
 ### 5. Architecture Diagram Generation
 
 `ArchitectureVisualizationService` (`app/services/architecture_service.py`) dynamically maps the repository structure:
@@ -129,6 +135,8 @@ Repository ingestion and heavy analysis tasks are handled asynchronously without
 * **Analysis:** Parses stored code embeddings and files to construct a dependency graph of top-level modules, declared classes, functions, and inter-module import references.
 * **Format:** Emits valid Mermaid.js flowchart syntax (`graph TD` with module subgraphs and directional call/import count edges).
 * **Display:** Rendered client-side using Mermaid 11 on the repository overview page.
+
+![AST-Derived Interactive Architecture Diagram](docs/images/architecture.png)
 
 ### 6. Automated Pull Request Review and Auto-Fix
 
