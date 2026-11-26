@@ -5,6 +5,7 @@ import type { Repository } from '../../types/repository';
 import type { ChatMessage } from '../../types/api';
 import { Send, Loader2, Bot, User, Sparkles, RefreshCw, AlertCircle } from 'lucide-react';
 import { clsx } from 'clsx';
+import { MarkdownMessage } from '../../components/chat/MarkdownMessage';
 
 interface DisplayMessage {
   role: 'user' | 'assistant';
@@ -216,9 +217,13 @@ export function ChatTab() {
             )}
             <div className={clsx('max-w-[75%]', msg.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-assistant', msg.isError && 'border border-danger-500/30 bg-danger-500/5')}>
               {msg.content ? (
-                <div className={clsx('text-sm whitespace-pre-wrap leading-relaxed', msg.isError ? 'text-danger-300' : 'text-text-primary')}>
-                  {msg.content}
-                </div>
+                msg.role === 'assistant' && !msg.isError ? (
+                  <MarkdownMessage content={msg.content} />
+                ) : (
+                  <div className={clsx('text-sm whitespace-pre-wrap leading-relaxed', msg.isError ? 'text-danger-300' : 'text-text-primary')}>
+                    {msg.content}
+                  </div>
+                )
               ) : isStreaming && i === messages.length - 1 ? (
                 <div className="flex items-center gap-2 text-xs text-text-quaternary py-0.5">
                   <Loader2 className="h-4 w-4 animate-spin-slow text-brand-400" />
