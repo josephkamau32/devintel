@@ -29,6 +29,7 @@ export function ArchitectureTab() {
         const mermaid = (await import('mermaid')).default;
         mermaid.initialize({
           startOnLoad: false,
+          securityLevel: 'strict',
           theme: 'dark',
           themeVariables: {
             darkMode: true,

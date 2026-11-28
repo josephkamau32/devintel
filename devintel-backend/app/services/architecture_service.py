@@ -6,6 +6,8 @@ using the existing symbol_graph module and stored embedding chunks.
 
 from __future__ import annotations
 
+import hashlib
+import re
 from collections import defaultdict
 from typing import Any, Optional
 from uuid import UUID
@@ -24,6 +26,7 @@ logger = get_logger(__name__)
 # --- Caps for readable diagrams ---
 MAX_MODULE_NODES = 20
 MAX_EDGES = 50
+MAX_LABEL_LENGTH = 100
 
 
 class ArchitectureVisualizationService:
@@ -90,24 +93,26 @@ class ArchitectureVisualizationService:
 
         # Emit subgraphs per module
         for mod_id, mod_info in modules.items():
-            label = mod_info["label"]
+            label = _escape_mermaid_label(mod_info["label"])
             classes = mod_info.get("classes", [])
             functions = mod_info.get("top_functions", [])
             class_count = mod_info.get("class_count", 0)
             func_count = mod_info.get("function_count", 0)
 
             safe_id = _safe_mermaid_id(mod_id)
-            lines.append(f"    subgraph {safe_id}[\"{label}\"]")
+            lines.append(f'    subgraph {safe_id}["{label}"]')
 
             # Show up to 6 classes and 4 top-level functions per module
             shown_items = 0
             for cls_name in classes[:6]:
                 item_id = _safe_mermaid_id(f"{mod_id}__{cls_name}")
-                lines.append(f'        {item_id}["{cls_name}"]')
+                safe_cls = _escape_mermaid_label(cls_name)
+                lines.append(f'        {item_id}["{safe_cls}"]')
                 shown_items += 1
             for fn_name in functions[:4]:
                 item_id = _safe_mermaid_id(f"{mod_id}__{fn_name}")
-                lines.append(f'        {item_id}("{fn_name}()")')
+                safe_fn = _escape_mermaid_label(fn_name)
+                lines.append(f'        {item_id}("{safe_fn}()")')
                 shown_items += 1
 
             # If no individual items, show a summary node
@@ -132,7 +137,8 @@ class ArchitectureVisualizationService:
         # Honest capping note
         if capping_note:
             note_id = _safe_mermaid_id("capping_note")
-            lines.append(f'    {note_id}[/"{capping_note}"/]')
+            safe_note = _escape_mermaid_label(capping_note, max_len=240)
+            lines.append(f'    {note_id}[/"{safe_note}"/]')
             lines.append(f"    style {note_id} fill:#553,stroke:#aa0,color:#ff0")
 
         return "\n".join(lines)
@@ -149,14 +155,18 @@ class ArchitectureVisualizationService:
         ]
 
         for dep in structure.get("external_deps", []):
+            dep_id = _safe_mermaid_id(dep["id"])
+            dep_name = _escape_mermaid_label(dep["name"])
+            dep_desc = _escape_mermaid_label(dep.get("desc", ""))
             lines.append(
-                f'    System_Ext({dep["id"]}, "{dep["name"]}", "{dep.get("desc", "")}")'
+                f'    System_Ext({dep_id}, "{dep_name}", "{dep_desc}")'
             )
 
         lines.append("")
         lines.append('    Rel(user, app, "Uses")')
         for dep in structure.get("external_deps", []):
-            lines.append(f'    Rel(app, {dep["id"]}, "Integrates with")')
+            dep_id = _safe_mermaid_id(dep["id"])
+            lines.append(f'    Rel(app, {dep_id}, "Integrates with")')
 
         return "\n".join(lines)
 
@@ -170,8 +180,9 @@ class ArchitectureVisualizationService:
 
         for mod_id, mod_info in structure.get("modules", {}).items():
             safe_id = _safe_mermaid_id(mod_id)
+            safe_label = _escape_mermaid_label(mod_info["label"])
             lines.append(
-                f'    Container({safe_id}, "{mod_info["label"]}", "Python")'
+                f'    Container({safe_id}, "{safe_label}", "Python")'
             )
 
         return "\n".join(lines)
@@ -380,9 +391,34 @@ class CodeStructureAnalyzer:
 # Helper functions
 # ------------------------------------------------------------------
 
+def _escape_mermaid_label(text: str, max_len: int | None = MAX_LABEL_LENGTH) -> str:
+    """Escape hostile characters in Mermaid labels using Mermaid entities.
+
+    Truncates oversized labels before escaping so entity tokens are never split.
+    """
+    normalized = text.replace("\r", " ").replace("\n", " ")
+    if max_len is not None and len(normalized) > max_len:
+        normalized = normalized[: max_len - 3] + "..."
+    return (
+        normalized
+        .replace("\\", "#92;")
+        .replace('"', "#quot;")
+        .replace("<", "#lt;")
+        .replace(">", "#gt;")
+    )
+
+
 def _safe_mermaid_id(s: str) -> str:
-    """Convert a path/name to a valid Mermaid node ID."""
-    return s.replace("/", "_").replace(".", "_").replace("-", "_").replace(" ", "_")
+    """Convert a path/name to a valid, bounded Mermaid node ID."""
+    basic = s.replace("/", "_").replace(".", "_").replace("-", "_").replace(" ", "_")
+    if len(basic) <= 80 and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", basic):
+        return basic
+
+    slug = re.sub(r"[^A-Za-z0-9_]+", "_", basic).strip("_")[:48] or "node"
+    if slug[0].isdigit():
+        slug = f"n_{slug}"
+    digest = hashlib.sha256(s.encode("utf-8")).hexdigest()[:8]
+    return f"{slug}_{digest}"
 
 
 def _path_to_module(file_path: str) -> str:

@@ -4,9 +4,19 @@ Validates that real AST-based analysis produces correct, non-stub
 output and that capping / edge-case logic works.
 """
 
+import re
+
 import pytest
 
-from app.services.architecture_service import CodeStructureAnalyzer, _path_to_module, _import_to_module
+from app.services.architecture_service import (
+    ArchitectureVisualizationService,
+    CodeStructureAnalyzer,
+    MAX_LABEL_LENGTH,
+    _escape_mermaid_label,
+    _import_to_module,
+    _path_to_module,
+    _safe_mermaid_id,
+)
 
 
 # ---- Fixtures: two genuinely different file sets ----
@@ -193,3 +203,121 @@ class TestHelperFunctions:
         assert _import_to_module("app.ai.orchestrator") == "app/ai"
         assert _import_to_module("sqlalchemy") is None
         assert _import_to_module("fastapi") is None
+
+
+class TestMermaidSanitization:
+    """Verify hostile names cannot corrupt Mermaid output or inject markup."""
+
+    @staticmethod
+    def _assert_safe_mermaid_lines(mermaid: str) -> None:
+        assert "<" not in mermaid
+        assert "\\" not in mermaid
+        for line in mermaid.splitlines():
+            stripped = line.strip()
+            if stripped.startswith("subgraph ") or '["' in stripped or '("' in stripped or '[/"' in stripped:
+                assert ">" not in stripped
+                assert stripped.count('"') == 2
+
+    def test_hostile_directory_with_double_quote(self):
+        analyzer = CodeStructureAnalyzer()
+        svc = ArchitectureVisualizationService(None)  # type: ignore[arg-type]
+
+        structure = analyzer.from_files({'a"b/mod.py': "class Foo:\n    pass\n"})
+        mermaid = svc._generate_mermaid_from_structure(structure, "mermaid")
+
+        assert mermaid.startswith("graph TD\n")
+        assert '["a#quot;b"]' in mermaid
+        self._assert_safe_mermaid_lines(mermaid)
+
+        m = re.search(r"^\s*subgraph\s+([^\[\s]+)\[", mermaid, re.MULTILINE)
+        assert m is not None
+        assert re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", m.group(1))
+
+    def test_hostile_directory_with_xss_markup(self):
+        analyzer = CodeStructureAnalyzer()
+        svc = ArchitectureVisualizationService(None)  # type: ignore[arg-type]
+
+        structure = analyzer.from_files(
+            {"<img src=x onerror=alert(1)>/evil.py": "def run():\n    pass\n"}
+        )
+        mermaid = svc._generate_mermaid_from_structure(structure, "mermaid")
+
+        assert "<" not in mermaid
+        assert ">" not in mermaid
+        assert '["#lt;img src=x onerror=alert(1)#gt;"]' in mermaid
+        self._assert_safe_mermaid_lines(mermaid)
+
+        m = re.search(r"^\s*subgraph\s+([^\[\s]+)\[", mermaid, re.MULTILINE)
+        assert m is not None
+        assert re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", m.group(1))
+
+    def test_very_long_directory_and_class_names(self):
+        analyzer = CodeStructureAnalyzer()
+        svc = ArchitectureVisualizationService(None)  # type: ignore[arg-type]
+
+        long_dir = "very_long_" + ("x" * 250)
+        long_cls = "VeryLongClass_" + ("Y" * 250)
+        structure = analyzer.from_files({f"{long_dir}/mod.py": f"class {long_cls}:\n    pass\n"})
+        mermaid = svc._generate_mermaid_from_structure(structure, "mermaid")
+
+        self._assert_safe_mermaid_lines(mermaid)
+        ids = re.findall(r"^\s*(?:subgraph\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*\[", mermaid, re.MULTILINE)
+        assert ids
+        for node_id in ids:
+            assert len(node_id) <= 80
+
+        labels = re.findall(r'"([^"]*)"', mermaid)
+        assert any(label.endswith("...") and len(label) <= MAX_LABEL_LENGTH for label in labels)
+
+    def test_backslashes_and_newlines_escaped_across_diagram_types(self):
+        svc = ArchitectureVisualizationService(None)  # type: ignore[arg-type]
+        structure = {
+            "modules": {
+                'dir\\one"two': {
+                    "label": 'dir\\one"two<script>\ninjected',
+                    "classes": ['Cls\\A"B<C>'],
+                    "top_functions": ['fn\\1"2<3>'],
+                    "class_count": 1,
+                    "function_count": 1,
+                },
+                "app/clean": {
+                    "label": "app.clean",
+                    "classes": ["Clean"],
+                    "top_functions": [],
+                    "class_count": 1,
+                    "function_count": 0,
+                },
+            },
+            "edges": [{"from": 'dir\\one"two', "to": "app/clean", "count": 2}],
+            "external_deps": [
+                {"id": 'evil"dep<1>', "name": 'evil\\"<pkg>', "desc": 'desc\\"<x>'}
+            ],
+            "capping_note": 'Note with \\ " and <tag>',
+        }
+
+        flowchart = svc._generate_mermaid_from_structure(structure, "mermaid")
+        self._assert_safe_mermaid_lines(flowchart)
+        assert "#92;" in flowchart
+        assert "#quot;" in flowchart
+        assert "#lt;" in flowchart
+        assert "#gt;" in flowchart
+        assert " -->|2 imports| app_clean" in flowchart
+
+        subgraph_id = _safe_mermaid_id('dir\\one"two')
+        assert f"subgraph {subgraph_id}[" in flowchart
+        assert f"{subgraph_id} -->|2 imports| app_clean" in flowchart
+
+        c4_ctx = svc._generate_mermaid_from_structure(structure, "c4_context")
+        assert "<" not in c4_ctx and "\\" not in c4_ctx
+        assert "#92;" in c4_ctx and "#quot;" in c4_ctx and "#lt;" in c4_ctx and "#gt;" in c4_ctx
+
+        c4_cnt = svc._generate_mermaid_from_structure(structure, "c4_container")
+        assert "<" not in c4_cnt and "\\" not in c4_cnt
+        assert "#92;" in c4_cnt and "#quot;" in c4_cnt and "#lt;" in c4_cnt and "#gt;" in c4_cnt
+
+    def test_escape_helper_does_not_split_entities_on_truncation(self):
+        hostile = '"' * 120
+        escaped = _escape_mermaid_label(hostile, max_len=10)
+        # 10 chars truncated -> 7 quotes + "..." -> each quote is #quot;
+        assert escaped == ("#quot;" * 7) + "..."
+        assert '"' not in escaped
